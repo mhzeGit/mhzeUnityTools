@@ -1,0 +1,13 @@
+{
+  "name": "com.mhze.unity-fast-play-button",
+  "version": "1.0.0",
+  "displayName": "Unity Fast Play Button",
+  "description": "A Unity Editor package that adds a fast play button for quicker testing and iteration.",
+  "unity": "6000.0",
+  "author": {
+    "name": "mhze",
+    "email": "mhze.uk@gmail.com"
+  },
+  "dependencies": {},
+  "_fingerprint": "0c65dd77ab9f0eaad22ec8ed4ba1f4f50252818e"
+}

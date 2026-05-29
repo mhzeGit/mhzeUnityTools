@@ -1,0 +1,85 @@
+{
+    "useCustomFolderColor": true,
+    "entries": [
+        {
+            "path": "",
+            "name": "Assets",
+            "color": "FFFFFFFF"
+        },
+        {
+            "path": "",
+            "name": "Prefabs",
+            "color": "45ADE6FF"
+        },
+        {
+            "path": "",
+            "name": "Scenes",
+            "color": "262626FF"
+        },
+        {
+            "path": "",
+            "name": "PhysicsMaterials",
+            "color": "B0FC59FF"
+        },
+        {
+            "path": "",
+            "name": "Scripts",
+            "color": "42AC47FF"
+        },
+        {
+            "path": "",
+            "name": "Materials",
+            "color": "6C59F2FF"
+        },
+        {
+            "path": "",
+            "name": "2D",
+            "color": "6BBCE6FF"
+        },
+        {
+            "path": "",
+            "name": "Audio",
+            "color": "FAFD2BFF"
+        },
+        {
+            "path": "",
+            "name": "3D",
+            "color": "FD6C2BFF"
+        },
+        {
+            "path": "",
+            "name": "GameAssets",
+            "color": "C90906FF"
+        },
+        {
+            "path": "",
+            "name": "Animations",
+            "color": "7FFCE4FF"
+        },
+        {
+            "path": "",
+            "name": "Fonts",
+            "color": "1DBC73FF"
+        },
+        {
+            "path": "",
+            "name": "Tools",
+            "color": "DEAB10FF"
+        },
+        {
+            "path": "",
+            "name": "Shaders",
+            "color": "BA5C91FF"
+        },
+        {
+            "path": "",
+            "name": "TextMesh Pro",
+            "color": "7DC8F2FF"
+        },
+        {
+            "path": "",
+            "name": "_Test",
+            "color": "979595FF"
+        }
+    ]
+}

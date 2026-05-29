@@ -1,0 +1,11 @@
+{
+  "name": "com.mhze.unity-editor-visual-tweaks",
+  "version": "1.0.0",
+  "displayName": "Unity Editor Visual Tweaks",
+  "description": "Provides visual enhancements for the Hierarchy and Project windows, such as zebra stripes and hierarchy lines.",
+  "unity": "6000.0",
+  "author": {
+    "name": "mhze",
+    "email": "mhze.uk@gmail.com"
+  }
+}

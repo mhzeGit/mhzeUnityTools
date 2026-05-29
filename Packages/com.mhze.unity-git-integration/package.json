@@ -1,0 +1,13 @@
+{
+  "name": "com.mhze.unity-git-integration",
+  "version": "1.0.0",
+  "displayName": "Unity Git Integration",
+  "description": "Git integration editor tool for Unity.",
+  "unity": "6000.1",
+  "author": {
+    "name": "mhze",
+    "email": "mhze.uk@gmail.com"
+  },
+  "dependencies": {}
+}
+

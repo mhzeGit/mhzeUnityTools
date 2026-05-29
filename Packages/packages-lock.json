@@ -1,5 +1,35 @@
 {
   "dependencies": {
+    "com.mhze.unity-editor-navigator": {
+      "version": "file:com.mhze.unity-editor-navigator",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.mhze.unity-editor-visual-tweaks": {
+      "version": "file:com.mhze.unity-editor-visual-tweaks",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.mhze.unity-fast-play-button": {
+      "version": "file:com.mhze.unity-fast-play-button",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.mhze.unity-folder-colorizer": {
+      "version": "file:com.mhze.unity-folder-colorizer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.mhze.unity-git-integration": {
+      "version": "file:com.mhze.unity-git-integration",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.12",
       "depth": 0,
@@ -92,6 +122,12 @@
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"
+    },
+    "com.unity.objectsnaptool": {
+      "version": "file:com.unity.objectsnaptool",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
     },
     "com.unity.render-pipelines.core": {
       "version": "17.4.0",
