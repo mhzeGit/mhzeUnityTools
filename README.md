@@ -4,9 +4,20 @@ Collection of Unity Editor tools and packages.
 
 ## Packages
 
-- [Unity Editor Navigator](Packages/com.mhze.unity-editor-navigator) — [GitHub](https://github.com/mhzeGit/mhzeUnityTools/tree/main/Packages/com.mhze.unity-editor-navigator)
-- [Unity Fast Play Button](Packages/com.mhze.unity-fast-play-button) — [GitHub](https://github.com/mhzeGit/mhzeUnityTools/tree/main/Packages/com.mhze.unity-fast-play-button)
-- [Unity Folder Colorizer](Packages/com.mhze.unity-folder-colorizer) — [GitHub](https://github.com/mhzeGit/mhzeUnityTools/tree/main/Packages/com.mhze.unity-folder-colorizer)
-- [Unity Git Integration](Packages/com.mhze.unity-git-integration) — [GitHub](https://github.com/mhzeGit/mhzeUnityTools/tree/main/Packages/com.mhze.unity-git-integration)
-- [Unity Editor Visual Tweaks](Packages/com.mhze.unity-editor-visual-tweaks) — [GitHub](https://github.com/mhzeGit/mhzeUnityTools/tree/main/Packages/com.mhze.unity-editor-visual-tweaks)
-- [Unity Object Snap Tool](Packages/com.unity.objectsnaptool) — [GitHub](https://github.com/mhzeGit/mhzeUnityTools/tree/main/Packages/com.unity.objectsnaptool)
+- **Unity Editor Navigator**
+  `https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-navigator`
+
+- **Unity Fast Play Button**
+  `https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-fast-play-button`
+
+- **Unity Folder Colorizer**
+  `https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-folder-colorizer`
+
+- **Unity Git Integration**
+  `https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-git-integration`
+
+- **Unity Editor Visual Tweaks**
+  `https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-visual-tweaks`
+
+- **Unity Object Snap Tool**
+  `https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.objectsnaptool`
