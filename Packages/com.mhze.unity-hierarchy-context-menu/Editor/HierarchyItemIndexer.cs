@@ -5,6 +5,19 @@ namespace mhze.HierarchyContextMenu
 {
     static class HierarchyItemIndexer
     {
+        private static readonly HashSet<string> ExcludedDisplayNames = new()
+        {
+            "Center On Children",
+            "Make Parent",
+            "Clear Parent",
+            "Set as first sibling",
+            "Set as last sibling",
+            "Move To View",
+            "Align With View",
+            "Align View to Selected",
+            "Toggle Active State",
+        };
+
         private static List<HierarchyMenuItem> _items;
         private static bool _indexed;
 
@@ -39,6 +52,10 @@ namespace mhze.HierarchyContextMenu
                     continue;
 
                 var displayName = path.Substring("GameObject/".Length);
+
+                if (ExcludedDisplayNames.Contains(displayName))
+                    continue;
+
                 _items.Add(new HierarchyMenuItem
                 {
                     MenuPath = path,
