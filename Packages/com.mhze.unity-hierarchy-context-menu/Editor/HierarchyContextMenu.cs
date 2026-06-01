@@ -24,9 +24,12 @@ namespace mhze.HierarchyContextMenu
             if (HierarchyContextMenuWindow.IsOpen)
                 return;
 
+#pragma warning disable CS0618
             var clickedObject = EditorUtility.InstanceIDToObject(instanceID);
-            if (clickedObject != null)
-                Selection.activeObject = clickedObject;
+#pragma warning restore CS0618
+            GameObject clickedGo = clickedObject as GameObject;
+            if (clickedGo != null)
+                Selection.activeObject = clickedGo;
 
             HierarchyItemIndexer.EnsureIndexed();
 
@@ -36,7 +39,9 @@ namespace mhze.HierarchyContextMenu
                 var parts = item.DisplayName.Split('/');
                 topLevelNames.Add(parts[0]);
             }
-            int rootItemCount = 16 + topLevelNames.Count;
+            bool isPrefab = clickedGo != null && PrefabUtility.IsPartOfPrefabInstance(clickedGo);
+            int additionalItems = isPrefab ? 2 : 0;
+            int rootItemCount = 16 + topLevelNames.Count + additionalItems;
             float desiredHeight = Mathf.Max(36f + (rootItemCount * 22f) + 16f, 60f);
 
             var screenPos = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);

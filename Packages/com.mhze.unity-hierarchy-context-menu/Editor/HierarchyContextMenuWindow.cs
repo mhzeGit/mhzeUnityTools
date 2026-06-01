@@ -70,8 +70,8 @@ namespace mhze.HierarchyContextMenu
         private static readonly Dictionary<string, ItemIconInfo> SpecialItemIcons = new()
         {
             { "Cut", new ItemIconInfo("editicon.sml") },
-            { "Copy", new ItemIconInfo("editicon.sml") },
-            { "Paste", new ItemIconInfo("editicon.sml") },
+            { "Copy", new ItemIconInfo("SceneLoadIn") },
+            { "Paste", new ItemIconInfo("SceneLoadOut") },
             { "Paste Special", new ItemIconInfo("editicon.sml") },
             { "Paste As Child", new ItemIconInfo("editicon.sml") },
             { "Paste As Sibling", new ItemIconInfo("editicon.sml") },
@@ -84,6 +84,16 @@ namespace mhze.HierarchyContextMenu
             { "Select Children", new ItemIconInfo("GameObject Icon") },
             { "Find References in Scene", new ItemIconInfo("Search Icon") },
             { "Set as Default Parent", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
+            { "Prefab", new ItemIconInfo("Prefab Icon") },
+            { "Open Asset in Context", new ItemIconInfo("Prefab Icon") },
+            { "Open Asset in Isolation", new ItemIconInfo("Prefab Icon") },
+            { "Select Asset", new ItemIconInfo("Prefab Icon") },
+            { "Select Root", new ItemIconInfo("Prefab Icon") },
+            { "Replace...", new ItemIconInfo("Prefab Icon") },
+            { "Replace and Keep Overrides...", new ItemIconInfo("Prefab Icon") },
+            { "Unpack", new ItemIconInfo("Prefab Icon") },
+            { "Unpack Completely", new ItemIconInfo("Prefab Icon") },
+            { "Remove Unused Overrides...", new ItemIconInfo("Prefab Icon") },
         };
 
         private const float WindowWidth = 420f;
@@ -94,6 +104,16 @@ namespace mhze.HierarchyContextMenu
         private MenuNode _currentSubmenuCategory;
         private IVisualElementScheduledItem _submenuSchedule;
         private bool _suppressHoverUntilMouseMove;
+
+        private bool IsPrefabContext
+        {
+            get
+            {
+                var go = Selection.activeGameObject;
+                if (go == null) return false;
+                return PrefabUtility.IsPartOfPrefabInstance(go);
+            }
+        }
 
         public static void Show(Vector2 screenPoint, float desiredHeight)
         {
@@ -252,6 +272,27 @@ namespace mhze.HierarchyContextMenu
 
             items.Add(new SeparatorItem());
 
+            if (IsPrefabContext)
+            {
+                items.Add(new SpecialSubmenuItem
+                {
+                    DisplayName = "Prefab",
+                    Children = new List<SpecialActionItem>
+                    {
+                        new SpecialActionItem { DisplayName = "Open Asset in Context", Action = OpenAssetInContext },
+                        new SpecialActionItem { DisplayName = "Open Asset in Isolation", Action = OpenAssetInIsolation },
+                        new SpecialActionItem { DisplayName = "Select Asset", Action = SelectPrefabAsset },
+                        new SpecialActionItem { DisplayName = "Select Root", Action = SelectPrefabRoot },
+                        new SpecialActionItem { DisplayName = "Replace...", Action = ReplacePrefab },
+                        new SpecialActionItem { DisplayName = "Replace and Keep Overrides...", Action = ReplacePrefabKeepOverrides },
+                        new SpecialActionItem { DisplayName = "Unpack", Action = UnpackPrefab },
+                        new SpecialActionItem { DisplayName = "Unpack Completely", Action = UnpackPrefabCompletely },
+                        new SpecialActionItem { DisplayName = "Remove Unused Overrides...", Action = RemoveUnusedOverrides },
+                    }
+                });
+                items.Add(new SeparatorItem());
+            }
+
             items.AddRange(_rootNode.Children);
 
             return items;
@@ -336,29 +377,54 @@ namespace mhze.HierarchyContextMenu
 
         private void BuildSearchField()
         {
+            var searchContainer = new VisualElement();
+            searchContainer.style.flexDirection = FlexDirection.Row;
+            searchContainer.style.alignItems = Align.Center;
+            searchContainer.style.marginLeft = 4;
+            searchContainer.style.marginRight = 4;
+            searchContainer.style.marginTop = 4;
+            searchContainer.style.marginBottom = 4;
+            searchContainer.style.backgroundColor = new Color(0.17f, 0.17f, 0.17f);
+            searchContainer.style.borderTopColor = new Color(0.28f, 0.28f, 0.28f);
+            searchContainer.style.borderLeftColor = new Color(0.28f, 0.28f, 0.28f);
+            searchContainer.style.borderRightColor = new Color(0.28f, 0.28f, 0.28f);
+            searchContainer.style.borderBottomColor = new Color(0.28f, 0.28f, 0.28f);
+            searchContainer.style.borderTopWidth = 1;
+            searchContainer.style.borderLeftWidth = 1;
+            searchContainer.style.borderRightWidth = 1;
+            searchContainer.style.borderBottomWidth = 1;
+            searchContainer.style.borderTopLeftRadius = 6;
+            searchContainer.style.borderTopRightRadius = 6;
+            searchContainer.style.borderBottomLeftRadius = 6;
+            searchContainer.style.borderBottomRightRadius = 6;
+            searchContainer.style.paddingLeft = 8;
+            searchContainer.style.paddingRight = 4;
+            searchContainer.style.minHeight = 26;
+
+            var searchIcon = new Image();
+            var iconTex = MenuIcons.Load("Search Icon");
+            searchIcon.image = iconTex;
+            searchIcon.style.width = 14;
+            searchIcon.style.height = 14;
+            searchIcon.style.marginRight = 4;
+            searchIcon.style.flexShrink = 0;
+            searchIcon.style.unityBackgroundImageTintColor = new Color(0.55f, 0.55f, 0.55f);
+            if (iconTex == null)
+                searchIcon.style.display = DisplayStyle.None;
+            searchContainer.Add(searchIcon);
+
             _searchField = new TextField();
-            _searchField.style.flexShrink = 0;
-            _searchField.style.marginLeft = 4;
-            _searchField.style.marginRight = 4;
-            _searchField.style.marginTop = 4;
-            _searchField.style.marginBottom = 4;
-            _searchField.style.paddingLeft = 10;
-            _searchField.style.paddingRight = 10;
+            _searchField.style.flexGrow = 1;
+            _searchField.style.flexShrink = 1;
+            _searchField.style.borderTopWidth = 0;
+            _searchField.style.borderLeftWidth = 0;
+            _searchField.style.borderRightWidth = 0;
+            _searchField.style.borderBottomWidth = 0;
+            _searchField.style.backgroundColor = Color.clear;
+            _searchField.style.paddingLeft = 0;
+            _searchField.style.paddingRight = 0;
             _searchField.style.paddingTop = 3;
             _searchField.style.paddingBottom = 3;
-            _searchField.style.backgroundColor = new Color(0.17f, 0.17f, 0.17f);
-            _searchField.style.borderTopColor = new Color(0.28f, 0.28f, 0.28f);
-            _searchField.style.borderLeftColor = new Color(0.28f, 0.28f, 0.28f);
-            _searchField.style.borderRightColor = new Color(0.28f, 0.28f, 0.28f);
-            _searchField.style.borderBottomColor = new Color(0.28f, 0.28f, 0.28f);
-            _searchField.style.borderTopWidth = 1;
-            _searchField.style.borderLeftWidth = 1;
-            _searchField.style.borderRightWidth = 1;
-            _searchField.style.borderBottomWidth = 1;
-            _searchField.style.borderTopLeftRadius = 6;
-            _searchField.style.borderTopRightRadius = 6;
-            _searchField.style.borderBottomLeftRadius = 6;
-            _searchField.style.borderBottomRightRadius = 6;
             _searchField.style.fontSize = 13;
             _searchField.style.color = new Color(0.85f, 0.85f, 0.85f);
             _searchField.style.unityFontStyleAndWeight = FontStyle.Normal;
@@ -381,13 +447,16 @@ namespace mhze.HierarchyContextMenu
                 inputContainer.style.backgroundColor = Color.clear;
                 inputContainer.style.paddingTop = 0;
                 inputContainer.style.paddingBottom = 0;
+                inputContainer.style.paddingLeft = 0;
+                inputContainer.style.paddingRight = 0;
                 inputContainer.style.minHeight = 0;
             }
 
             _searchField.RegisterValueChangedCallback(OnSearchChanged);
             _searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown, TrickleDown.TrickleDown);
 
-            rootVisualElement.Add(_searchField);
+            searchContainer.Add(_searchField);
+            rootVisualElement.Add(searchContainer);
         }
 
         private Vector2 GetSubmenuScreenPos(VisualElement hoveredItem)
@@ -548,7 +617,10 @@ namespace mhze.HierarchyContextMenu
                     }
                     else if (clickedItem is SpecialSubmenuItem submenu)
                     {
-                        ShowSpecialSubmenuLevel(submenu);
+                        if (submenu.DisplayName == "Prefab")
+                            ShowPrefabSubmenu(submenu, container);
+                        else
+                            ShowSpecialSubmenuLevel(submenu);
                     }
                 }
             }, TrickleDown.TrickleDown);
@@ -627,6 +699,8 @@ namespace mhze.HierarchyContextMenu
                 ApplyIcon(icon, submenuItem.DisplayName, submenuItem.Enabled);
                 ApplySelectionStyle(element, index);
                 UnregisterHoverEvents(element);
+                if (submenuItem.DisplayName == "Prefab")
+                    RegisterPrefabHoverEvents(element, submenuItem);
                 return;
             }
 
@@ -764,11 +838,28 @@ namespace mhze.HierarchyContextMenu
             SubmenuWindow.Create(this, category, screenPos, desiredHeight);
         }
 
+        private void ShowPrefabSubmenu(SpecialSubmenuItem submenu, VisualElement hoveredItem)
+        {
+            if (_isSearching)
+                return;
+
+            CancelSubmenuSchedule();
+            _currentSubmenuCategory = null;
+
+            var screenPos = GetSubmenuScreenPos(hoveredItem);
+            float itemCount = submenu.Children.Count;
+            float desiredHeight = Mathf.Max((itemCount * ItemHeight) + 5f, 22f);
+
+            ActionSubmenuWindow.CloseIfOpen();
+            ActionSubmenuWindow.Create(this, submenu.Children, screenPos, desiredHeight);
+        }
+
         private void HideSubmenu()
         {
             CancelSubmenuSchedule();
             _currentSubmenuCategory = null;
             SubmenuWindow.CloseIfOpen();
+            ActionSubmenuWindow.CloseIfOpen();
         }
 
         internal void ScheduleHideSubmenu()
@@ -784,6 +875,46 @@ namespace mhze.HierarchyContextMenu
                 _submenuSchedule.Pause();
                 _submenuSchedule = null;
             }
+        }
+
+        private void RegisterPrefabHoverEvents(VisualElement element, SpecialSubmenuItem submenu)
+        {
+            element.RegisterCallback<PointerEnterEvent, SpecialSubmenuItem>(OnPrefabItemPointerEnter, submenu);
+            element.RegisterCallback<PointerLeaveEvent, SpecialSubmenuItem>(OnPrefabItemPointerLeave, submenu);
+        }
+
+        private void UnregisterPrefabHoverEvents(VisualElement element)
+        {
+            element.UnregisterCallback<PointerEnterEvent, SpecialSubmenuItem>(OnPrefabItemPointerEnter);
+            element.UnregisterCallback<PointerLeaveEvent, SpecialSubmenuItem>(OnPrefabItemPointerLeave);
+        }
+
+        private void OnPrefabItemPointerEnter(PointerEnterEvent evt, SpecialSubmenuItem submenu)
+        {
+            if (_isSearching)
+                return;
+
+            CancelSubmenuSchedule();
+
+            var element = evt.currentTarget as VisualElement;
+            var capturedIndex = (int?)element?.userData ?? -1;
+            _submenuSchedule = rootVisualElement.schedule.Execute(() =>
+            {
+                if (capturedIndex >= 0)
+                {
+                    var targetElement = FindItemVisualElement(capturedIndex);
+                    if (targetElement != null)
+                        ShowPrefabSubmenu(submenu, targetElement);
+                }
+            }).StartingIn(SubmenuDelayMs);
+        }
+
+        private void OnPrefabItemPointerLeave(PointerLeaveEvent evt, SpecialSubmenuItem submenu)
+        {
+            if (_isSearching)
+                return;
+
+            ScheduleHideSubmenu();
         }
 
         private void NavigateTo(int index)
@@ -1316,6 +1447,242 @@ namespace mhze.HierarchyContextMenu
                 }
             };
         }
+
+        private void OpenAssetInContext()
+        {
+            var go = Selection.activeGameObject;
+            if (go == null) return;
+            var source = PrefabUtility.GetCorrespondingObjectFromSource(go);
+            if (source == null) return;
+            ExecutePrefabAction(() => AssetDatabase.OpenAsset(source));
+        }
+
+        private void OpenAssetInIsolation()
+        {
+            var go = Selection.activeGameObject;
+            if (go == null) return;
+            var source = PrefabUtility.GetCorrespondingObjectFromSource(go);
+            if (source == null) return;
+            ExecutePrefabAction(() => AssetDatabase.OpenAsset(source));
+        }
+
+        private void SelectPrefabAsset()
+        {
+            var go = Selection.activeGameObject;
+            if (go == null) return;
+            var source = PrefabUtility.GetCorrespondingObjectFromSource(go);
+            if (source == null) return;
+            ExecutePrefabAction(() => Selection.activeObject = source);
+        }
+
+        private void SelectPrefabRoot()
+        {
+            var go = Selection.activeGameObject;
+            if (go == null) return;
+            var root = PrefabUtility.GetNearestPrefabInstanceRoot(go);
+            if (root == null) return;
+            ExecutePrefabAction(() => Selection.activeGameObject = root);
+        }
+
+        private void UnpackPrefab()
+        {
+            var go = Selection.activeGameObject;
+            if (go == null) return;
+            var root = PrefabUtility.GetNearestPrefabInstanceRoot(go);
+            if (root == null) return;
+            ExecutePrefabAction(() => PrefabUtility.UnpackPrefabInstance(root, PrefabUnpackMode.OutermostRoot, InteractionMode.UserAction));
+        }
+
+        private void UnpackPrefabCompletely()
+        {
+            var go = Selection.activeGameObject;
+            if (go == null) return;
+            var root = PrefabUtility.GetNearestPrefabInstanceRoot(go);
+            if (root == null) return;
+            ExecutePrefabAction(() => PrefabUtility.UnpackPrefabInstance(root, PrefabUnpackMode.Completely, InteractionMode.UserAction));
+        }
+
+        private void ReplacePrefab()
+        {
+            ReplacePrefabInternal(false);
+        }
+
+        private void ReplacePrefabKeepOverrides()
+        {
+            ReplacePrefabInternal(true);
+        }
+
+        private void ReplacePrefabInternal(bool keepOverrides)
+        {
+            var go = Selection.activeGameObject;
+            if (go == null) return;
+            var root = PrefabUtility.GetNearestPrefabInstanceRoot(go);
+            if (root == null) return;
+
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+
+                if (root == null) return;
+
+                var absPath = EditorUtility.OpenFilePanelWithFilters(
+                    keepOverrides ? "Replace Prefab (Keep Overrides)" : "Replace Prefab",
+                    "Assets",
+                    new[] { "Prefab files", "prefab" });
+
+                if (string.IsNullOrEmpty(absPath))
+                    return;
+
+                var relPath = FileUtil.GetProjectRelativePath(absPath);
+                if (string.IsNullOrEmpty(relPath))
+                {
+                    EditorUtility.DisplayDialog("Replace Prefab", "Selected file is not in the project.", "OK");
+                    return;
+                }
+
+                var newPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(relPath);
+                if (newPrefab == null) return;
+
+                var currentSource = PrefabUtility.GetCorrespondingObjectFromSource(root);
+                if (currentSource == newPrefab)
+                    return;
+
+                var overrides = keepOverrides ? PrefabUtility.GetPropertyModifications(root) : null;
+
+                var parent = root.transform.parent;
+                var siblingIndex = root.transform.GetSiblingIndex();
+                var position = root.transform.position;
+                var rotation = root.transform.rotation;
+                var localScale = root.transform.localScale;
+                var name = root.name;
+                var layer = root.layer;
+                var tag = root.tag;
+
+                var newInstance = (GameObject)PrefabUtility.InstantiatePrefab(newPrefab, parent);
+                if (newInstance == null) return;
+
+                newInstance.transform.SetSiblingIndex(siblingIndex);
+                newInstance.transform.position = position;
+                newInstance.transform.rotation = rotation;
+                newInstance.transform.localScale = localScale;
+                newInstance.name = name;
+                newInstance.layer = layer;
+                newInstance.tag = tag;
+
+                if (overrides != null && overrides.Length > 0)
+                    PrefabUtility.SetPropertyModifications(newInstance, overrides);
+
+                Selection.activeGameObject = newInstance;
+                UnityEngine.Object.DestroyImmediate(root);
+            };
+        }
+
+        private void RemoveUnusedOverrides()
+        {
+            var go = Selection.activeGameObject;
+            if (go == null) return;
+            var root = PrefabUtility.GetNearestPrefabInstanceRoot(go);
+            if (root == null) return;
+
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+
+                if (root == null) return;
+                var source = PrefabUtility.GetCorrespondingObjectFromSource(root);
+                if (source == null) return;
+
+                var overrides = PrefabUtility.GetPropertyModifications(root);
+                if (overrides == null || overrides.Length == 0)
+                {
+                    EditorUtility.DisplayDialog("Remove Unused Overrides", "No unused overrides found.", "OK");
+                    return;
+                }
+
+                var activeOverrides = new List<PropertyModification>();
+                int removedCount = 0;
+
+                foreach (var mod in overrides)
+                {
+                    if (mod.target == null)
+                    {
+                        removedCount++;
+                        continue;
+                    }
+
+                    var comp = mod.target as Component;
+                    if (comp == null)
+                    {
+                        activeOverrides.Add(mod);
+                        continue;
+                    }
+
+                    var targetGo = comp.gameObject;
+                    var path = GetTransformPath(targetGo.transform, root.transform);
+                    var sourceTransform = string.IsNullOrEmpty(path) ? source.transform : source.transform.Find(path);
+
+                    if (sourceTransform != null)
+                    {
+                        var sourceComponent = sourceTransform.GetComponent(comp.GetType());
+                        if (sourceComponent != null)
+                        {
+                            var instanceSo = new SerializedObject(comp);
+                            var sourceSo = new SerializedObject(sourceComponent);
+                            var instanceProp = instanceSo.FindProperty(mod.propertyPath);
+                            var sourceProp = sourceSo.FindProperty(mod.propertyPath);
+
+                            if (instanceProp != null && sourceProp != null &&
+                                SerializedProperty.DataEquals(instanceProp, sourceProp))
+                            {
+                                removedCount++;
+                                continue;
+                            }
+                        }
+                    }
+
+                    activeOverrides.Add(mod);
+                }
+
+                if (removedCount == 0)
+                {
+                    EditorUtility.DisplayDialog("Remove Unused Overrides", "No unused overrides found.", "OK");
+                    return;
+                }
+
+                bool proceed = EditorUtility.DisplayDialog("Remove Unused Overrides",
+                    $"Remove {removedCount} unused override(s)?", "Remove", "Cancel");
+
+                if (proceed)
+                {
+                    PrefabUtility.SetPropertyModifications(root, activeOverrides.ToArray());
+                }
+            };
+        }
+
+        private string GetTransformPath(Transform child, Transform root)
+        {
+            if (child == root) return "";
+            var path = child.name;
+            var current = child.parent;
+            while (current != null && current != root)
+            {
+                path = current.name + "/" + path;
+                current = current.parent;
+            }
+            return path;
+        }
+
+        private void ExecutePrefabAction(Action action)
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                action?.Invoke();
+            };
+        }
     }
 
     class SubmenuWindow : EditorWindow
@@ -1548,6 +1915,193 @@ namespace mhze.HierarchyContextMenu
         }
     }
 
+    class ActionSubmenuWindow : EditorWindow
+    {
+        private static ActionSubmenuWindow _instance;
+        private ListView _listView;
+        private List<SpecialActionItem> _items;
+        private HierarchyContextMenuWindow _parent;
+        private static readonly Color BgColor = new Color(0.12f, 0.12f, 0.12f);
+        private static readonly Color BorderColor = new Color(0.25f, 0.25f, 0.25f);
+        private const float ItemHeight = 22f;
+        private const float SubmenuWidth = 240f;
+
+        public static void CloseIfOpen()
+        {
+            if (_instance != null)
+            {
+                _instance.Close();
+                _instance = null;
+            }
+        }
+
+        public static ActionSubmenuWindow Create(HierarchyContextMenuWindow parent, List<SpecialActionItem> items, Vector2 screenPos, float height)
+        {
+            var rect = new Rect(screenPos.x, screenPos.y, 1, 1);
+            var instance = CreateInstance<ActionSubmenuWindow>();
+            instance._parent = parent;
+            instance._items = items;
+            instance.ShowAsDropDown(rect, new Vector2(SubmenuWidth, Mathf.Max(height, 22f)));
+            instance.Focus();
+            _instance = instance;
+            return instance;
+        }
+
+        private void OnDestroy()
+        {
+            if (_instance == this)
+                _instance = null;
+        }
+
+        private void OnLostFocus()
+        {
+            Close();
+        }
+
+        private void CreateGUI()
+        {
+            rootVisualElement.style.backgroundColor = BgColor;
+            rootVisualElement.style.borderTopLeftRadius = 8;
+            rootVisualElement.style.borderTopRightRadius = 8;
+            rootVisualElement.style.borderBottomLeftRadius = 8;
+            rootVisualElement.style.borderBottomRightRadius = 8;
+            rootVisualElement.style.paddingLeft = 1;
+            rootVisualElement.style.paddingRight = 1;
+            rootVisualElement.style.paddingTop = 1;
+            rootVisualElement.style.paddingBottom = 1;
+            rootVisualElement.style.borderTopWidth = 1;
+            rootVisualElement.style.borderLeftWidth = 1;
+            rootVisualElement.style.borderRightWidth = 1;
+            rootVisualElement.style.borderBottomWidth = 1;
+            rootVisualElement.style.borderTopColor = BorderColor;
+            rootVisualElement.style.borderLeftColor = BorderColor;
+            rootVisualElement.style.borderRightColor = BorderColor;
+            rootVisualElement.style.borderBottomColor = BorderColor;
+
+            _listView = new ListView(new List<SpecialActionItem>(_items), ItemHeight, MakeItem, BindItem);
+            _listView.style.flexGrow = 1;
+            _listView.style.marginLeft = 1;
+            _listView.style.marginRight = 1;
+            _listView.style.marginBottom = 1;
+            _listView.style.backgroundColor = new Color(0, 0, 0, 0);
+            _listView.selectionType = SelectionType.Single;
+            _listView.focusable = false;
+
+            var scrollView = _listView.Q<ScrollView>();
+            if (scrollView != null)
+            {
+                scrollView.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+                scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+                scrollView.mouseWheelScrollSize = ItemHeight;
+                scrollView.style.paddingTop = 0;
+                scrollView.style.paddingBottom = 0;
+                scrollView.style.marginTop = 0;
+                scrollView.style.marginBottom = 0;
+                var viewport = scrollView.Q<VisualElement>(className: "unity-scroll-view__content-viewport");
+                if (viewport != null)
+                {
+                    viewport.style.paddingTop = 0;
+                    viewport.style.paddingBottom = 0;
+                    viewport.style.marginTop = 0;
+                    viewport.style.marginBottom = 0;
+                    viewport.style.overflow = Overflow.Visible;
+                }
+                scrollView.contentContainer.style.overflow = Overflow.Visible;
+                scrollView.contentContainer.style.paddingTop = 0;
+                scrollView.contentContainer.style.paddingBottom = 0;
+            }
+
+            rootVisualElement.Add(_listView);
+            _listView.Rebuild();
+
+            rootVisualElement.RegisterCallback<PointerEnterEvent>(_ =>
+            {
+                _parent?.CancelSubmenuSchedule();
+            });
+
+            rootVisualElement.RegisterCallback<PointerLeaveEvent>(_ =>
+            {
+                _parent?.ScheduleHideSubmenu();
+            });
+        }
+
+        private VisualElement MakeItem()
+        {
+            var container = new VisualElement();
+            container.style.flexDirection = FlexDirection.Row;
+            container.style.alignItems = Align.Center;
+            container.style.paddingLeft = 10;
+            container.style.paddingRight = 10;
+            container.style.paddingTop = 0;
+            container.style.paddingBottom = 0;
+            container.style.minHeight = ItemHeight;
+            container.style.backgroundColor = new Color(0, 0, 0, 0);
+
+            var label = new Label();
+            label.name = "item-label";
+            label.style.fontSize = 13;
+            label.style.color = new Color(0.85f, 0.85f, 0.85f);
+            label.style.whiteSpace = WhiteSpace.NoWrap;
+            label.style.textOverflow = TextOverflow.Ellipsis;
+            label.style.flexShrink = 1;
+            label.style.unityTextAlign = TextAnchor.MiddleLeft;
+            label.style.flexGrow = 1;
+            container.Add(label);
+
+            container.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                if (evt.button == 0)
+                {
+                    evt.StopPropagation();
+                    var idx = (int)container.userData;
+                    if (idx >= 0 && idx < _items.Count)
+                    {
+                        var item = _items[idx];
+                        if (item.Enabled)
+                        {
+                            _parent?.Close();
+                            var action = item.Action;
+                            EditorApplication.delayCall += () => action?.Invoke();
+                        }
+                    }
+                }
+            }, TrickleDown.TrickleDown);
+
+            container.RegisterCallback<PointerEnterEvent>(evt =>
+            {
+                var idx = (int)container.userData;
+                if (idx >= 0 && idx < _items.Count && _items[idx].Enabled)
+                    container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
+                else
+                    container.style.backgroundColor = new Color(0.22f, 0.22f, 0.22f);
+            });
+
+            container.RegisterCallback<PointerLeaveEvent>(evt =>
+            {
+                container.style.backgroundColor = new Color(0, 0, 0, 0);
+            });
+
+            return container;
+        }
+
+        private void BindItem(VisualElement element, int index)
+        {
+            element.userData = index;
+            element.style.backgroundColor = new Color(0, 0, 0, 0);
+            element.style.paddingTop = 0;
+            element.style.paddingBottom = 0;
+            element.style.minHeight = ItemHeight;
+
+            var label = element.Q<Label>("item-label");
+            if (index >= 0 && index < _items.Count)
+            {
+                var item = _items[index];
+                label.text = item.DisplayName;
+                label.style.color = item.Enabled ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.4f, 0.4f, 0.4f);
+            }
+        }
+    }
+
     static class MenuIcons
     {
         private static readonly Dictionary<string, Texture2D> _cache = new();
@@ -1576,7 +2130,7 @@ namespace mhze.HierarchyContextMenu
                 case "create empty":
                 case "create empty child":
                 case "create empty parent":
-                    return "AvatarPivot";
+                    return "d_Transform Icon";
 
                 // 3D primitives
                 case "cube":
@@ -1618,12 +2172,17 @@ namespace mhze.HierarchyContextMenu
 
                 // Lights
                 case "directional light":
+                    return "DirectionalLight Icon";
                 case "point light":
-                case "spot light":
-                case "area light":
-                case "light probe group":
-                case "light probe proxy volume":
                     return "Light Icon";
+                case "area light":
+                    return "d_AreaLight Icon";
+                case "light probe proxy volume":
+                    return "d_LightProbeProxyVolume Icon";
+                case "spot light":
+                    return "d_Spotlight Icon";
+                case "light probe group":
+                    return "LightProbeGroup Gizmo";
                 case "reflection probe":
                     return "ReflectionProbeSelector";
 
@@ -1683,10 +2242,12 @@ namespace mhze.HierarchyContextMenu
                 case "particle system":
                     return "ParticleShapeTool";
                 case "particle system force field":
-                case "trail":
-                case "line":
                 case "visual effect":
                     return "Particle Effect";
+                case "trail":
+                    return "d_TrailRenderer Icon";
+                case "line":
+                    return "d_LineRenderer Icon";
 
                 // Timeline
                 case "timeline":
@@ -1705,10 +2266,16 @@ namespace mhze.HierarchyContextMenu
 
                 // Navigation
                 case "nav mesh surface":
+                    return "d_NavMeshData Icon";
                 case "nav mesh agent":
+                    return "d_NavMeshAgent Icon";
                 case "nav mesh obstacle":
+                    return "d_NavMeshObstacle Icon";
                 case "nav mesh link":
-                    return "UnityEditor.SceneHierarchyWindow";
+                    return "d_NavMeshAgent Icon";
+                case "nav mesh modifier":
+                case "nav mesh modifier volume":
+                    return "d_NavMeshObstacle Icon";
 
                 // Physics
                 case "rigidbody":
@@ -1777,7 +2344,7 @@ namespace mhze.HierarchyContextMenu
                     return "Font Icon";
                 case "navigation":
                 case "navmesh":
-                    return "UnityEditor.SceneHierarchyWindow";
+                    return "d_NavMeshData Icon";
                 case "physics":
                     return "d_editicon.sml";
                 case "camera":
