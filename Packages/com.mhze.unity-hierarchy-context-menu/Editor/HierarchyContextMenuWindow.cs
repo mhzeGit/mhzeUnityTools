@@ -115,8 +115,8 @@ namespace mhze.HierarchyContextMenu
             });
 
             BuildSearchField();
-            BuildSubmenuElement();
             BuildListView();
+            BuildSubmenuElement();
             ShowRootLevel();
             _ready = true;
 
@@ -189,7 +189,7 @@ namespace mhze.HierarchyContextMenu
 
         private float CalculateContentHeight(int itemCount)
         {
-            return 44f + (itemCount * ItemHeight) + 16f;
+            return 36f + (itemCount * ItemHeight) + 16f;
         }
 
         private void ResizeWindowToFit(int itemCount)
@@ -223,8 +223,8 @@ namespace mhze.HierarchyContextMenu
             _searchField.style.marginBottom = 4;
             _searchField.style.paddingLeft = 10;
             _searchField.style.paddingRight = 10;
-            _searchField.style.paddingTop = 7;
-            _searchField.style.paddingBottom = 7;
+            _searchField.style.paddingTop = 3;
+            _searchField.style.paddingBottom = 3;
             _searchField.style.backgroundColor = new Color(0.17f, 0.17f, 0.17f);
             _searchField.style.borderTopColor = new Color(0.28f, 0.28f, 0.28f);
             _searchField.style.borderLeftColor = new Color(0.28f, 0.28f, 0.28f);
@@ -258,6 +258,9 @@ namespace mhze.HierarchyContextMenu
                 inputContainer.style.borderRightWidth = 0;
                 inputContainer.style.borderBottomWidth = 0;
                 inputContainer.style.backgroundColor = Color.clear;
+                inputContainer.style.paddingTop = 0;
+                inputContainer.style.paddingBottom = 0;
+                inputContainer.style.minHeight = 0;
             }
 
             _searchField.RegisterValueChangedCallback(OnSearchChanged);
@@ -294,12 +297,12 @@ namespace mhze.HierarchyContextMenu
             _submenuContent = new VisualElement();
             _submenuElement.Add(_submenuContent);
 
-            _submenuElement.RegisterCallback<MouseEnterEvent>(_ =>
+            _submenuElement.RegisterCallback<PointerEnterEvent>(_ =>
             {
                 CancelSubmenuSchedule();
             });
 
-            _submenuElement.RegisterCallback<MouseLeaveEvent>(_ =>
+            _submenuElement.RegisterCallback<PointerLeaveEvent>(_ =>
             {
                 ScheduleHideSubmenu();
             });
@@ -314,6 +317,8 @@ namespace mhze.HierarchyContextMenu
             _listView.style.marginLeft = 4;
             _listView.style.marginRight = 4;
             _listView.style.marginBottom = 4;
+            _listView.style.paddingTop = 0;
+            _listView.style.paddingBottom = 0;
             _listView.style.backgroundColor = new Color(0, 0, 0, 0);
             _listView.selectionType = SelectionType.Single;
             _listView.focusable = true;
@@ -326,6 +331,20 @@ namespace mhze.HierarchyContextMenu
                 scrollView.verticalScrollerVisibility = ScrollerVisibility.Hidden;
                 scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
                 scrollView.mouseWheelScrollSize = ItemHeight;
+                scrollView.style.paddingTop = 0;
+                scrollView.style.paddingBottom = 0;
+                scrollView.style.marginTop = 0;
+                scrollView.style.marginBottom = 0;
+                var viewport = scrollView.Q<VisualElement>(className: "unity-scroll-view__content-viewport");
+                if (viewport != null)
+                {
+                    viewport.style.paddingTop = 0;
+                    viewport.style.paddingBottom = 0;
+                    viewport.style.marginTop = 0;
+                    viewport.style.marginBottom = 0;
+                    viewport.style.overflow = Overflow.Visible;
+                }
+                scrollView.contentContainer.style.overflow = Overflow.Visible;
             }
 
             rootVisualElement.Add(_listView);
@@ -389,20 +408,26 @@ namespace mhze.HierarchyContextMenu
                 container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
             });
 
-            container.RegisterCallback<MouseDownEvent>(evt =>
+            container.RegisterCallback<PointerDownEvent>(evt =>
             {
                 if (evt.button == 0)
                 {
+                    evt.StopPropagation();
                     var idx = (int)container.userData;
                     _listView.selectedIndex = idx;
-                    evt.StopPropagation();
 
                     if (idx >= 0 && idx < _currentItems.Count)
                     {
                         var clickedItem = _currentItems[idx];
-                        if (clickedItem is MenuNode node)
+                        if (clickedItem is BackItem)
                         {
-                            if (!node.IsCategory)
+                            ShowRootLevel();
+                        }
+                        else if (clickedItem is MenuNode node)
+                        {
+                            if (node.IsCategory)
+                                ShowSubmenu(node, container);
+                            else
                                 ExecutePath(node.MenuPath);
                         }
                         else if (clickedItem is HierarchyMenuItem menuItem)
@@ -415,7 +440,7 @@ namespace mhze.HierarchyContextMenu
                         }
                     }
                 }
-            });
+            }, TrickleDown.TrickleDown);
 
             return container;
         }
@@ -441,6 +466,16 @@ namespace mhze.HierarchyContextMenu
             element.style.backgroundColor = new Color(0, 0, 0, 0);
 
             var item = _currentItems[index];
+
+            if (item is BackItem)
+            {
+                label.text = "\u2190  Back";
+                label.style.color = new Color(0.7f, 0.7f, 0.7f);
+                arrow.style.display = DisplayStyle.None;
+                ApplySelectionStyle(element, index);
+                UnregisterHoverEvents(element);
+                return;
+            }
 
             if (item is SeparatorItem)
             {
@@ -491,6 +526,7 @@ namespace mhze.HierarchyContextMenu
 
                 UnregisterHoverEvents(element);
             }
+
         }
 
         private void ApplySelectionStyle(VisualElement element, int index)
@@ -502,17 +538,17 @@ namespace mhze.HierarchyContextMenu
 
         private void RegisterHoverEvents(VisualElement element, MenuNode node)
         {
-            element.RegisterCallback<MouseEnterEvent, MenuNode>(OnItemMouseEnter, node);
-            element.RegisterCallback<MouseLeaveEvent, MenuNode>(OnItemMouseLeave, node);
+            element.RegisterCallback<PointerEnterEvent, MenuNode>(OnItemPointerEnter, node);
+            element.RegisterCallback<PointerLeaveEvent, MenuNode>(OnItemPointerLeave, node);
         }
 
         private void UnregisterHoverEvents(VisualElement element)
         {
-            element.UnregisterCallback<MouseEnterEvent, MenuNode>(OnItemMouseEnter);
-            element.UnregisterCallback<MouseLeaveEvent, MenuNode>(OnItemMouseLeave);
+            element.UnregisterCallback<PointerEnterEvent, MenuNode>(OnItemPointerEnter);
+            element.UnregisterCallback<PointerLeaveEvent, MenuNode>(OnItemPointerLeave);
         }
 
-        private void OnItemMouseEnter(MouseEnterEvent evt, MenuNode node)
+        private void OnItemPointerEnter(PointerEnterEvent evt, MenuNode node)
         {
             if (_isSearching)
                 return;
@@ -522,9 +558,15 @@ namespace mhze.HierarchyContextMenu
             if (node.IsCategory)
             {
                 var element = evt.currentTarget as VisualElement;
+                var capturedIndex = (int?)element?.userData ?? -1;
                 _submenuSchedule = rootVisualElement.schedule.Execute(() =>
                 {
-                    ShowSubmenu(node, element);
+                    if (capturedIndex >= 0)
+                    {
+                        var targetElement = FindItemVisualElement(capturedIndex);
+                        if (targetElement != null)
+                            ShowSubmenu(node, targetElement);
+                    }
                 }).StartingIn(SubmenuDelayMs);
             }
             else
@@ -533,7 +575,7 @@ namespace mhze.HierarchyContextMenu
             }
         }
 
-        private void OnItemMouseLeave(MouseLeaveEvent evt, MenuNode node)
+        private void OnItemPointerLeave(PointerLeaveEvent evt, MenuNode node)
         {
             if (_isSearching)
                 return;
@@ -594,13 +636,15 @@ namespace mhze.HierarchyContextMenu
                 item.Add(subArrow);
 
                 var capturedChild = child;
-                item.RegisterCallback<MouseDownEvent>(subEvt =>
+                item.RegisterCallback<PointerDownEvent>(subEvt =>
                 {
                     if (subEvt.button == 0)
                     {
                         subEvt.StopPropagation();
                         if (capturedChild.IsLeaf)
                             ExecutePath(capturedChild.MenuPath);
+                        else if (capturedChild.IsCategory)
+                            ShowSubmenu(capturedChild, item);
                     }
                 });
 
@@ -635,7 +679,7 @@ namespace mhze.HierarchyContextMenu
                 left = rightSideX;
             }
 
-            float submenuHeight = category.Children.Count * ItemHeight + 8;
+            float submenuHeight = category.Children.Count * ItemHeight + 10;
             float windowHeight = rootVisualElement.resolvedStyle.height;
 
             float top = posInRoot.y - rootVisualElement.resolvedStyle.borderTopWidth;
@@ -843,7 +887,13 @@ namespace mhze.HierarchyContextMenu
 
             if (item is MenuNode node)
             {
-                if (!node.IsCategory)
+                if (node.IsCategory)
+                {
+                    var element = FindItemVisualElement(_listView.selectedIndex);
+                    if (element != null)
+                        ShowSubmenu(node, element);
+                }
+                else
                     ExecutePath(node.MenuPath);
             }
             else if (item is HierarchyMenuItem menuItem)
