@@ -152,7 +152,7 @@ namespace mhze.HierarchyContextMenu
             rootVisualElement.style.paddingLeft = 4;
             rootVisualElement.style.paddingRight = 4;
             rootVisualElement.style.paddingTop = 4;
-            rootVisualElement.style.paddingBottom = 4;
+            rootVisualElement.style.paddingBottom = 2;
 
             rootVisualElement.style.borderTopWidth = 1;
             rootVisualElement.style.borderLeftWidth = 1;
@@ -174,7 +174,7 @@ namespace mhze.HierarchyContextMenu
             _contentContainer.style.flexGrow = 1;
             _contentContainer.style.marginLeft = 4;
             _contentContainer.style.marginRight = 4;
-            _contentContainer.style.marginBottom = 4;
+            _contentContainer.style.marginBottom = 2;
             _contentContainer.style.paddingTop = 0;
             _contentContainer.style.paddingBottom = 0;
             rootVisualElement.Add(_contentContainer);
@@ -352,7 +352,7 @@ namespace mhze.HierarchyContextMenu
 
         private float CalculateContentHeight(int itemCount)
         {
-            return 36f + (itemCount * ItemHeight) + 16f;
+            return 44f + (itemCount * ItemHeight);
         }
 
         private void ResizeWindowToFit(int itemCount)

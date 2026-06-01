@@ -42,7 +42,7 @@ namespace mhze.HierarchyContextMenu
             bool isPrefab = clickedGo != null && PrefabUtility.IsPartOfPrefabInstance(clickedGo);
             int additionalItems = isPrefab ? 2 : 0;
             int rootItemCount = 16 + topLevelNames.Count + additionalItems;
-            float desiredHeight = Mathf.Max(36f + (rootItemCount * 22f) + 16f, 60f);
+            float desiredHeight = Mathf.Max(44f + (rootItemCount * 22f), 60f);
 
             var screenPos = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
             HierarchyContextMenuWindow.Show(screenPos, desiredHeight);
