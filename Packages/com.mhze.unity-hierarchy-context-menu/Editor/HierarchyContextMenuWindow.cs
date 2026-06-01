@@ -204,6 +204,9 @@ namespace mhze.HierarchyContextMenu
             if (_listView != null && _listView.parent != null)
                 rootVisualElement.Remove(_listView);
 
+            if (_contentContainer.parent == null)
+                rootVisualElement.Add(_contentContainer);
+
             _currentItems = BuildRootLevelItems();
             RebuildContentContainer();
 
@@ -1573,16 +1576,19 @@ namespace mhze.HierarchyContextMenu
                 case "create empty":
                 case "create empty child":
                 case "create empty parent":
-                    return "GameObject Icon";
+                    return "AvatarPivot";
 
                 // 3D primitives
                 case "cube":
+                    return "PreMatCube";
                 case "sphere":
+                    return "PreMatSphere";
                 case "capsule":
-                case "cylinder":
                 case "plane":
                 case "quad":
                     return "GameObject Icon";
+                case "cylinder":
+                    return "PreMatCylinder";
 
                 // 3D complex
                 case "ragdoll":
@@ -1615,10 +1621,11 @@ namespace mhze.HierarchyContextMenu
                 case "point light":
                 case "spot light":
                 case "area light":
-                case "reflection probe":
                 case "light probe group":
                 case "light probe proxy volume":
                     return "Light Icon";
+                case "reflection probe":
+                    return "ReflectionProbeSelector";
 
                 // Audio
                 case "audio source":
@@ -1674,14 +1681,12 @@ namespace mhze.HierarchyContextMenu
 
                 // Effects
                 case "particle system":
+                    return "ParticleShapeTool";
                 case "particle system force field":
                 case "trail":
                 case "line":
-                    return "Particle Icon";
-
-                // Visual Effects
                 case "visual effect":
-                    return "Particle Icon";
+                    return "Particle Effect";
 
                 // Timeline
                 case "timeline":
@@ -1760,7 +1765,7 @@ namespace mhze.HierarchyContextMenu
                 case "effects":
                 case "particle systems":
                 case "visual effects":
-                    return "Particle Icon";
+                    return "Particle Effect";
                 case "timeline":
                     return "UnityEditor.AnimationWindow";
                 case "cinemachine":
