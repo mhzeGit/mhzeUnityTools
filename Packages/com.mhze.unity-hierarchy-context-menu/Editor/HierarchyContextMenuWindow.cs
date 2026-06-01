@@ -55,9 +55,9 @@ namespace mhze.HierarchyContextMenu
         private static HierarchyContextMenuWindow _instance;
         public static bool IsOpen => _instance != null;
 
-        private const float WindowWidth = 280f;
+        private const float WindowWidth = 420f;
         private const float ItemHeight = 22f;
-        private const float SubmenuWidth = 200f;
+        private const float SubmenuWidth = 240f;
         private const long SubmenuDelayMs = 120;
 
         private MenuNode _currentSubmenuCategory;
@@ -1245,7 +1245,7 @@ namespace mhze.HierarchyContextMenu
         private static readonly Color BgColor = new Color(0.12f, 0.12f, 0.12f);
         private static readonly Color BorderColor = new Color(0.25f, 0.25f, 0.25f);
         private const float ItemHeight = 22f;
-        private const float SubmenuWidth = 200f;
+        private const float SubmenuWidth = 240f;
 
         public static void CloseIfOpen()
         {
