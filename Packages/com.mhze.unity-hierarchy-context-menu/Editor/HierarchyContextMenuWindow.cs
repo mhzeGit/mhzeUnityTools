@@ -39,6 +39,7 @@ namespace mhze.HierarchyContextMenu
     class HierarchyContextMenuWindow : EditorWindow
     {
         private ListView _listView;
+        private VisualElement _contentContainer;
         private TextField _searchField;
         private IList _currentItems;
 
@@ -49,6 +50,7 @@ namespace mhze.HierarchyContextMenu
         private bool _isSearching;
         private string _lastSearchText = "";
         private bool _ready;
+        private int _selectedIndex = -1;
 
         private static HierarchyContextMenuWindow _instance;
         public static bool IsOpen => _instance != null;
@@ -115,7 +117,16 @@ namespace mhze.HierarchyContextMenu
             });
 
             BuildSearchField();
-            BuildListView();
+
+            _contentContainer = new VisualElement();
+            _contentContainer.style.flexGrow = 1;
+            _contentContainer.style.marginLeft = 4;
+            _contentContainer.style.marginRight = 4;
+            _contentContainer.style.marginBottom = 4;
+            _contentContainer.style.paddingTop = 0;
+            _contentContainer.style.paddingBottom = 0;
+            rootVisualElement.Add(_contentContainer);
+
             ShowRootLevel();
             _ready = true;
 
@@ -157,12 +168,15 @@ namespace mhze.HierarchyContextMenu
         {
             _isSearching = false;
             _lastSearchText = "";
+            _selectedIndex = -1;
+
+            if (_listView != null && _listView.parent != null)
+                rootVisualElement.Remove(_listView);
+
             _currentItems = BuildRootLevelItems();
-            _listView.itemsSource = _currentItems;
-            _listView.selectedIndex = -1;
-            _listView.Rebuild();
+            RebuildContentContainer();
+
             HideSubmenu();
-            SetScrollBarVisibility(false);
             ResizeWindowToFit(_currentItems.Count);
             _searchField?.Focus();
         }
@@ -209,19 +223,33 @@ namespace mhze.HierarchyContextMenu
             return items;
         }
 
+        private void RebuildContentContainer()
+        {
+            _contentContainer.Clear();
+            for (int i = 0; i < _currentItems.Count; i++)
+            {
+                var element = MakeItem();
+                BindItem(element, i);
+                _contentContainer.Add(element);
+            }
+        }
+
         private void ShowSpecialSubmenuLevel(SpecialSubmenuItem submenu)
         {
             _isSearching = false;
             _lastSearchText = "";
+            _selectedIndex = -1;
+
+            if (_listView != null && _listView.parent != null)
+                rootVisualElement.Remove(_listView);
+
             var items = new List<object>();
             items.Add(new BackItem());
             items.AddRange(submenu.Children);
             _currentItems = items;
-            _listView.itemsSource = _currentItems;
-            _listView.selectedIndex = -1;
-            _listView.Rebuild();
+            RebuildContentContainer();
+
             HideSubmenu();
-            SetScrollBarVisibility(false);
             ResizeWindowToFit(_currentItems.Count);
             _searchField?.Focus();
         }
@@ -229,14 +257,17 @@ namespace mhze.HierarchyContextMenu
         private void ShowCategoryLevel(MenuNode node)
         {
             _isSearching = false;
+            _selectedIndex = -1;
+
+            if (_listView != null && _listView.parent != null)
+                rootVisualElement.Remove(_listView);
+
             var items = new List<object>();
             items.Add(new BackItem());
             items.AddRange(node.Children);
             _currentItems = items;
-            _listView.itemsSource = _currentItems;
-            _listView.selectedIndex = -1;
-            _listView.Rebuild();
-            SetScrollBarVisibility(false);
+            RebuildContentContainer();
+
             ResizeWindowToFit(_currentItems.Count);
             _searchField?.Focus();
         }
@@ -258,7 +289,9 @@ namespace mhze.HierarchyContextMenu
 
         private void SetScrollBarVisibility(bool visible)
         {
-            var scrollView = _listView?.Q<ScrollView>();
+            if (_listView == null)
+                return;
+            var scrollView = _listView.Q<ScrollView>();
             if (scrollView != null)
             {
                 scrollView.verticalScrollerVisibility = visible
@@ -367,8 +400,6 @@ namespace mhze.HierarchyContextMenu
                 }
                 scrollView.contentContainer.style.overflow = Overflow.Visible;
             }
-
-            rootVisualElement.Add(_listView);
         }
 
         private VisualElement MakeItem()
@@ -410,7 +441,7 @@ namespace mhze.HierarchyContextMenu
                 if (idx < 0 || idx >= _currentItems.Count)
                     return;
 
-                if (_currentItems[idx] is SeparatorItem || idx == _listView.selectedIndex)
+                if (_currentItems[idx] is SeparatorItem || idx == _selectedIndex)
                     return;
 
                 if (IsItemDisabled(idx))
@@ -419,8 +450,8 @@ namespace mhze.HierarchyContextMenu
                 if (_suppressHoverUntilMouseMove)
                     return;
 
-                var oldIdx = _listView.selectedIndex;
-                _listView.selectedIndex = idx;
+                var oldIdx = _selectedIndex;
+                _selectedIndex = idx;
 
                 if (oldIdx >= 0)
                 {
@@ -450,7 +481,7 @@ namespace mhze.HierarchyContextMenu
                     if (IsItemDisabled(idx))
                         return;
 
-                    _listView.selectedIndex = idx;
+                    _selectedIndex = idx;
 
                     if (clickedItem is BackItem)
                     {
@@ -577,7 +608,7 @@ namespace mhze.HierarchyContextMenu
 
         private void ApplySelectionStyle(VisualElement element, int index)
         {
-            element.style.backgroundColor = _listView.selectedIndex == index
+            element.style.backgroundColor = _selectedIndex == index
                 ? new Color(0.22f, 0.42f, 0.75f)
                 : new Color(0, 0, 0, 0);
         }
@@ -675,16 +706,24 @@ namespace mhze.HierarchyContextMenu
 
         private void NavigateTo(int index)
         {
-            _listView.selectedIndex = index;
+            _selectedIndex = index;
             _suppressHoverUntilMouseMove = true;
-            _listView.Rebuild();
-            _listView.ScrollToItem(index);
+            if (_isSearching && _listView != null)
+            {
+                _listView.selectedIndex = index;
+                _listView.Rebuild();
+                _listView.ScrollToItem(index);
+            }
+            else
+            {
+                RebuildContentContainer();
+            }
             HideSubmenu();
         }
 
         private VisualElement FindItemVisualElement(int index)
         {
-            return _listView.Query<VisualElement>().Where(e =>
+            return rootVisualElement.Query<VisualElement>().Where(e =>
                 e.userData is int i && i == index).First();
         }
 
@@ -744,7 +783,8 @@ namespace mhze.HierarchyContextMenu
 
             _currentItems = _filteredItems;
             _listView.itemsSource = _currentItems;
-            _listView.selectedIndex = _filteredItems.Count > 0 ? 0 : -1;
+            _selectedIndex = _filteredItems.Count > 0 ? 0 : -1;
+            _listView.selectedIndex = _selectedIndex;
             _listView.Rebuild();
         }
 
@@ -752,11 +792,21 @@ namespace mhze.HierarchyContextMenu
         {
             _isSearching = true;
             HideSubmenu();
+
+            if (_listView == null)
+                BuildListView();
+
+            if (_contentContainer.parent != null)
+                rootVisualElement.Remove(_contentContainer);
+            if (_listView.parent == null)
+                rootVisualElement.Add(_listView);
+
             _filteredItems.Clear();
             _filteredItems.AddRange(_allItems);
             _currentItems = _filteredItems;
             _listView.itemsSource = _currentItems;
-            _listView.selectedIndex = _currentItems.Count > 0 ? 0 : -1;
+            _selectedIndex = _currentItems.Count > 0 ? 0 : -1;
+            _listView.selectedIndex = _selectedIndex;
             _listView.Rebuild();
             SetScrollBarVisibility(true);
         }
@@ -775,7 +825,7 @@ namespace mhze.HierarchyContextMenu
                 case KeyCode.DownArrow:
                     if (_currentItems.Count > 0)
                     {
-                        var start = _listView.selectedIndex < 0 ? -1 : _listView.selectedIndex;
+                        var start = _selectedIndex < 0 ? -1 : _selectedIndex;
                         var next = FindNextEnabledIndex(start, 1);
                         if (next >= 0)
                             NavigateTo(next);
@@ -786,7 +836,7 @@ namespace mhze.HierarchyContextMenu
                 case KeyCode.UpArrow:
                     if (_currentItems.Count > 0)
                     {
-                        var start = _listView.selectedIndex < 0 ? _currentItems.Count : _listView.selectedIndex;
+                        var start = _selectedIndex < 0 ? _currentItems.Count : _selectedIndex;
                         var prev = FindNextEnabledIndex(start, -1);
                         if (prev >= 0)
                             NavigateTo(prev);
@@ -825,7 +875,7 @@ namespace mhze.HierarchyContextMenu
                 case KeyCode.DownArrow:
                     if (_currentItems.Count > 0)
                     {
-                        var start = _listView.selectedIndex < 0 ? -1 : _listView.selectedIndex;
+                        var start = _selectedIndex < 0 ? -1 : _selectedIndex;
                         var next = FindNextEnabledIndex(start, 1);
                         if (next >= 0)
                             NavigateTo(next);
@@ -836,7 +886,7 @@ namespace mhze.HierarchyContextMenu
                 case KeyCode.UpArrow:
                     if (_currentItems.Count > 0)
                     {
-                        var start = _listView.selectedIndex < 0 ? _currentItems.Count : _listView.selectedIndex;
+                        var start = _selectedIndex < 0 ? _currentItems.Count : _selectedIndex;
                         var prev = FindNextEnabledIndex(start, -1);
                         if (prev >= 0)
                             NavigateTo(prev);
@@ -874,19 +924,19 @@ namespace mhze.HierarchyContextMenu
 
         private void ExecuteSelected()
         {
-            if (_listView.selectedIndex < 0 || _listView.selectedIndex >= _currentItems.Count)
+            if (_selectedIndex < 0 || _selectedIndex >= _currentItems.Count)
                 return;
 
-            if (IsItemDisabled(_listView.selectedIndex))
+            if (IsItemDisabled(_selectedIndex))
                 return;
 
-            var item = _currentItems[_listView.selectedIndex];
+            var item = _currentItems[_selectedIndex];
 
             if (item is MenuNode node)
             {
                 if (node.IsCategory)
                 {
-                    var element = FindItemVisualElement(_listView.selectedIndex);
+                    var element = FindItemVisualElement(_selectedIndex);
                     if (element != null)
                         ShowSubmenu(node, element);
                 }
@@ -906,7 +956,7 @@ namespace mhze.HierarchyContextMenu
             {
                 if (submenu.Enabled)
                 {
-                    var element = FindItemVisualElement(_listView.selectedIndex);
+                    var element = FindItemVisualElement(_selectedIndex);
                     if (element != null)
                         ShowSpecialSubmenuLevel(submenu);
                 }
