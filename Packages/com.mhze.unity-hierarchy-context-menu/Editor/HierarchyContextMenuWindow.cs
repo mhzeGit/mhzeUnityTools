@@ -44,7 +44,6 @@ namespace mhze.HierarchyContextMenu
         private bool _ready;
 
         private static HierarchyContextMenuWindow _instance;
-        private static Vector2 _initialScreenPosition;
         public static bool IsOpen => _instance != null;
 
         private const float WindowWidth = 280f;
@@ -63,7 +62,6 @@ namespace mhze.HierarchyContextMenu
                 _instance.Close();
             }
 
-            _initialScreenPosition = screenPoint;
             var buttonRect = new Rect(screenPoint.x, screenPoint.y, 1, 1);
             _instance = CreateInstance<HierarchyContextMenuWindow>();
             _instance.ShowAsDropDown(buttonRect, new Vector2(WindowWidth, desiredHeight));
@@ -202,7 +200,7 @@ namespace mhze.HierarchyContextMenu
 
             var height = CalculateContentHeight(itemCount);
             height = Mathf.Max(height, 60f);
-            ShowAsDropDown(new Rect(_initialScreenPosition.x, _initialScreenPosition.y, 1, 1), new Vector2(WindowWidth, height));
+            position = new Rect(position.x, position.y, WindowWidth, height);
         }
 
         private void SetScrollBarVisibility(bool visible)
@@ -275,14 +273,7 @@ namespace mhze.HierarchyContextMenu
         private Vector2 GetSubmenuScreenPos(VisualElement hoveredItem)
         {
             var posInRoot = hoveredItem.ChangeCoordinatesTo(rootVisualElement, Vector2.zero);
-            float left;
-            float leftSideX = -SubmenuWidth - 4f;
-
-            if (position.x + leftSideX >= 0)
-                left = position.x + leftSideX;
-            else
-                left = position.x + rootVisualElement.resolvedStyle.width + 4f;
-
+            float left = position.x + rootVisualElement.resolvedStyle.width + 4f;
             float top = position.y + posInRoot.y;
             return new Vector2(left, top);
         }
@@ -576,7 +567,7 @@ namespace mhze.HierarchyContextMenu
 
             var screenPos = GetSubmenuScreenPos(hoveredItem);
             float itemCount = category.Children.Count;
-            float desiredHeight = Mathf.Max(36f + (itemCount * ItemHeight) + 16f, 60f);
+            float desiredHeight = Mathf.Max((itemCount * ItemHeight) + 5f, 22f);
 
             SubmenuWindow.CloseIfOpen();
             SubmenuWindow.Create(this, category, screenPos, desiredHeight);
@@ -662,7 +653,6 @@ namespace mhze.HierarchyContextMenu
             _listView.selectedIndex = _currentItems.Count > 0 ? 0 : -1;
             _listView.Rebuild();
             SetScrollBarVisibility(true);
-            ResizeWindowToFit(_currentItems.Count);
         }
 
         private void ExitSearchMode()
@@ -906,7 +896,7 @@ namespace mhze.HierarchyContextMenu
             var instance = CreateInstance<SubmenuWindow>();
             instance._parent = parent;
             instance._category = category;
-            instance.ShowAsDropDown(rect, new Vector2(SubmenuWidth, Mathf.Max(height, 60f)));
+            instance.ShowAsDropDown(rect, new Vector2(SubmenuWidth, Mathf.Max(height, 22f)));
             instance.Focus();
             _instance = instance;
             return instance;
@@ -930,10 +920,10 @@ namespace mhze.HierarchyContextMenu
             rootVisualElement.style.borderTopRightRadius = 8;
             rootVisualElement.style.borderBottomLeftRadius = 8;
             rootVisualElement.style.borderBottomRightRadius = 8;
-            rootVisualElement.style.paddingLeft = 4;
-            rootVisualElement.style.paddingRight = 4;
-            rootVisualElement.style.paddingTop = 4;
-            rootVisualElement.style.paddingBottom = 4;
+            rootVisualElement.style.paddingLeft = 1;
+            rootVisualElement.style.paddingRight = 1;
+            rootVisualElement.style.paddingTop = 1;
+            rootVisualElement.style.paddingBottom = 1;
             rootVisualElement.style.borderTopWidth = 1;
             rootVisualElement.style.borderLeftWidth = 1;
             rootVisualElement.style.borderRightWidth = 1;
@@ -945,9 +935,9 @@ namespace mhze.HierarchyContextMenu
 
             _listView = new ListView(new List<MenuNode>(_category.Children), ItemHeight, MakeItem, BindItem);
             _listView.style.flexGrow = 1;
-            _listView.style.marginLeft = 4;
-            _listView.style.marginRight = 4;
-            _listView.style.marginBottom = 4;
+            _listView.style.marginLeft = 1;
+            _listView.style.marginRight = 1;
+            _listView.style.marginBottom = 1;
             _listView.style.backgroundColor = new Color(0, 0, 0, 0);
             _listView.selectionType = SelectionType.Single;
             _listView.focusable = false;
@@ -958,6 +948,18 @@ namespace mhze.HierarchyContextMenu
                 scrollView.verticalScrollerVisibility = ScrollerVisibility.Hidden;
                 scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
                 scrollView.mouseWheelScrollSize = ItemHeight;
+                scrollView.style.paddingTop = 0;
+                scrollView.style.paddingBottom = 0;
+                scrollView.style.marginTop = 0;
+                scrollView.style.marginBottom = 0;
+                var viewport = scrollView.Q<VisualElement>(className: "unity-scroll-view__content-viewport");
+                if (viewport != null)
+                {
+                    viewport.style.paddingTop = 0;
+                    viewport.style.paddingBottom = 0;
+                    viewport.style.marginTop = 0;
+                    viewport.style.marginBottom = 0;
+                }
             }
 
             rootVisualElement.Add(_listView);
@@ -1027,7 +1029,7 @@ namespace mhze.HierarchyContextMenu
                         {
                             var screenPos = new Vector2(position.x + SubmenuWidth + 4f, position.y + (idx * ItemHeight));
                             float itemCount = child.Children.Count;
-                            float desiredHeight = Mathf.Max(36f + (itemCount * ItemHeight) + 16f, 60f);
+                            float desiredHeight = Mathf.Max((itemCount * ItemHeight) + 5f, 22f);
                             SubmenuWindow.CloseIfOpen();
                             _instance = SubmenuWindow.Create(_parent, child, screenPos, desiredHeight);
                         }
