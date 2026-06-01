@@ -54,6 +54,7 @@ namespace mhze.HierarchyContextMenu
         private VisualElement _submenuContent;
         private MenuNode _currentSubmenuCategory;
         private IVisualElementScheduledItem _submenuSchedule;
+        private bool _suppressHoverUntilMouseMove;
 
         public static void Show(Vector2 screenPoint, float desiredHeight)
         {
@@ -107,6 +108,11 @@ namespace mhze.HierarchyContextMenu
             rootVisualElement.style.borderLeftColor = new Color(0.25f, 0.25f, 0.25f);
             rootVisualElement.style.borderRightColor = new Color(0.25f, 0.25f, 0.25f);
             rootVisualElement.style.borderBottomColor = new Color(0.25f, 0.25f, 0.25f);
+
+            rootVisualElement.RegisterCallback<PointerMoveEvent>(evt =>
+            {
+                _suppressHoverUntilMouseMove = false;
+            });
 
             BuildSearchField();
             BuildSubmenuElement();
@@ -361,24 +367,26 @@ namespace mhze.HierarchyContextMenu
             container.RegisterCallback<PointerEnterEvent>(evt =>
             {
                 var idx = (int)container.userData;
-                if (idx >= 0 && idx < _currentItems.Count)
+                if (idx < 0 || idx >= _currentItems.Count)
+                    return;
+
+                if (_currentItems[idx] is SeparatorItem || idx == _listView.selectedIndex)
+                    return;
+
+                if (_suppressHoverUntilMouseMove)
+                    return;
+
+                var oldIdx = _listView.selectedIndex;
+                _listView.selectedIndex = idx;
+
+                if (oldIdx >= 0)
                 {
-                    var item = _currentItems[idx];
-                    if (!(item is SeparatorItem) && idx != _listView.selectedIndex)
-                    {
-                        var oldIdx = _listView.selectedIndex;
-                        _listView.selectedIndex = idx;
-
-                        if (oldIdx >= 0)
-                        {
-                            var oldElement = FindItemVisualElement(oldIdx);
-                            if (oldElement != null)
-                                oldElement.style.backgroundColor = new Color(0, 0, 0, 0);
-                        }
-
-                        container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
-                    }
+                    var oldElement = FindItemVisualElement(oldIdx);
+                    if (oldElement != null)
+                        oldElement.style.backgroundColor = new Color(0, 0, 0, 0);
                 }
+
+                container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
             });
 
             container.RegisterCallback<MouseDownEvent>(evt =>
@@ -665,6 +673,7 @@ namespace mhze.HierarchyContextMenu
         private void NavigateTo(int index)
         {
             _listView.selectedIndex = index;
+            _suppressHoverUntilMouseMove = true;
             _listView.Rebuild();
             _listView.ScrollToItem(index);
             HideSubmenu();
@@ -737,9 +746,7 @@ namespace mhze.HierarchyContextMenu
                     if (_currentItems.Count > 0)
                     {
                         var next = Mathf.Min(_listView.selectedIndex + 1, _currentItems.Count - 1);
-                        _listView.selectedIndex = next;
-                        _listView.Rebuild();
-                        _listView.ScrollToItem(next);
+                        NavigateTo(next);
                         evt.StopPropagation();
                     }
                     break;
@@ -748,9 +755,7 @@ namespace mhze.HierarchyContextMenu
                     if (_currentItems.Count > 0)
                     {
                         var prev = Mathf.Max(_listView.selectedIndex - 1, 0);
-                        _listView.selectedIndex = prev;
-                        _listView.Rebuild();
-                        _listView.ScrollToItem(prev);
+                        NavigateTo(prev);
                         evt.StopPropagation();
                     }
                     break;
