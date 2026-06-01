@@ -77,7 +77,7 @@ namespace mhze.HierarchyContextMenu
             { "Paste As Sibling", new ItemIconInfo("editicon.sml") },
             { "Rename", new ItemIconInfo("editicon.sml") },
             { "Duplicate", new ItemIconInfo("d_TreeEditor.Duplicate") },
-            { "Delete", new ItemIconInfo("d_TreeEditor.Trash", Color.red) },
+            { "Delete", new ItemIconInfo("d_TreeEditor.Trash", new Color(1f, 0.15f, 0.15f)) },
             { "Select All", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
             { "Deselect All", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
             { "Invert Selection", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
@@ -761,7 +761,10 @@ namespace mhze.HierarchyContextMenu
         private void ApplyMenuIcon(VisualElement icon, string displayName, bool isCategory)
         {
             var iconName = MenuIcons.ResolveIcon(displayName, isCategory);
-            var tex = MenuIcons.Load(iconName);
+            var desaturate = iconName.Length > 0 && iconName[0] == '!';
+            if (desaturate)
+                iconName = iconName.Substring(1);
+            var tex = desaturate ? MenuIcons.LoadDesaturated(iconName) : MenuIcons.Load(iconName);
             icon.style.backgroundImage = tex;
             icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
             if (tex != null)
@@ -1904,7 +1907,10 @@ namespace mhze.HierarchyContextMenu
                 label.text = child.Name;
                 arrow.style.display = child.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
                 var iconName = MenuIcons.ResolveIcon(child.Name, child.IsCategory);
-                var tex = MenuIcons.Load(iconName);
+                var desaturate = iconName.Length > 0 && iconName[0] == '!';
+                if (desaturate)
+                    iconName = iconName.Substring(1);
+                var tex = desaturate ? MenuIcons.LoadDesaturated(iconName) : MenuIcons.Load(iconName);
                 icon.style.backgroundImage = tex;
                 icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
                 if (tex != null)
@@ -2103,6 +2109,7 @@ namespace mhze.HierarchyContextMenu
     static class MenuIcons
     {
         private static readonly Dictionary<string, Texture2D> _cache = new();
+        private static readonly Dictionary<string, Texture2D> _grayscaleCache = new();
 
         public static Texture2D Load(string name)
         {
@@ -2112,6 +2119,29 @@ namespace mhze.HierarchyContextMenu
                 tex = content?.image as Texture2D;
                 _cache[name] = tex;
             }
+            return tex;
+        }
+
+        public static Texture2D LoadDesaturated(string name)
+        {
+            if (_grayscaleCache.TryGetValue(name, out var cached))
+                return cached;
+
+            var src = Load(name);
+            if (src == null)
+                return null;
+
+            var tex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+            var pixels = src.GetPixels();
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                var p = pixels[i];
+                float gray = p.r * 0.299f + p.g * 0.587f + p.b * 0.114f;
+                pixels[i] = new Color(gray, gray, gray, p.a);
+            }
+            tex.SetPixels(pixels);
+            tex.Apply();
+            _grayscaleCache[name] = tex;
             return tex;
         }
 
@@ -2144,7 +2174,8 @@ namespace mhze.HierarchyContextMenu
 
                 // 3D complex
                 case "ragdoll":
-                    return "Avatar Icon";
+                case "ragdoll...":
+                    return "AvatarMask On Icon";
                 case "terrain":
                     return "Terrain Icon";
                 case "tree":
@@ -2336,7 +2367,7 @@ namespace mhze.HierarchyContextMenu
                     return "AudioSource Icon";
                 case "ui":
                 case "ui toolkit":
-                    return "Canvas Icon";
+                    return "d_Canvas Icon";
                 case "video":
                     return "UnityEditor.GameView";
                 case "effects":
