@@ -55,6 +55,37 @@ namespace mhze.HierarchyContextMenu
         private static HierarchyContextMenuWindow _instance;
         public static bool IsOpen => _instance != null;
 
+        private readonly struct ItemIconInfo
+        {
+            public readonly string IconName;
+            public readonly Color? TintColor;
+
+            public ItemIconInfo(string iconName, Color? tintColor = null)
+            {
+                IconName = iconName;
+                TintColor = tintColor;
+            }
+        }
+
+        private static readonly Dictionary<string, ItemIconInfo> SpecialItemIcons = new()
+        {
+            { "Cut", new ItemIconInfo("editicon.sml") },
+            { "Copy", new ItemIconInfo("editicon.sml") },
+            { "Paste", new ItemIconInfo("editicon.sml") },
+            { "Paste Special", new ItemIconInfo("editicon.sml") },
+            { "Paste As Child", new ItemIconInfo("editicon.sml") },
+            { "Paste As Sibling", new ItemIconInfo("editicon.sml") },
+            { "Rename", new ItemIconInfo("editicon.sml") },
+            { "Duplicate", new ItemIconInfo("editicon.sml") },
+            { "Delete", new ItemIconInfo("TreeEditor.Trash", new Color(1f, 0.45f, 0.45f)) },
+            { "Select All", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
+            { "Deselect All", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
+            { "Invert Selection", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
+            { "Select Children", new ItemIconInfo("GameObject Icon") },
+            { "Find References in Scene", new ItemIconInfo("Search Icon") },
+            { "Set as Default Parent", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
+        };
+
         private const float WindowWidth = 420f;
         private const float ItemHeight = 22f;
         private const float SubmenuWidth = 240f;
@@ -414,6 +445,16 @@ namespace mhze.HierarchyContextMenu
             container.style.minHeight = ItemHeight;
             container.style.backgroundColor = new Color(0, 0, 0, 0);
 
+            var icon = new Image();
+            icon.name = "item-icon";
+            icon.style.width = 16;
+            icon.style.height = 16;
+            icon.style.marginRight = 6;
+            icon.style.flexShrink = 0;
+            icon.scaleMode = ScaleMode.ScaleToFit;
+            icon.style.display = DisplayStyle.None;
+            container.Add(icon);
+
             var label = new Label();
             label.name = "item-label";
             label.style.fontSize = 13;
@@ -521,6 +562,7 @@ namespace mhze.HierarchyContextMenu
 
             var label = element.Q<Label>("item-label");
             var arrow = element.Q<Label>("item-arrow");
+            var icon = element.Q<Image>("item-icon");
 
             element.style.minHeight = ItemHeight;
             element.style.paddingTop = 2;
@@ -539,6 +581,7 @@ namespace mhze.HierarchyContextMenu
                 label.text = "\u2190  Back";
                 label.style.color = new Color(0.7f, 0.7f, 0.7f);
                 arrow.style.display = DisplayStyle.None;
+                icon.style.display = DisplayStyle.None;
                 ApplySelectionStyle(element, index);
                 UnregisterHoverEvents(element);
                 return;
@@ -548,6 +591,7 @@ namespace mhze.HierarchyContextMenu
             {
                 label.text = "";
                 arrow.style.display = DisplayStyle.None;
+                icon.style.display = DisplayStyle.None;
                 element.style.minHeight = 8;
                 element.style.paddingTop = 0;
                 element.style.paddingBottom = 0;
@@ -566,6 +610,7 @@ namespace mhze.HierarchyContextMenu
                 label.text = specialAction.DisplayName;
                 label.style.color = specialAction.Enabled ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.4f, 0.4f, 0.4f);
                 arrow.style.display = DisplayStyle.None;
+                ApplyIcon(icon, specialAction.DisplayName, specialAction.Enabled);
                 ApplySelectionStyle(element, index);
                 UnregisterHoverEvents(element);
                 return;
@@ -576,6 +621,7 @@ namespace mhze.HierarchyContextMenu
                 label.text = submenuItem.DisplayName;
                 label.style.color = submenuItem.Enabled ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.4f, 0.4f, 0.4f);
                 arrow.style.display = DisplayStyle.Flex;
+                ApplyIcon(icon, submenuItem.DisplayName, submenuItem.Enabled);
                 ApplySelectionStyle(element, index);
                 UnregisterHoverEvents(element);
                 return;
@@ -586,6 +632,7 @@ namespace mhze.HierarchyContextMenu
                 label.text = node.Name;
                 label.style.color = new Color(0.85f, 0.85f, 0.85f);
                 arrow.style.display = node.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
+                ApplyMenuIcon(icon, node.Name, node.IsCategory);
 
                 ApplySelectionStyle(element, index);
 
@@ -598,6 +645,7 @@ namespace mhze.HierarchyContextMenu
                 label.text = displayText;
                 label.style.color = new Color(0.85f, 0.85f, 0.85f);
                 arrow.style.display = DisplayStyle.None;
+                ApplyMenuIcon(icon, menuItem.DisplayName, false);
 
                 ApplySelectionStyle(element, index);
 
@@ -611,6 +659,37 @@ namespace mhze.HierarchyContextMenu
             element.style.backgroundColor = _selectedIndex == index
                 ? new Color(0.22f, 0.42f, 0.75f)
                 : new Color(0, 0, 0, 0);
+        }
+
+        private void ApplyIcon(Image icon, string displayName, bool enabled)
+        {
+            if (SpecialItemIcons.TryGetValue(displayName, out var info))
+            {
+                var tex = MenuIcons.Load(info.IconName);
+                icon.image = tex;
+                icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
+                if (tex != null)
+                {
+                    var tint = info.TintColor ?? Color.white;
+                    if (!enabled)
+                        tint.a *= 0.4f;
+                    icon.style.unityBackgroundImageTintColor = tint;
+                }
+            }
+            else
+            {
+                icon.style.display = DisplayStyle.None;
+            }
+        }
+
+        private void ApplyMenuIcon(Image icon, string displayName, bool isCategory)
+        {
+            var iconName = MenuIcons.ResolveIcon(displayName, isCategory);
+            var tex = MenuIcons.Load(iconName);
+            icon.image = tex;
+            icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
+            if (tex != null)
+                icon.style.unityBackgroundImageTintColor = Color.white;
         }
 
         private void RegisterHoverEvents(VisualElement element, MenuNode node)
@@ -1358,6 +1437,16 @@ namespace mhze.HierarchyContextMenu
             container.style.minHeight = ItemHeight;
             container.style.backgroundColor = new Color(0, 0, 0, 0);
 
+            var icon = new Image();
+            icon.name = "item-icon";
+            icon.style.width = 16;
+            icon.style.height = 16;
+            icon.style.marginRight = 6;
+            icon.style.flexShrink = 0;
+            icon.scaleMode = ScaleMode.ScaleToFit;
+            icon.style.display = DisplayStyle.None;
+            container.Add(icon);
+
             var label = new Label();
             label.name = "item-label";
             label.style.fontSize = 13;
@@ -1439,12 +1528,259 @@ namespace mhze.HierarchyContextMenu
 
             var label = element.Q<Label>("item-label");
             var arrow = element.Q<Label>("item-arrow");
+            var icon = element.Q<Image>("item-icon");
 
             if (index >= 0 && index < _category.Children.Count)
             {
                 var child = _category.Children[index];
                 label.text = child.Name;
                 arrow.style.display = child.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
+                var iconName = MenuIcons.ResolveIcon(child.Name, child.IsCategory);
+                var tex = MenuIcons.Load(iconName);
+                icon.image = tex;
+                icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
+                if (tex != null)
+                    icon.style.unityBackgroundImageTintColor = Color.white;
+            }
+        }
+    }
+
+    static class MenuIcons
+    {
+        private static readonly Dictionary<string, Texture2D> _cache = new();
+
+        public static Texture2D Load(string name)
+        {
+            if (!_cache.TryGetValue(name, out var tex))
+            {
+                var content = EditorGUIUtility.IconContent(name);
+                tex = content?.image as Texture2D;
+                _cache[name] = tex;
+            }
+            return tex;
+        }
+
+        public static string ResolveIcon(string displayName, bool isCategory)
+        {
+            if (isCategory)
+                return ResolveCategoryIcon(displayName);
+
+            var lower = displayName.ToLowerInvariant();
+
+            switch (lower)
+            {
+                // Create
+                case "create empty":
+                case "create empty child":
+                case "create empty parent":
+                    return "GameObject Icon";
+
+                // 3D primitives
+                case "cube":
+                case "sphere":
+                case "capsule":
+                case "cylinder":
+                case "plane":
+                case "quad":
+                    return "GameObject Icon";
+
+                // 3D complex
+                case "ragdoll":
+                    return "Avatar Icon";
+                case "terrain":
+                    return "Terrain Icon";
+                case "tree":
+                    return "Terrain Icon";
+                case "wind zone":
+                    return "Terrain Icon";
+
+                // 2D / Sprite
+                case "sprite":
+                case "square":
+                case "circle":
+                case "isometric diamond":
+                case "hexagonal tile":
+                case "capsule collider 2d":
+                case "circle collider 2d":
+                case "box collider 2d":
+                case "polygon collider 2d":
+                case "edge collider 2d":
+                case "sprite shape":
+                case "sprite shape profile":
+                case "sprite atlas":
+                    return "Sprite Icon";
+
+                // Lights
+                case "directional light":
+                case "point light":
+                case "spot light":
+                case "area light":
+                case "reflection probe":
+                case "light probe group":
+                case "light probe proxy volume":
+                    return "Light Icon";
+
+                // Audio
+                case "audio source":
+                case "audio reverb zone":
+                case "audio listener":
+                case "audio low pass filter":
+                case "audio high pass filter":
+                case "audio echo filter":
+                case "audio distortion filter":
+                case "audio reverb filter":
+                case "audio chorus filter":
+                    return "AudioSource Icon";
+
+                // Video
+                case "video player":
+                    return "UnityEditor.GameView";
+
+                // UI
+                case "canvas":
+                case "button":
+                case "image":
+                case "raw image":
+                case "text":
+                case "input field":
+                case "slider":
+                case "scrollbar":
+                case "toggle":
+                case "dropdown":
+                case "panel":
+                case "scroll view":
+                case "event system":
+                case "mask":
+                case "rect mask 2d":
+                case "selectable":
+                case "toggle group":
+                case "layout element":
+                case "horizontal layout group":
+                case "vertical layout group":
+                case "grid layout group":
+                    return "Canvas Icon";
+
+                // Camera
+                case "camera":
+                case "cinemachine virtual camera":
+                case "cinemachine freelook":
+                case "cinemachine clear shot":
+                case "cinemachine blend list":
+                case "cinemachine state-driven":
+                case "cinemachine target group":
+                case "cinemachine collider":
+                case "cinemachine confiner":
+                    return "Camera Icon";
+
+                // Effects
+                case "particle system":
+                case "particle system force field":
+                case "trail":
+                case "line":
+                    return "Particle Icon";
+
+                // Visual Effects
+                case "visual effect":
+                    return "Particle Icon";
+
+                // Timeline
+                case "timeline":
+                case "playable director":
+                    return "UnityEditor.AnimationWindow";
+
+                // Post Processing
+                case "post process volume":
+                case "post process layer":
+                    return "d_Settings";
+
+                // UI Toolkit
+                case "ui document":
+                case "panel settings":
+                    return "Canvas Icon";
+
+                // Navigation
+                case "nav mesh surface":
+                case "nav mesh agent":
+                case "nav mesh obstacle":
+                case "nav mesh link":
+                    return "UnityEditor.SceneHierarchyWindow";
+
+                // Physics
+                case "rigidbody":
+                case "box collider":
+                case "sphere collider":
+                case "capsule collider":
+                case "mesh collider":
+                case "wheel collider":
+                case "terrain collider":
+                case "hinge joint":
+                case "fixed joint":
+                case "spring joint":
+                case "character joint":
+                case "configurable joint":
+                case "constant force":
+                    return "d_editicon.sml";
+
+                // Mesh & Model
+                case "textmeshpro":
+                    return "Font Icon";
+
+                // Audio Mixer (top-level name)
+                case "audio mixer":
+                    return "AudioSource Icon";
+
+                default:
+                    return "GameObject Icon";
+            }
+        }
+
+        private static string ResolveCategoryIcon(string categoryName)
+        {
+            var lower = categoryName.ToLowerInvariant();
+            switch (lower)
+            {
+                case "3d object":
+                case "create":
+                case "gameobject":
+                    return "GameObject Icon";
+                case "2d object":
+                case "sprite shape":
+                case "physics 2d":
+                    return "Sprite Icon";
+                case "light":
+                case "lights":
+                    return "Light Icon";
+                case "audio":
+                    return "AudioSource Icon";
+                case "ui":
+                case "ui toolkit":
+                    return "Canvas Icon";
+                case "video":
+                    return "UnityEditor.GameView";
+                case "effects":
+                case "particle systems":
+                case "visual effects":
+                    return "Particle Icon";
+                case "timeline":
+                    return "UnityEditor.AnimationWindow";
+                case "cinemachine":
+                    return "Camera Icon";
+                case "post processing":
+                case "rendering":
+                    return "d_Settings";
+                case "textmeshpro":
+                    return "Font Icon";
+                case "navigation":
+                case "navmesh":
+                    return "UnityEditor.SceneHierarchyWindow";
+                case "physics":
+                    return "d_editicon.sml";
+                case "camera":
+                    return "Camera Icon";
+                case "terrain":
+                    return "Terrain Icon";
+                default:
+                    return "Folder Icon";
             }
         }
     }
