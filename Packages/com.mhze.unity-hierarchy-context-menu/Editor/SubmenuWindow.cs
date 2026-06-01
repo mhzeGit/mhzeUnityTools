@@ -7,45 +7,48 @@ namespace mhze.HierarchyContextMenu
 {
     class SubmenuWindow : EditorWindow
     {
-        private static SubmenuWindow _instance;
         private ListView _listView;
         private MenuNode _category;
         private HierarchyContextMenuWindow _parent;
-        private static readonly Color BgColor = new Color(0.12f, 0.12f, 0.12f);
-        private static readonly Color BorderColor = new Color(0.25f, 0.25f, 0.25f);
+        private SubmenuWindow _nestedSubmenu;
+        private SubmenuWindow _parentSubmenu;
+        private IVisualElementScheduledItem _submenuSchedule;
+        private int _currentNestedIndex = -1;
         private const float ItemHeight = 22f;
         private const float SubmenuWidth = 240f;
+        private const long SubmenuDelayMs = 120;
+        private static readonly Color BgColor = new Color(0.12f, 0.12f, 0.12f);
+        private static readonly Color BorderColor = new Color(0.25f, 0.25f, 0.25f);
 
-        public static void CloseIfOpen()
-        {
-            if (_instance != null)
-            {
-                _instance.Close();
-                _instance = null;
-            }
-        }
-
-        public static SubmenuWindow Create(HierarchyContextMenuWindow parent, MenuNode category, Vector2 screenPos, float height)
+        public static SubmenuWindow Create(HierarchyContextMenuWindow parent, MenuNode category, Vector2 screenPos, float height, SubmenuWindow parentSubmenu = null)
         {
             var rect = new Rect(screenPos.x, screenPos.y, 1, 1);
             var instance = CreateInstance<SubmenuWindow>();
             instance._parent = parent;
             instance._category = category;
+            instance._parentSubmenu = parentSubmenu;
             instance.ShowAsDropDown(rect, new Vector2(SubmenuWidth, Mathf.Max(height, 22f)));
-            instance.Focus();
-            _instance = instance;
             return instance;
         }
 
         private void OnDestroy()
         {
-            if (_instance == this)
-                _instance = null;
+            if (_nestedSubmenu != null)
+            {
+                _nestedSubmenu.Close();
+                _nestedSubmenu = null;
+            }
+            if (_parentSubmenu != null && _parentSubmenu._nestedSubmenu == this)
+            {
+                _parentSubmenu._nestedSubmenu = null;
+                _parentSubmenu._currentNestedIndex = -1;
+            }
         }
 
         private void OnLostFocus()
         {
-            Close();
+            if (_nestedSubmenu == null)
+                Close();
         }
 
         private void CreateGUI()
@@ -104,11 +107,16 @@ namespace mhze.HierarchyContextMenu
             rootVisualElement.RegisterCallback<PointerEnterEvent>(_ =>
             {
                 _parent?.CancelSubmenuSchedule();
+                _parentSubmenu?.CancelSubmenuSchedule();
+                CancelSubmenuSchedule();
             });
 
             rootVisualElement.RegisterCallback<PointerLeaveEvent>(_ =>
             {
-                _parent?.ScheduleHideSubmenu();
+                if (_parentSubmenu != null)
+                    _parentSubmenu.ScheduleHideSubmenu();
+                else
+                    _parent?.ScheduleHideSubmenu();
             });
         }
 
@@ -172,11 +180,7 @@ namespace mhze.HierarchyContextMenu
                         }
                         else if (child.IsCategory)
                         {
-                            var screenPos = new Vector2(position.x + SubmenuWidth + 4f, position.y + (idx * ItemHeight));
-                            float itemCount = child.Children.Count;
-                            float desiredHeight = Mathf.Max((itemCount * ItemHeight) + 5f, 22f);
-                            SubmenuWindow.CloseIfOpen();
-                            _instance = SubmenuWindow.Create(_parent, child, screenPos, desiredHeight);
+                            ShowNestedSubmenu(idx);
                         }
                     }
                 }
@@ -189,6 +193,18 @@ namespace mhze.HierarchyContextMenu
                 if (idx >= 0 && idx < children.Count && children[idx].IsCategory)
                 {
                     container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
+                    if (idx == _currentNestedIndex)
+                    {
+                        CancelSubmenuSchedule();
+                    }
+                    else
+                    {
+                        CancelSubmenuSchedule();
+                        _submenuSchedule = rootVisualElement.schedule.Execute(() =>
+                        {
+                            ShowNestedSubmenu(idx);
+                        }).StartingIn(SubmenuDelayMs);
+                    }
                 }
                 else
                 {
@@ -199,6 +215,11 @@ namespace mhze.HierarchyContextMenu
             container.RegisterCallback<PointerLeaveEvent>(evt =>
             {
                 container.style.backgroundColor = new Color(0, 0, 0, 0);
+                var idx = (int)container.userData;
+                if (idx == _currentNestedIndex)
+                {
+                    ScheduleHideSubmenu();
+                }
             });
 
             return container;
@@ -230,6 +251,61 @@ namespace mhze.HierarchyContextMenu
                 icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
                 if (tex != null)
                     icon.style.unityBackgroundImageTintColor = Color.white;
+            }
+        }
+
+        internal void CancelSubmenuSchedule()
+        {
+            if (_submenuSchedule != null)
+            {
+                _submenuSchedule.Pause();
+                _submenuSchedule = null;
+            }
+        }
+
+        internal void ScheduleHideSubmenu()
+        {
+            CancelSubmenuSchedule();
+            _submenuSchedule = rootVisualElement.schedule.Execute(HideNestedSubmenu).StartingIn(SubmenuDelayMs);
+        }
+
+        private void ShowNestedSubmenu(int index)
+        {
+            CancelSubmenuSchedule();
+            var children = _category.Children;
+            if (index >= 0 && index < children.Count)
+            {
+                var child = children[index];
+                if (child.IsCategory)
+                {
+                    _currentNestedIndex = index;
+                    var screenPos = new Vector2(position.x + SubmenuWidth, position.y + (index * ItemHeight));
+                    float itemCount = child.Children.Count;
+                    float desiredHeight = Mathf.Max((itemCount * ItemHeight) + 5f, 22f);
+                    if (_nestedSubmenu != null)
+                    {
+                        _nestedSubmenu.Close();
+                        _nestedSubmenu = null;
+                    }
+                    var rect = new Rect(screenPos.x, screenPos.y, 1, 1);
+                    var submenu = CreateInstance<SubmenuWindow>();
+                    submenu._parent = _parent;
+                    submenu._category = child;
+                    submenu._parentSubmenu = this;
+                    _nestedSubmenu = submenu;
+                    submenu.ShowAsDropDown(rect, new Vector2(SubmenuWidth, Mathf.Max(desiredHeight, 22f)));
+                }
+            }
+        }
+
+        private void HideNestedSubmenu()
+        {
+            CancelSubmenuSchedule();
+            _currentNestedIndex = -1;
+            if (_nestedSubmenu != null)
+            {
+                _nestedSubmenu.Close();
+                _nestedSubmenu = null;
             }
         }
     }

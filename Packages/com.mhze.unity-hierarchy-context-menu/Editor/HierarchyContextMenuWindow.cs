@@ -33,6 +33,7 @@ namespace mhze.HierarchyContextMenu
         private const long SubmenuDelayMs = 120;
 
         private MenuNode _currentSubmenuCategory;
+        private SubmenuWindow _currentSubmenu;
         private IVisualElementScheduledItem _submenuSchedule;
         private bool _suppressHoverUntilMouseMove;
 
@@ -401,7 +402,7 @@ namespace mhze.HierarchyContextMenu
         private Vector2 GetSubmenuScreenPos(VisualElement hoveredItem)
         {
             var posInRoot = hoveredItem.ChangeCoordinatesTo(rootVisualElement, Vector2.zero);
-            float left = position.x + rootVisualElement.resolvedStyle.width + 4f;
+            float left = position.x + rootVisualElement.resolvedStyle.width;
             float top = position.y + posInRoot.y;
             return new Vector2(left, top);
         }
@@ -775,8 +776,9 @@ namespace mhze.HierarchyContextMenu
             float itemCount = category.Children.Count;
             float desiredHeight = Mathf.Max((itemCount * ItemHeight) + 5f, 22f);
 
-            SubmenuWindow.CloseIfOpen();
-            SubmenuWindow.Create(this, category, screenPos, desiredHeight);
+            if (_currentSubmenu != null)
+                _currentSubmenu.Close();
+            _currentSubmenu = SubmenuWindow.Create(this, category, screenPos, desiredHeight);
         }
 
         private void ShowPrefabSubmenu(SpecialSubmenuItem submenu, VisualElement hoveredItem)
@@ -799,7 +801,11 @@ namespace mhze.HierarchyContextMenu
         {
             CancelSubmenuSchedule();
             _currentSubmenuCategory = null;
-            SubmenuWindow.CloseIfOpen();
+            if (_currentSubmenu != null)
+            {
+                _currentSubmenu.Close();
+                _currentSubmenu = null;
+            }
             ActionSubmenuWindow.CloseIfOpen();
         }
 
