@@ -51,10 +51,7 @@ namespace mhze.HierarchyContextMenu
         private void CreateGUI()
         {
             rootVisualElement.style.backgroundColor = BgColor;
-            rootVisualElement.style.borderTopLeftRadius = 8;
-            rootVisualElement.style.borderTopRightRadius = 8;
-            rootVisualElement.style.borderBottomLeftRadius = 8;
-            rootVisualElement.style.borderBottomRightRadius = 8;
+
             rootVisualElement.style.paddingLeft = 1;
             rootVisualElement.style.paddingRight = 1;
             rootVisualElement.style.paddingTop = 1;

@@ -76,10 +76,7 @@ namespace mhze.HierarchyContextMenu
             BuildTree();
 
             rootVisualElement.style.backgroundColor = new Color(0.12f, 0.12f, 0.12f);
-            rootVisualElement.style.borderTopLeftRadius = 8;
-            rootVisualElement.style.borderTopRightRadius = 8;
-            rootVisualElement.style.borderBottomLeftRadius = 8;
-            rootVisualElement.style.borderBottomRightRadius = 8;
+
             rootVisualElement.style.paddingLeft = 4;
             rootVisualElement.style.paddingRight = 4;
             rootVisualElement.style.paddingTop = 4;
@@ -338,10 +335,7 @@ namespace mhze.HierarchyContextMenu
             searchContainer.style.borderLeftWidth = 1;
             searchContainer.style.borderRightWidth = 1;
             searchContainer.style.borderBottomWidth = 1;
-            searchContainer.style.borderTopLeftRadius = 6;
-            searchContainer.style.borderTopRightRadius = 6;
-            searchContainer.style.borderBottomLeftRadius = 6;
-            searchContainer.style.borderBottomRightRadius = 6;
+
             searchContainer.style.paddingLeft = 8;
             searchContainer.style.paddingRight = 4;
             searchContainer.style.minHeight = 26;
