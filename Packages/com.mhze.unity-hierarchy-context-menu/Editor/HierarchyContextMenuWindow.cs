@@ -26,6 +26,14 @@ namespace mhze.HierarchyContextMenu
     {
         public string DisplayName;
         public Action Action;
+        public bool Enabled = true;
+    }
+
+    class SpecialSubmenuItem
+    {
+        public string DisplayName;
+        public List<SpecialActionItem> Children = new List<SpecialActionItem>();
+        public bool Enabled = true;
     }
 
     class HierarchyContextMenuWindow : EditorWindow
@@ -40,7 +48,6 @@ namespace mhze.HierarchyContextMenu
 
         private bool _isSearching;
         private string _lastSearchText = "";
-        private List<SpecialActionItem> _specialActions;
         private bool _ready;
 
         private static HierarchyContextMenuWindow _instance;
@@ -80,15 +87,6 @@ namespace mhze.HierarchyContextMenu
         {
             _allItems = new List<HierarchyMenuItem>(HierarchyItemIndexer.Items);
             _filteredItems = new List<HierarchyMenuItem>();
-
-            _specialActions = new List<SpecialActionItem>
-            {
-                new SpecialActionItem { DisplayName = "Cut", Action = CutSelection },
-                new SpecialActionItem { DisplayName = "Copy", Action = CopySelection },
-                new SpecialActionItem { DisplayName = "Paste", Action = PasteAsChildOfClicked },
-                new SpecialActionItem { DisplayName = "Rename", Action = RenameSelected },
-                new SpecialActionItem { DisplayName = "Duplicate", Action = DuplicateSelection },
-            };
 
             BuildTree();
 
@@ -159,10 +157,65 @@ namespace mhze.HierarchyContextMenu
         {
             _isSearching = false;
             _lastSearchText = "";
+            _currentItems = BuildRootLevelItems();
+            _listView.itemsSource = _currentItems;
+            _listView.selectedIndex = -1;
+            _listView.Rebuild();
+            HideSubmenu();
+            SetScrollBarVisibility(false);
+            ResizeWindowToFit(_currentItems.Count);
+            _searchField?.Focus();
+        }
+
+        private List<object> BuildRootLevelItems()
+        {
+            var selectionValid = Selection.gameObjects.Length > 0;
+            var activeValid = Selection.activeGameObject != null;
+
             var items = new List<object>();
-            items.AddRange(_specialActions);
+
+            items.Add(new SpecialActionItem { DisplayName = "Cut", Action = CutSelection, Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Copy", Action = CopySelection, Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Paste", Action = PasteAsChildOfClicked });
+            items.Add(new SpecialSubmenuItem
+            {
+                DisplayName = "Paste Special",
+                Children = new List<SpecialActionItem>
+                {
+                    new SpecialActionItem { DisplayName = "Paste As Child", Action = PasteAsChild },
+                    new SpecialActionItem { DisplayName = "Paste As Sibling", Action = PasteAsSibling },
+                }
+            });
+            items.Add(new SpecialActionItem { DisplayName = "Rename", Action = RenameSelected, Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Duplicate", Action = DuplicateSelection, Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Delete", Action = DeleteSelection, Enabled = selectionValid });
+
             items.Add(new SeparatorItem());
+
+            items.Add(new SpecialActionItem { DisplayName = "Select All", Action = SelectAll });
+            items.Add(new SpecialActionItem { DisplayName = "Deselect All", Action = DeselectAll, Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Invert Selection", Action = InvertSelection, Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Select Children", Action = SelectChildren, Enabled = selectionValid });
+
+            items.Add(new SeparatorItem());
+
+            items.Add(new SpecialActionItem { DisplayName = "Find References in Scene", Action = FindReferencesInScene, Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Set as Default Parent", Action = SetAsDefaultParent, Enabled = activeValid });
+
+            items.Add(new SeparatorItem());
+
             items.AddRange(_rootNode.Children);
+
+            return items;
+        }
+
+        private void ShowSpecialSubmenuLevel(SpecialSubmenuItem submenu)
+        {
+            _isSearching = false;
+            _lastSearchText = "";
+            var items = new List<object>();
+            items.Add(new BackItem());
+            items.AddRange(submenu.Children);
             _currentItems = items;
             _listView.itemsSource = _currentItems;
             _listView.selectedIndex = -1;
@@ -360,6 +413,9 @@ namespace mhze.HierarchyContextMenu
                 if (_currentItems[idx] is SeparatorItem || idx == _listView.selectedIndex)
                     return;
 
+                if (IsItemDisabled(idx))
+                    return;
+
                 if (_suppressHoverUntilMouseMove)
                     return;
 
@@ -382,30 +438,42 @@ namespace mhze.HierarchyContextMenu
                 {
                     evt.StopPropagation();
                     var idx = (int)container.userData;
+
+                    if (idx < 0 || idx >= _currentItems.Count)
+                        return;
+
+                    var clickedItem = _currentItems[idx];
+
+                    if (clickedItem is SeparatorItem)
+                        return;
+
+                    if (IsItemDisabled(idx))
+                        return;
+
                     _listView.selectedIndex = idx;
 
-                    if (idx >= 0 && idx < _currentItems.Count)
+                    if (clickedItem is BackItem)
                     {
-                        var clickedItem = _currentItems[idx];
-                        if (clickedItem is BackItem)
-                        {
-                            ShowRootLevel();
-                        }
-                        else if (clickedItem is MenuNode node)
-                        {
-                            if (node.IsCategory)
-                                ShowSubmenu(node, container);
-                            else
-                                ExecutePath(node.MenuPath);
-                        }
-                        else if (clickedItem is HierarchyMenuItem menuItem)
-                        {
-                            ExecutePath(menuItem.MenuPath);
-                        }
-                        else if (clickedItem is SpecialActionItem special)
-                        {
-                            special.Action?.Invoke();
-                        }
+                        ShowRootLevel();
+                    }
+                    else if (clickedItem is MenuNode node)
+                    {
+                        if (node.IsCategory)
+                            ShowSubmenu(node, container);
+                        else
+                            ExecutePath(node.MenuPath);
+                    }
+                    else if (clickedItem is HierarchyMenuItem menuItem)
+                    {
+                        ExecutePath(menuItem.MenuPath);
+                    }
+                    else if (clickedItem is SpecialActionItem special)
+                    {
+                        special.Action?.Invoke();
+                    }
+                    else if (clickedItem is SpecialSubmenuItem submenu)
+                    {
+                        ShowSpecialSubmenuLevel(submenu);
                     }
                 }
             }, TrickleDown.TrickleDown);
@@ -465,8 +533,18 @@ namespace mhze.HierarchyContextMenu
             if (item is SpecialActionItem specialAction)
             {
                 label.text = specialAction.DisplayName;
-                label.style.color = new Color(0.85f, 0.85f, 0.85f);
+                label.style.color = specialAction.Enabled ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.4f, 0.4f, 0.4f);
                 arrow.style.display = DisplayStyle.None;
+                ApplySelectionStyle(element, index);
+                UnregisterHoverEvents(element);
+                return;
+            }
+
+            if (item is SpecialSubmenuItem submenuItem)
+            {
+                label.text = submenuItem.DisplayName;
+                label.style.color = submenuItem.Enabled ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.4f, 0.4f, 0.4f);
+                arrow.style.display = DisplayStyle.Flex;
                 ApplySelectionStyle(element, index);
                 UnregisterHoverEvents(element);
                 return;
@@ -610,6 +688,34 @@ namespace mhze.HierarchyContextMenu
                 e.userData is int i && i == index).First();
         }
 
+        private bool IsItemDisabled(int index)
+        {
+            if (index < 0 || index >= _currentItems.Count)
+                return true;
+            var item = _currentItems[index];
+            if (item is SeparatorItem)
+                return true;
+            if (item is BackItem)
+                return false;
+            if (item is SpecialActionItem sa)
+                return !sa.Enabled;
+            if (item is SpecialSubmenuItem ss)
+                return !ss.Enabled;
+            return false;
+        }
+
+        private int FindNextEnabledIndex(int currentIndex, int direction)
+        {
+            var next = currentIndex + direction;
+            while (next >= 0 && next < _currentItems.Count)
+            {
+                if (!IsItemDisabled(next))
+                    return next;
+                next += direction;
+            }
+            return -1;
+        }
+
         private void OnSearchChanged(ChangeEvent<string> evt)
         {
             var searchText = evt.newValue?.ToLower() ?? "";
@@ -669,8 +775,10 @@ namespace mhze.HierarchyContextMenu
                 case KeyCode.DownArrow:
                     if (_currentItems.Count > 0)
                     {
-                        var next = Mathf.Min(_listView.selectedIndex + 1, _currentItems.Count - 1);
-                        NavigateTo(next);
+                        var start = _listView.selectedIndex < 0 ? -1 : _listView.selectedIndex;
+                        var next = FindNextEnabledIndex(start, 1);
+                        if (next >= 0)
+                            NavigateTo(next);
                         evt.StopPropagation();
                     }
                     break;
@@ -678,8 +786,10 @@ namespace mhze.HierarchyContextMenu
                 case KeyCode.UpArrow:
                     if (_currentItems.Count > 0)
                     {
-                        var prev = Mathf.Max(_listView.selectedIndex - 1, 0);
-                        NavigateTo(prev);
+                        var start = _listView.selectedIndex < 0 ? _currentItems.Count : _listView.selectedIndex;
+                        var prev = FindNextEnabledIndex(start, -1);
+                        if (prev >= 0)
+                            NavigateTo(prev);
                         evt.StopPropagation();
                     }
                     break;
@@ -715,8 +825,10 @@ namespace mhze.HierarchyContextMenu
                 case KeyCode.DownArrow:
                     if (_currentItems.Count > 0)
                     {
-                        var next = Mathf.Min(_listView.selectedIndex + 1, _currentItems.Count - 1);
-                        NavigateTo(next);
+                        var start = _listView.selectedIndex < 0 ? -1 : _listView.selectedIndex;
+                        var next = FindNextEnabledIndex(start, 1);
+                        if (next >= 0)
+                            NavigateTo(next);
                         evt.StopPropagation();
                     }
                     break;
@@ -724,8 +836,10 @@ namespace mhze.HierarchyContextMenu
                 case KeyCode.UpArrow:
                     if (_currentItems.Count > 0)
                     {
-                        var prev = Mathf.Max(_listView.selectedIndex - 1, 0);
-                        NavigateTo(prev);
+                        var start = _listView.selectedIndex < 0 ? _currentItems.Count : _listView.selectedIndex;
+                        var prev = FindNextEnabledIndex(start, -1);
+                        if (prev >= 0)
+                            NavigateTo(prev);
                         evt.StopPropagation();
                     }
                     break;
@@ -763,6 +877,9 @@ namespace mhze.HierarchyContextMenu
             if (_listView.selectedIndex < 0 || _listView.selectedIndex >= _currentItems.Count)
                 return;
 
+            if (IsItemDisabled(_listView.selectedIndex))
+                return;
+
             var item = _currentItems[_listView.selectedIndex];
 
             if (item is MenuNode node)
@@ -782,7 +899,17 @@ namespace mhze.HierarchyContextMenu
             }
             else if (item is SpecialActionItem special)
             {
-                special.Action?.Invoke();
+                if (special.Enabled)
+                    special.Action?.Invoke();
+            }
+            else if (item is SpecialSubmenuItem submenu)
+            {
+                if (submenu.Enabled)
+                {
+                    var element = FindItemVisualElement(_listView.selectedIndex);
+                    if (element != null)
+                        ShowSpecialSubmenuLevel(submenu);
+                }
             }
         }
 
@@ -866,6 +993,195 @@ namespace mhze.HierarchyContextMenu
             {
                 FocusHierarchyWindow();
                 EditorApplication.ExecuteMenuItem("Edit/Duplicate");
+            };
+        }
+
+        private void PasteAsChild()
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                EditorApplication.ExecuteMenuItem("GameObject/Paste As Child");
+            };
+        }
+
+        private void PasteAsSibling()
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                EditorApplication.ExecuteMenuItem("GameObject/Paste As Sibling");
+            };
+        }
+
+        private void DeleteSelection()
+        {
+            if (Selection.gameObjects.Length == 0)
+                return;
+
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                EditorApplication.ExecuteMenuItem("Edit/Delete");
+            };
+        }
+
+        private void SelectAll()
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                EditorApplication.ExecuteMenuItem("Edit/Select All");
+            };
+        }
+
+        private void DeselectAll()
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                Selection.activeGameObject = null;
+            };
+        }
+
+        private void InvertSelection()
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                var currentSelection = new HashSet<GameObject>(Selection.gameObjects);
+                var allObjects = new List<GameObject>();
+                var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                if (activeScene.IsValid())
+                {
+                    var roots = activeScene.GetRootGameObjects();
+                    foreach (var root in roots)
+                        CollectAllChildren(root, allObjects);
+                }
+                var newSelection = new List<GameObject>();
+                foreach (var obj in allObjects)
+                {
+                    if (!currentSelection.Contains(obj))
+                        newSelection.Add(obj);
+                }
+                Selection.objects = newSelection.ToArray();
+            };
+        }
+
+        private void SelectChildren()
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                var parents = Selection.gameObjects;
+                var allSelected = new HashSet<GameObject>(parents);
+                foreach (var parent in parents)
+                    CollectAllChildren(parent, allSelected);
+                Selection.objects = allSelected.ToArray();
+            };
+        }
+
+        private void CollectAllChildren(GameObject parent, List<GameObject> list)
+        {
+            foreach (Transform child in parent.transform)
+            {
+                list.Add(child.gameObject);
+                CollectAllChildren(child.gameObject, list);
+            }
+        }
+
+        private void CollectAllChildren(GameObject parent, HashSet<GameObject> set)
+        {
+            foreach (Transform child in parent.transform)
+            {
+                set.Add(child.gameObject);
+                CollectAllChildren(child.gameObject, set);
+            }
+        }
+
+        private void FindReferencesInScene()
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                if (Selection.activeGameObject == null)
+                    return;
+
+                var target = Selection.activeGameObject;
+                var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                if (!activeScene.IsValid())
+                    return;
+
+                var roots = activeScene.GetRootGameObjects();
+                var referencing = new List<GameObject>();
+
+                foreach (var root in roots)
+                {
+                    var allTransforms = root.GetComponentsInChildren<Transform>(true);
+                    foreach (var t in allTransforms)
+                    {
+                        if (t.gameObject == target)
+                            continue;
+
+                        var components = t.GetComponents<Component>();
+                        foreach (var comp in components)
+                        {
+                            if (comp == null)
+                                continue;
+
+                            var so = new SerializedObject(comp);
+                            var prop = so.GetIterator();
+                            while (prop.NextVisible(true))
+                            {
+                                if (prop.propertyType == SerializedPropertyType.ObjectReference &&
+                                    prop.objectReferenceValue == target)
+                                {
+                                    referencing.Add(t.gameObject);
+                                    break;
+                                }
+                            }
+
+                            if (referencing.Count > 0 && referencing[referencing.Count - 1] == t.gameObject)
+                                break;
+                        }
+                    }
+                }
+
+                Selection.objects = referencing.ToArray();
+            };
+        }
+
+        private void SetAsDefaultParent()
+        {
+            Close();
+            EditorApplication.delayCall += () =>
+            {
+                FocusHierarchyWindow();
+                if (Selection.activeGameObject == null)
+                    return;
+
+                var hierarchyType = typeof(EditorWindow).Assembly.GetType("UnityEditor.SceneHierarchyWindow");
+                if (hierarchyType == null)
+                    return;
+
+                var hierarchyWindow = EditorWindow.GetWindow(hierarchyType);
+                if (hierarchyWindow == null)
+                    return;
+
+                var prop = hierarchyType.GetProperty("defaultParent",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (prop != null)
+                {
+                    prop.SetValue(hierarchyWindow, Selection.activeGameObject.transform, null);
+                }
             };
         }
     }
@@ -959,7 +1275,11 @@ namespace mhze.HierarchyContextMenu
                     viewport.style.paddingBottom = 0;
                     viewport.style.marginTop = 0;
                     viewport.style.marginBottom = 0;
+                    viewport.style.overflow = Overflow.Visible;
                 }
+                scrollView.contentContainer.style.overflow = Overflow.Visible;
+                scrollView.contentContainer.style.paddingTop = 0;
+                scrollView.contentContainer.style.paddingBottom = 0;
             }
 
             rootVisualElement.Add(_listView);
@@ -983,8 +1303,8 @@ namespace mhze.HierarchyContextMenu
             container.style.alignItems = Align.Center;
             container.style.paddingLeft = 10;
             container.style.paddingRight = 10;
-            container.style.paddingTop = 2;
-            container.style.paddingBottom = 2;
+            container.style.paddingTop = 0;
+            container.style.paddingBottom = 0;
             container.style.minHeight = ItemHeight;
             container.style.backgroundColor = new Color(0, 0, 0, 0);
 
@@ -1063,6 +1383,9 @@ namespace mhze.HierarchyContextMenu
         {
             element.userData = index;
             element.style.backgroundColor = new Color(0, 0, 0, 0);
+            element.style.paddingTop = 0;
+            element.style.paddingBottom = 0;
+            element.style.minHeight = ItemHeight;
 
             var label = element.Q<Label>("item-label");
             var arrow = element.Q<Label>("item-arrow");

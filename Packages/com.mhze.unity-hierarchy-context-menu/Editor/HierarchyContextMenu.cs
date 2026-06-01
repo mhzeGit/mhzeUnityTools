@@ -36,7 +36,7 @@ namespace mhze.HierarchyContextMenu
                 var parts = item.DisplayName.Split('/');
                 topLevelNames.Add(parts[0]);
             }
-            int rootItemCount = 6 + topLevelNames.Count;
+            int rootItemCount = 16 + topLevelNames.Count;
             float desiredHeight = Mathf.Max(36f + (rootItemCount * 22f) + 16f, 60f);
 
             var screenPos = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
