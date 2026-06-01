@@ -76,8 +76,8 @@ namespace mhze.HierarchyContextMenu
             { "Paste As Child", new ItemIconInfo("editicon.sml") },
             { "Paste As Sibling", new ItemIconInfo("editicon.sml") },
             { "Rename", new ItemIconInfo("editicon.sml") },
-            { "Duplicate", new ItemIconInfo("editicon.sml") },
-            { "Delete", new ItemIconInfo("TreeEditor.Trash", new Color(1f, 0.45f, 0.45f)) },
+            { "Duplicate", new ItemIconInfo("d_TreeEditor.Duplicate") },
+            { "Delete", new ItemIconInfo("d_TreeEditor.Trash", Color.red) },
             { "Select All", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
             { "Deselect All", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
             { "Invert Selection", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
@@ -401,9 +401,9 @@ namespace mhze.HierarchyContextMenu
             searchContainer.style.paddingRight = 4;
             searchContainer.style.minHeight = 26;
 
-            var searchIcon = new Image();
+            var searchIcon = new VisualElement();
             var iconTex = MenuIcons.Load("Search Icon");
-            searchIcon.image = iconTex;
+            searchIcon.style.backgroundImage = iconTex != null ? new Background(iconTex) : StyleKeyword.None;
             searchIcon.style.width = 14;
             searchIcon.style.height = 14;
             searchIcon.style.marginRight = 4;
@@ -517,13 +517,12 @@ namespace mhze.HierarchyContextMenu
             container.style.minHeight = ItemHeight;
             container.style.backgroundColor = new Color(0, 0, 0, 0);
 
-            var icon = new Image();
+            var icon = new VisualElement();
             icon.name = "item-icon";
             icon.style.width = 16;
             icon.style.height = 16;
             icon.style.marginRight = 6;
             icon.style.flexShrink = 0;
-            icon.scaleMode = ScaleMode.ScaleToFit;
             icon.style.display = DisplayStyle.None;
             container.Add(icon);
 
@@ -637,7 +636,7 @@ namespace mhze.HierarchyContextMenu
 
             var label = element.Q<Label>("item-label");
             var arrow = element.Q<Label>("item-arrow");
-            var icon = element.Q<Image>("item-icon");
+            var icon = element.Q<VisualElement>("item-icon");
 
             element.style.minHeight = ItemHeight;
             element.style.paddingTop = 2;
@@ -738,12 +737,12 @@ namespace mhze.HierarchyContextMenu
                 : new Color(0, 0, 0, 0);
         }
 
-        private void ApplyIcon(Image icon, string displayName, bool enabled)
+        private void ApplyIcon(VisualElement icon, string displayName, bool enabled)
         {
             if (SpecialItemIcons.TryGetValue(displayName, out var info))
             {
                 var tex = MenuIcons.Load(info.IconName);
-                icon.image = tex;
+                icon.style.backgroundImage = tex;
                 icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
                 if (tex != null)
                 {
@@ -759,11 +758,11 @@ namespace mhze.HierarchyContextMenu
             }
         }
 
-        private void ApplyMenuIcon(Image icon, string displayName, bool isCategory)
+        private void ApplyMenuIcon(VisualElement icon, string displayName, bool isCategory)
         {
             var iconName = MenuIcons.ResolveIcon(displayName, isCategory);
             var tex = MenuIcons.Load(iconName);
-            icon.image = tex;
+            icon.style.backgroundImage = tex;
             icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
             if (tex != null)
                 icon.style.unityBackgroundImageTintColor = Color.white;
@@ -1807,13 +1806,12 @@ namespace mhze.HierarchyContextMenu
             container.style.minHeight = ItemHeight;
             container.style.backgroundColor = new Color(0, 0, 0, 0);
 
-            var icon = new Image();
+            var icon = new VisualElement();
             icon.name = "item-icon";
             icon.style.width = 16;
             icon.style.height = 16;
             icon.style.marginRight = 6;
             icon.style.flexShrink = 0;
-            icon.scaleMode = ScaleMode.ScaleToFit;
             icon.style.display = DisplayStyle.None;
             container.Add(icon);
 
@@ -1898,7 +1896,7 @@ namespace mhze.HierarchyContextMenu
 
             var label = element.Q<Label>("item-label");
             var arrow = element.Q<Label>("item-arrow");
-            var icon = element.Q<Image>("item-icon");
+            var icon = element.Q<VisualElement>("item-icon");
 
             if (index >= 0 && index < _category.Children.Count)
             {
@@ -1907,7 +1905,7 @@ namespace mhze.HierarchyContextMenu
                 arrow.style.display = child.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
                 var iconName = MenuIcons.ResolveIcon(child.Name, child.IsCategory);
                 var tex = MenuIcons.Load(iconName);
-                icon.image = tex;
+                icon.style.backgroundImage = tex;
                 icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
                 if (tex != null)
                     icon.style.unityBackgroundImageTintColor = Color.white;
@@ -2266,15 +2264,27 @@ namespace mhze.HierarchyContextMenu
 
                 // Navigation
                 case "nav mesh surface":
+                case "navmesh surface":
+                case "navmeshsurface":
                     return "d_NavMeshData Icon";
                 case "nav mesh agent":
+                case "navmesh agent":
+                case "navmeshagent":
                     return "d_NavMeshAgent Icon";
                 case "nav mesh obstacle":
+                case "navmesh obstacle":
+                case "navmeshobstacle":
                     return "d_NavMeshObstacle Icon";
                 case "nav mesh link":
+                case "navmesh link":
+                case "navmeshlink":
                     return "d_NavMeshAgent Icon";
                 case "nav mesh modifier":
+                case "navmesh modifier":
+                case "navmeshmodifier":
                 case "nav mesh modifier volume":
+                case "navmesh modifier volume":
+                case "navmeshmodifiervolume":
                     return "d_NavMeshObstacle Icon";
 
                 // Physics
@@ -2344,6 +2354,7 @@ namespace mhze.HierarchyContextMenu
                     return "Font Icon";
                 case "navigation":
                 case "navmesh":
+                case "ai":
                     return "d_NavMeshData Icon";
                 case "physics":
                     return "d_editicon.sml";
