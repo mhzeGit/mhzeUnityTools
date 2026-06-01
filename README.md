@@ -29,6 +29,11 @@ https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-git-i
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-visual-tweaks
 ```
 
+**Unity Hierarchy Context Menu**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-hierarchy-context-menu
+```
+
 **Unity Object Snap Tool**
 ```
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.objectsnaptool
