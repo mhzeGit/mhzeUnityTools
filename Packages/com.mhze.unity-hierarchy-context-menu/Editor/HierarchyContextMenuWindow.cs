@@ -129,6 +129,7 @@ namespace mhze.HierarchyContextMenu
 
         private void OnDestroy()
         {
+            EditorApplication.delayCall -= OnDelayedResize;
             if (_instance == this)
             {
                 _instance = null;
@@ -180,6 +181,8 @@ namespace mhze.HierarchyContextMenu
 
             ShowRootLevel();
             _ready = true;
+
+            EditorApplication.delayCall += OnDelayedResize;
 
             _searchField.Focus();
         }
@@ -360,6 +363,17 @@ namespace mhze.HierarchyContextMenu
             var height = CalculateContentHeight(itemCount);
             height = Mathf.Max(height, 60f);
             position = new Rect(position.x, position.y, WindowWidth, height);
+        }
+
+        private void OnDelayedResize()
+        {
+            if (_instance != this)
+                return;
+            if (_currentItems == null)
+                return;
+            maxSize = new Vector2(10000, 10000);
+            minSize = new Vector2(WindowWidth, 0);
+            ResizeWindowToFit(_currentItems.Count);
         }
 
         private void SetScrollBarVisibility(bool visible)
