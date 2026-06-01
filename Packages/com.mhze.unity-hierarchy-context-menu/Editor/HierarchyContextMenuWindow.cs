@@ -44,14 +44,14 @@ namespace mhze.HierarchyContextMenu
         private bool _ready;
 
         private static HierarchyContextMenuWindow _instance;
+        private static Vector2 _initialScreenPosition;
         public static bool IsOpen => _instance != null;
 
         private const float WindowWidth = 280f;
         private const float ItemHeight = 22f;
+        private const float SubmenuWidth = 200f;
         private const long SubmenuDelayMs = 120;
 
-        private VisualElement _submenuElement;
-        private VisualElement _submenuContent;
         private MenuNode _currentSubmenuCategory;
         private IVisualElementScheduledItem _submenuSchedule;
         private bool _suppressHoverUntilMouseMove;
@@ -63,6 +63,7 @@ namespace mhze.HierarchyContextMenu
                 _instance.Close();
             }
 
+            _initialScreenPosition = screenPoint;
             var buttonRect = new Rect(screenPoint.x, screenPoint.y, 1, 1);
             _instance = CreateInstance<HierarchyContextMenuWindow>();
             _instance.ShowAsDropDown(buttonRect, new Vector2(WindowWidth, desiredHeight));
@@ -71,7 +72,10 @@ namespace mhze.HierarchyContextMenu
         private void OnDestroy()
         {
             if (_instance == this)
+            {
                 _instance = null;
+                HideSubmenu();
+            }
         }
 
         private void CreateGUI()
@@ -116,7 +120,6 @@ namespace mhze.HierarchyContextMenu
 
             BuildSearchField();
             BuildListView();
-            BuildSubmenuElement();
             ShowRootLevel();
             _ready = true;
 
@@ -199,7 +202,7 @@ namespace mhze.HierarchyContextMenu
 
             var height = CalculateContentHeight(itemCount);
             height = Mathf.Max(height, 60f);
-            ShowAsDropDown(new Rect(position.x, position.y, 1, 1), new Vector2(WindowWidth, height));
+            ShowAsDropDown(new Rect(_initialScreenPosition.x, _initialScreenPosition.y, 1, 1), new Vector2(WindowWidth, height));
         }
 
         private void SetScrollBarVisibility(bool visible)
@@ -269,45 +272,19 @@ namespace mhze.HierarchyContextMenu
             rootVisualElement.Add(_searchField);
         }
 
-        private void BuildSubmenuElement()
+        private Vector2 GetSubmenuScreenPos(VisualElement hoveredItem)
         {
-            _submenuElement = new VisualElement();
-            _submenuElement.style.position = Position.Absolute;
-            _submenuElement.style.display = DisplayStyle.None;
-            _submenuElement.style.backgroundColor = new Color(0.12f, 0.12f, 0.12f);
-            _submenuElement.style.borderTopLeftRadius = 8;
-            _submenuElement.style.borderTopRightRadius = 8;
-            _submenuElement.style.borderBottomLeftRadius = 8;
-            _submenuElement.style.borderBottomRightRadius = 8;
-            _submenuElement.style.borderTopWidth = 1;
-            _submenuElement.style.borderLeftWidth = 1;
-            _submenuElement.style.borderRightWidth = 1;
-            _submenuElement.style.borderBottomWidth = 1;
-            _submenuElement.style.borderTopColor = new Color(0.25f, 0.25f, 0.25f);
-            _submenuElement.style.borderLeftColor = new Color(0.25f, 0.25f, 0.25f);
-            _submenuElement.style.borderRightColor = new Color(0.25f, 0.25f, 0.25f);
-            _submenuElement.style.borderBottomColor = new Color(0.25f, 0.25f, 0.25f);
-            _submenuElement.style.minWidth = 180;
-            _submenuElement.style.paddingLeft = 4;
-            _submenuElement.style.paddingRight = 4;
-            _submenuElement.style.paddingTop = 4;
-            _submenuElement.style.paddingBottom = 4;
-            _submenuElement.style.overflow = Overflow.Hidden;
+            var posInRoot = hoveredItem.ChangeCoordinatesTo(rootVisualElement, Vector2.zero);
+            float left;
+            float leftSideX = -SubmenuWidth - 4f;
 
-            _submenuContent = new VisualElement();
-            _submenuElement.Add(_submenuContent);
+            if (position.x + leftSideX >= 0)
+                left = position.x + leftSideX;
+            else
+                left = position.x + rootVisualElement.resolvedStyle.width + 4f;
 
-            _submenuElement.RegisterCallback<PointerEnterEvent>(_ =>
-            {
-                CancelSubmenuSchedule();
-            });
-
-            _submenuElement.RegisterCallback<PointerLeaveEvent>(_ =>
-            {
-                ScheduleHideSubmenu();
-            });
-
-            rootVisualElement.Add(_submenuElement);
+            float top = position.y + posInRoot.y;
+            return new Vector2(left, top);
         }
 
         private void BuildListView()
@@ -597,115 +574,28 @@ namespace mhze.HierarchyContextMenu
             CancelSubmenuSchedule();
             _currentSubmenuCategory = category;
 
-            _submenuContent.Clear();
+            var screenPos = GetSubmenuScreenPos(hoveredItem);
+            float itemCount = category.Children.Count;
+            float desiredHeight = Mathf.Max(36f + (itemCount * ItemHeight) + 16f, 60f);
 
-            foreach (var child in category.Children)
-            {
-                var childIndex = _submenuContent.childCount;
-                var item = new VisualElement();
-                item.style.flexDirection = FlexDirection.Row;
-                item.style.alignItems = Align.Center;
-                item.style.paddingLeft = 10;
-                item.style.paddingRight = 10;
-                item.style.paddingTop = 2;
-                item.style.paddingBottom = 2;
-                item.style.minHeight = ItemHeight;
-                item.style.backgroundColor = new Color(0, 0, 0, 0);
-                item.userData = childIndex;
-
-                var subLabel = new Label();
-                subLabel.name = "sub-label";
-                subLabel.text = child.Name;
-                subLabel.style.fontSize = 13;
-                subLabel.style.color = new Color(0.85f, 0.85f, 0.85f);
-                subLabel.style.whiteSpace = WhiteSpace.NoWrap;
-                subLabel.style.textOverflow = TextOverflow.Ellipsis;
-                subLabel.style.flexShrink = 1;
-                subLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
-                subLabel.style.flexGrow = 1;
-                item.Add(subLabel);
-
-                var subArrow = new Label();
-                subArrow.name = "sub-arrow";
-                subArrow.text = "\u25B8";
-                subArrow.style.fontSize = 12;
-                subArrow.style.color = new Color(0.55f, 0.55f, 0.55f);
-                subArrow.style.marginLeft = 4;
-                subArrow.style.display = child.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
-                subArrow.style.unityTextAlign = TextAnchor.MiddleRight;
-                item.Add(subArrow);
-
-                var capturedChild = child;
-                item.RegisterCallback<PointerDownEvent>(subEvt =>
-                {
-                    if (subEvt.button == 0)
-                    {
-                        subEvt.StopPropagation();
-                        if (capturedChild.IsLeaf)
-                            ExecutePath(capturedChild.MenuPath);
-                        else if (capturedChild.IsCategory)
-                            ShowSubmenu(capturedChild, item);
-                    }
-                });
-
-                item.RegisterCallback<PointerEnterEvent>(subEvt =>
-                {
-                    item.style.backgroundColor = new Color(0.22f, 0.22f, 0.22f);
-                });
-
-                item.RegisterCallback<PointerLeaveEvent>(subEvt =>
-                {
-                    item.style.backgroundColor = new Color(0, 0, 0, 0);
-                });
-
-                _submenuContent.Add(item);
-            }
-
-            var posInRoot = hoveredItem.ChangeCoordinatesTo(rootVisualElement, Vector2.zero);
-            var windowWidth = rootVisualElement.resolvedStyle.width;
-            var submenuWidth = 200f;
-            var gap = 4f;
-
-            float left;
-            float leftSideX = -submenuWidth - gap;
-
-            if (position.x + leftSideX >= 0)
-            {
-                left = leftSideX;
-            }
-            else
-            {
-                float rightSideX = windowWidth + gap;
-                left = rightSideX;
-            }
-
-            float submenuHeight = category.Children.Count * ItemHeight + 10;
-            float windowHeight = rootVisualElement.resolvedStyle.height;
-
-            float top = posInRoot.y - rootVisualElement.resolvedStyle.borderTopWidth;
-            if (top + submenuHeight > windowHeight)
-                top = Mathf.Max(0, windowHeight - submenuHeight);
-
-            _submenuElement.style.left = left;
-            _submenuElement.style.top = top;
-            _submenuElement.style.display = DisplayStyle.Flex;
+            SubmenuWindow.CloseIfOpen();
+            SubmenuWindow.Create(this, category, screenPos, desiredHeight);
         }
 
         private void HideSubmenu()
         {
             CancelSubmenuSchedule();
             _currentSubmenuCategory = null;
-            if (_submenuElement != null)
-                _submenuElement.style.display = DisplayStyle.None;
+            SubmenuWindow.CloseIfOpen();
         }
 
-        private void ScheduleHideSubmenu()
+        internal void ScheduleHideSubmenu()
         {
             CancelSubmenuSchedule();
             _submenuSchedule = rootVisualElement.schedule.Execute(HideSubmenu).StartingIn(SubmenuDelayMs);
         }
 
-        private void CancelSubmenuSchedule()
+        internal void CancelSubmenuSchedule()
         {
             if (_submenuSchedule != null)
             {
@@ -987,6 +877,200 @@ namespace mhze.HierarchyContextMenu
                 FocusHierarchyWindow();
                 EditorApplication.ExecuteMenuItem("Edit/Duplicate");
             };
+        }
+    }
+
+    class SubmenuWindow : EditorWindow
+    {
+        private static SubmenuWindow _instance;
+        private ListView _listView;
+        private MenuNode _category;
+        private HierarchyContextMenuWindow _parent;
+        private static readonly Color BgColor = new Color(0.12f, 0.12f, 0.12f);
+        private static readonly Color BorderColor = new Color(0.25f, 0.25f, 0.25f);
+        private const float ItemHeight = 22f;
+        private const float SubmenuWidth = 200f;
+
+        public static void CloseIfOpen()
+        {
+            if (_instance != null)
+            {
+                _instance.Close();
+                _instance = null;
+            }
+        }
+
+        public static SubmenuWindow Create(HierarchyContextMenuWindow parent, MenuNode category, Vector2 screenPos, float height)
+        {
+            var rect = new Rect(screenPos.x, screenPos.y, 1, 1);
+            var instance = CreateInstance<SubmenuWindow>();
+            instance._parent = parent;
+            instance._category = category;
+            instance.ShowAsDropDown(rect, new Vector2(SubmenuWidth, Mathf.Max(height, 60f)));
+            instance.Focus();
+            _instance = instance;
+            return instance;
+        }
+
+        private void OnDestroy()
+        {
+            if (_instance == this)
+                _instance = null;
+        }
+
+        private void OnLostFocus()
+        {
+            Close();
+        }
+
+        private void CreateGUI()
+        {
+            rootVisualElement.style.backgroundColor = BgColor;
+            rootVisualElement.style.borderTopLeftRadius = 8;
+            rootVisualElement.style.borderTopRightRadius = 8;
+            rootVisualElement.style.borderBottomLeftRadius = 8;
+            rootVisualElement.style.borderBottomRightRadius = 8;
+            rootVisualElement.style.paddingLeft = 4;
+            rootVisualElement.style.paddingRight = 4;
+            rootVisualElement.style.paddingTop = 4;
+            rootVisualElement.style.paddingBottom = 4;
+            rootVisualElement.style.borderTopWidth = 1;
+            rootVisualElement.style.borderLeftWidth = 1;
+            rootVisualElement.style.borderRightWidth = 1;
+            rootVisualElement.style.borderBottomWidth = 1;
+            rootVisualElement.style.borderTopColor = BorderColor;
+            rootVisualElement.style.borderLeftColor = BorderColor;
+            rootVisualElement.style.borderRightColor = BorderColor;
+            rootVisualElement.style.borderBottomColor = BorderColor;
+
+            _listView = new ListView(new List<MenuNode>(_category.Children), ItemHeight, MakeItem, BindItem);
+            _listView.style.flexGrow = 1;
+            _listView.style.marginLeft = 4;
+            _listView.style.marginRight = 4;
+            _listView.style.marginBottom = 4;
+            _listView.style.backgroundColor = new Color(0, 0, 0, 0);
+            _listView.selectionType = SelectionType.Single;
+            _listView.focusable = false;
+
+            var scrollView = _listView.Q<ScrollView>();
+            if (scrollView != null)
+            {
+                scrollView.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+                scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+                scrollView.mouseWheelScrollSize = ItemHeight;
+            }
+
+            rootVisualElement.Add(_listView);
+            _listView.Rebuild();
+
+            rootVisualElement.RegisterCallback<PointerEnterEvent>(_ =>
+            {
+                _parent?.CancelSubmenuSchedule();
+            });
+
+            rootVisualElement.RegisterCallback<PointerLeaveEvent>(_ =>
+            {
+                _parent?.ScheduleHideSubmenu();
+            });
+        }
+
+        private VisualElement MakeItem()
+        {
+            var container = new VisualElement();
+            container.style.flexDirection = FlexDirection.Row;
+            container.style.alignItems = Align.Center;
+            container.style.paddingLeft = 10;
+            container.style.paddingRight = 10;
+            container.style.paddingTop = 2;
+            container.style.paddingBottom = 2;
+            container.style.minHeight = ItemHeight;
+            container.style.backgroundColor = new Color(0, 0, 0, 0);
+
+            var label = new Label();
+            label.name = "item-label";
+            label.style.fontSize = 13;
+            label.style.color = new Color(0.85f, 0.85f, 0.85f);
+            label.style.whiteSpace = WhiteSpace.NoWrap;
+            label.style.textOverflow = TextOverflow.Ellipsis;
+            label.style.flexShrink = 1;
+            label.style.unityTextAlign = TextAnchor.MiddleLeft;
+            label.style.flexGrow = 1;
+            container.Add(label);
+
+            var arrow = new Label();
+            arrow.name = "item-arrow";
+            arrow.text = "\u25B8";
+            arrow.style.fontSize = 12;
+            arrow.style.color = new Color(0.55f, 0.55f, 0.55f);
+            arrow.style.marginLeft = 4;
+            arrow.style.display = DisplayStyle.None;
+            arrow.style.unityTextAlign = TextAnchor.MiddleRight;
+            container.Add(arrow);
+
+            container.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                if (evt.button == 0)
+                {
+                    evt.StopPropagation();
+                    var idx = (int)container.userData;
+                    var children = _category.Children;
+                    if (idx >= 0 && idx < children.Count)
+                    {
+                        var child = children[idx];
+                        if (child.IsLeaf)
+                        {
+                            _parent?.Close();
+                            var path = child.MenuPath;
+                            EditorApplication.delayCall += () => EditorApplication.ExecuteMenuItem(path);
+                        }
+                        else if (child.IsCategory)
+                        {
+                            var screenPos = new Vector2(position.x + SubmenuWidth + 4f, position.y + (idx * ItemHeight));
+                            float itemCount = child.Children.Count;
+                            float desiredHeight = Mathf.Max(36f + (itemCount * ItemHeight) + 16f, 60f);
+                            SubmenuWindow.CloseIfOpen();
+                            _instance = SubmenuWindow.Create(_parent, child, screenPos, desiredHeight);
+                        }
+                    }
+                }
+            }, TrickleDown.TrickleDown);
+
+            container.RegisterCallback<PointerEnterEvent>(evt =>
+            {
+                var idx = (int)container.userData;
+                var children = _category.Children;
+                if (idx >= 0 && idx < children.Count && children[idx].IsCategory)
+                {
+                    container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
+                }
+                else
+                {
+                    container.style.backgroundColor = new Color(0.22f, 0.22f, 0.22f);
+                }
+            });
+
+            container.RegisterCallback<PointerLeaveEvent>(evt =>
+            {
+                container.style.backgroundColor = new Color(0, 0, 0, 0);
+            });
+
+            return container;
+        }
+
+        private void BindItem(VisualElement element, int index)
+        {
+            element.userData = index;
+            element.style.backgroundColor = new Color(0, 0, 0, 0);
+
+            var label = element.Q<Label>("item-label");
+            var arrow = element.Q<Label>("item-arrow");
+
+            if (index >= 0 && index < _category.Children.Count)
+            {
+                var child = _category.Children[index];
+                label.text = child.Name;
+                arrow.style.display = child.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
+            }
         }
     }
 }
