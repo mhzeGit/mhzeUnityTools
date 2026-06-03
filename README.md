@@ -34,6 +34,11 @@ https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-edito
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-hierarchy-context-menu
 ```
 
+**Unity Missing Script Inspector**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-missing-script-inspector
+```
+
 **Unity Object Snap Tool**
 ```
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.objectsnaptool
