@@ -12,6 +12,7 @@ namespace mhze.BatchRenamer
     {
         private TextField _searchField;
         private TextField _replaceField;
+        private Toggle _caseSensitiveToggle;
         private TextField _prefixField;
         private TextField _suffixField;
         private EnumField _caseField;
@@ -103,6 +104,28 @@ namespace mhze.BatchRenamer
 
             _replaceField = CreateLabelledField(section, "Replace", "Replace with...");
             _replaceField.RegisterValueChangedCallback(_ => MarkPreviewDirty());
+
+            var csRow = new VisualElement();
+            csRow.style.flexDirection = FlexDirection.Row;
+            csRow.style.alignItems = Align.Center;
+            csRow.style.marginBottom = 4;
+
+            var csSpacer = new Label("");
+            csSpacer.style.minWidth = 70;
+            csRow.Add(csSpacer);
+
+            _caseSensitiveToggle = new Toggle("Case Sensitive");
+            _caseSensitiveToggle.value = false;
+            var csLabel = _caseSensitiveToggle.Q<Label>();
+            if (csLabel != null)
+            {
+                csLabel.style.fontSize = 12;
+                csLabel.style.color = TextPrimary;
+                csLabel.style.marginLeft = 4;
+            }
+            _caseSensitiveToggle.RegisterValueChangedCallback(_ => MarkPreviewDirty());
+            csRow.Add(_caseSensitiveToggle);
+            section.Add(csRow);
 
             rootVisualElement.Add(section);
         }
@@ -448,6 +471,7 @@ namespace mhze.BatchRenamer
             _processor.ReplaceText = _replaceField?.value ?? "";
             _processor.Prefix = _prefixField?.value ?? "";
             _processor.Suffix = _suffixField?.value ?? "";
+            _processor.CaseSensitive = _caseSensitiveToggle?.value ?? false;
             _processor.TextCase = _caseField != null ? (TextCaseMode)_caseField.value : TextCaseMode.None;
             _processor.PreserveNumbers = _preserveNumbersToggle?.value ?? false;
             _processor.NumberFormat = _numberFormatField != null ? (NumberFormatPreset)_numberFormatField.value : NumberFormatPreset.UnderscoreN;
@@ -530,7 +554,7 @@ namespace mhze.BatchRenamer
             icon.style.flexShrink = 0;
             row.Add(icon);
 
-            var oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedText, item.IsValid);
+            var oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedText, item.IsValid, _processor.CaseSensitive);
             oldContainer.style.marginRight = 8;
             oldContainer.style.flexShrink = 1;
             row.Add(oldContainer);
@@ -550,7 +574,7 @@ namespace mhze.BatchRenamer
             _previewContainer.Add(row);
         }
 
-        private static VisualElement BuildOldNameHighlight(string name, string matchedText, bool isValid)
+        private static VisualElement BuildOldNameHighlight(string name, string matchedText, bool isValid, bool caseSensitive)
         {
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
@@ -569,10 +593,11 @@ namespace mhze.BatchRenamer
                 return container;
             }
 
+            var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             int searchStart = 0;
             while (searchStart < name.Length)
             {
-                int idx = name.IndexOf(matchedText, searchStart, StringComparison.OrdinalIgnoreCase);
+                int idx = name.IndexOf(matchedText, searchStart, comparison);
                 if (idx < 0)
                 {
                     var remaining = new Label(name.Substring(searchStart));

@@ -48,11 +48,13 @@ namespace mhze.BatchRenamer
         public TextCaseMode TextCase = TextCaseMode.None;
         public bool PreserveNumbers;
         public NumberFormatPreset NumberFormat = NumberFormatPreset.UnderscoreN;
+        public bool CaseSensitive = false;
         public HashSet<AssetCategory> EnabledCategories = new HashSet<AssetCategory>();
 
         public List<RenameItem> Items = new List<RenameItem>();
         private SearchExpression _cachedExpression;
         private string _lastSearchPattern;
+        private bool _lastCaseSensitive;
 
         public void CollectFromObjects(Object[] objects)
         {
@@ -154,15 +156,16 @@ namespace mhze.BatchRenamer
         {
             if (Items.Count == 0) return;
 
-            bool patternChanged = SearchPattern != _lastSearchPattern;
+            bool patternChanged = SearchPattern != _lastSearchPattern || CaseSensitive != _lastCaseSensitive;
             if (patternChanged)
             {
                 _cachedExpression = !string.IsNullOrWhiteSpace(SearchPattern)
-                    ? SearchExpression.Parse(SearchPattern)
+                    ? SearchExpression.Parse(SearchPattern, CaseSensitive)
                     : null;
                 _lastSearchPattern = SearchPattern;
+                _lastCaseSensitive = CaseSensitive;
                 if (_cachedExpression != null)
-                    Debug.Log($"[BatchRenamer] Parsed '{SearchPattern}' → {_cachedExpression.Describe()}");
+                    Debug.Log($"[BatchRenamer] Parsed '{SearchPattern}' (caseSensitive={CaseSensitive}) → {_cachedExpression.Describe()}");
             }
 
             bool hasActiveFilters = EnabledCategories.Count > 0;
@@ -473,16 +476,18 @@ namespace mhze.BatchRenamer
         public class Literal : INode
         {
             private readonly string _text;
+            private readonly StringComparison _comparison;
 
-            public Literal(string text)
+            public Literal(string text, StringComparison comparison)
             {
                 _text = text;
+                _comparison = comparison;
             }
 
             public string Match(string name)
             {
                 if (string.IsNullOrEmpty(_text)) return name;
-                int idx = name.IndexOf(_text, StringComparison.OrdinalIgnoreCase);
+                int idx = name.IndexOf(_text, _comparison);
                 if (idx >= 0) return name.Substring(idx, _text.Length);
                 return null;
             }
@@ -552,14 +557,16 @@ namespace mhze.BatchRenamer
             return _root?.Describe() ?? "null";
         }
 
-        public static SearchExpression Parse(string input)
+        public static SearchExpression Parse(string input, bool caseSensitive = false)
         {
+            var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
             if (string.IsNullOrWhiteSpace(input))
-                return new SearchExpression(new Literal(""));
+                return new SearchExpression(new Literal("", comparison));
 
             var tokens = Tokenize(input);
             int pos = 0;
-            var result = ParseExpression(tokens, ref pos);
+            var result = ParseExpression(tokens, ref pos, comparison);
             return new SearchExpression(result);
         }
 
@@ -611,43 +618,43 @@ namespace mhze.BatchRenamer
             return tokens;
         }
 
-        private static INode ParseExpression(List<string> tokens, ref int pos)
+        private static INode ParseExpression(List<string> tokens, ref int pos, StringComparison comparison)
         {
-            var left = ParseTerm(tokens, ref pos);
+            var left = ParseTerm(tokens, ref pos, comparison);
 
             while (pos < tokens.Count && tokens[pos] == "||")
             {
                 pos++;
-                var right = ParseTerm(tokens, ref pos);
+                var right = ParseTerm(tokens, ref pos, comparison);
                 left = new OrNode(left, right);
             }
 
             return left;
         }
 
-        private static INode ParseTerm(List<string> tokens, ref int pos)
+        private static INode ParseTerm(List<string> tokens, ref int pos, StringComparison comparison)
         {
-            var left = ParseFactor(tokens, ref pos);
+            var left = ParseFactor(tokens, ref pos, comparison);
 
             while (pos < tokens.Count && tokens[pos] == "&&")
             {
                 pos++;
-                var right = ParseFactor(tokens, ref pos);
+                var right = ParseFactor(tokens, ref pos, comparison);
                 left = new AndNode(left, right);
             }
 
             return left;
         }
 
-        private static INode ParseFactor(List<string> tokens, ref int pos)
+        private static INode ParseFactor(List<string> tokens, ref int pos, StringComparison comparison)
         {
             if (pos >= tokens.Count)
-                return new Literal("");
+                return new Literal("", comparison);
 
             if (tokens[pos] == "(")
             {
                 pos++;
-                var expr = ParseExpression(tokens, ref pos);
+                var expr = ParseExpression(tokens, ref pos, comparison);
                 if (pos < tokens.Count && tokens[pos] == ")")
                     pos++;
                 return expr;
@@ -655,7 +662,7 @@ namespace mhze.BatchRenamer
 
             var text = tokens[pos];
             pos++;
-            return new Literal(text);
+            return new Literal(text, comparison);
         }
 
     }
