@@ -376,19 +376,19 @@ namespace mhze.BatchRenamer
 
             var field = new TextField();
             field.style.flexGrow = 1;
-            field.style.borderTopWidth = 1;
-            field.style.borderLeftWidth = 1;
-            field.style.borderRightWidth = 1;
-            field.style.borderBottomWidth = 1;
-            field.style.borderTopColor = BorderColor;
-            field.style.borderLeftColor = BorderColor;
-            field.style.borderRightColor = BorderColor;
-            field.style.borderBottomColor = BorderColor;
-            field.style.backgroundColor = BgInput;
-            field.style.paddingLeft = 8;
-            field.style.paddingRight = 8;
-            field.style.paddingTop = 4;
-            field.style.paddingBottom = 4;
+            field.style.borderTopWidth = 0;
+            field.style.borderLeftWidth = 0;
+            field.style.borderRightWidth = 0;
+            field.style.borderBottomWidth = 0;
+            field.style.backgroundColor = Color.clear;
+            field.style.paddingLeft = 0;
+            field.style.paddingRight = 0;
+            field.style.paddingTop = 0;
+            field.style.paddingBottom = 0;
+            field.style.marginTop = 0;
+            field.style.marginBottom = 0;
+            field.style.marginLeft = 0;
+            field.style.marginRight = 0;
             field.style.fontSize = 12;
             field.style.color = TextPrimary;
 
@@ -402,10 +402,21 @@ namespace mhze.BatchRenamer
             var input = field.Q(className: TextField.inputUssClassName);
             if (input != null)
             {
-                input.style.backgroundColor = Color.clear;
-                input.style.paddingLeft = 0;
-                input.style.paddingRight = 0;
+                input.style.borderTopWidth = 1;
+                input.style.borderLeftWidth = 1;
+                input.style.borderRightWidth = 1;
+                input.style.borderBottomWidth = 1;
+                input.style.borderTopColor = BorderColor;
+                input.style.borderLeftColor = BorderColor;
+                input.style.borderRightColor = BorderColor;
+                input.style.borderBottomColor = BorderColor;
+                input.style.backgroundColor = BgInput;
+                input.style.paddingLeft = 8;
+                input.style.paddingRight = 8;
+                input.style.paddingTop = 4;
+                input.style.paddingBottom = 4;
                 input.style.marginLeft = 0;
+                input.style.flexGrow = 1;
             }
 
             row.Add(field);

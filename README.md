@@ -39,6 +39,11 @@ https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-hiera
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-missing-script-inspector
 ```
 
+**Unity Batch Renamer**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-batch-renamer
+```
+
 **Unity Object Snap Tool**
 ```
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.objectsnaptool
