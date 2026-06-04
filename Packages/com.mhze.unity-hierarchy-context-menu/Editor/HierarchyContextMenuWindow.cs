@@ -76,7 +76,7 @@ namespace mhze.HierarchyContextMenu
 
             BuildTree();
 
-            rootVisualElement.style.backgroundColor = new Color(0.12f, 0.12f, 0.12f);
+            rootVisualElement.style.backgroundColor = HierarchyContextMenuSettings.BackgroundColor;
 
             rootVisualElement.style.paddingLeft = 4;
             rootVisualElement.style.paddingRight = 4;
@@ -87,10 +87,10 @@ namespace mhze.HierarchyContextMenu
             rootVisualElement.style.borderLeftWidth = 1;
             rootVisualElement.style.borderRightWidth = 1;
             rootVisualElement.style.borderBottomWidth = 1;
-            rootVisualElement.style.borderTopColor = new Color(0.25f, 0.25f, 0.25f);
-            rootVisualElement.style.borderLeftColor = new Color(0.25f, 0.25f, 0.25f);
-            rootVisualElement.style.borderRightColor = new Color(0.25f, 0.25f, 0.25f);
-            rootVisualElement.style.borderBottomColor = new Color(0.25f, 0.25f, 0.25f);
+            rootVisualElement.style.borderTopColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderLeftColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderRightColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderBottomColor = HierarchyContextMenuSettings.BorderColor;
 
             rootVisualElement.RegisterCallback<PointerMoveEvent>(evt =>
             {
@@ -327,11 +327,11 @@ namespace mhze.HierarchyContextMenu
             searchContainer.style.marginRight = 4;
             searchContainer.style.marginTop = 4;
             searchContainer.style.marginBottom = 4;
-            searchContainer.style.backgroundColor = new Color(0.17f, 0.17f, 0.17f);
-            searchContainer.style.borderTopColor = new Color(0.28f, 0.28f, 0.28f);
-            searchContainer.style.borderLeftColor = new Color(0.28f, 0.28f, 0.28f);
-            searchContainer.style.borderRightColor = new Color(0.28f, 0.28f, 0.28f);
-            searchContainer.style.borderBottomColor = new Color(0.28f, 0.28f, 0.28f);
+            searchContainer.style.backgroundColor = HierarchyContextMenuSettings.SearchBackgroundColor;
+            searchContainer.style.borderTopColor = HierarchyContextMenuSettings.BorderColor;
+            searchContainer.style.borderLeftColor = HierarchyContextMenuSettings.BorderColor;
+            searchContainer.style.borderRightColor = HierarchyContextMenuSettings.BorderColor;
+            searchContainer.style.borderBottomColor = HierarchyContextMenuSettings.BorderColor;
             searchContainer.style.borderTopWidth = 1;
             searchContainer.style.borderLeftWidth = 1;
             searchContainer.style.borderRightWidth = 1;
@@ -348,8 +348,8 @@ namespace mhze.HierarchyContextMenu
             searchIcon.style.height = 14;
             searchIcon.style.marginRight = 4;
             searchIcon.style.flexShrink = 0;
-            searchIcon.style.unityBackgroundImageTintColor = new Color(0.55f, 0.55f, 0.55f);
-            if (iconTex == null)
+            searchIcon.style.unityBackgroundImageTintColor = HierarchyContextMenuSettings.DimColor;
+            if (!HierarchyContextMenuSettings.ShowIcons || iconTex == null)
                 searchIcon.style.display = DisplayStyle.None;
             searchContainer.Add(searchIcon);
 
@@ -366,7 +366,7 @@ namespace mhze.HierarchyContextMenu
             _searchField.style.paddingTop = 3;
             _searchField.style.paddingBottom = 3;
             _searchField.style.fontSize = 13;
-            _searchField.style.color = new Color(0.85f, 0.85f, 0.85f);
+            _searchField.style.color = HierarchyContextMenuSettings.TextColor;
             _searchField.style.unityFontStyleAndWeight = FontStyle.Normal;
             _searchField.selectAllOnFocus = true;
 
@@ -374,7 +374,7 @@ namespace mhze.HierarchyContextMenu
             if (textElement != null)
             {
                 textElement.style.backgroundColor = Color.clear;
-                textElement.style.color = new Color(0.85f, 0.85f, 0.85f);
+                textElement.style.color = HierarchyContextMenuSettings.TextColor;
             }
 
             var inputContainer = _searchField.Q(className: TextField.inputUssClassName);
@@ -469,7 +469,7 @@ namespace mhze.HierarchyContextMenu
             var label = new Label();
             label.name = "item-label";
             label.style.fontSize = 13;
-            label.style.color = new Color(0.85f, 0.85f, 0.85f);
+            label.style.color = HierarchyContextMenuSettings.TextColor;
             label.style.whiteSpace = WhiteSpace.NoWrap;
             label.style.textOverflow = TextOverflow.Ellipsis;
             label.style.flexShrink = 1;
@@ -481,7 +481,7 @@ namespace mhze.HierarchyContextMenu
             arrow.name = "item-arrow";
             arrow.text = "\u25B8";
             arrow.style.fontSize = 12;
-            arrow.style.color = new Color(0.55f, 0.55f, 0.55f);
+            arrow.style.color = HierarchyContextMenuSettings.DimColor;
             arrow.style.marginLeft = 4;
             arrow.style.display = DisplayStyle.None;
             arrow.style.unityTextAlign = TextAnchor.MiddleRight;
@@ -496,11 +496,26 @@ namespace mhze.HierarchyContextMenu
                 if (_currentItems[idx] is SeparatorItem || idx == _selectedIndex)
                     return;
 
-                if (IsItemDisabled(idx))
-                    return;
-
                 if (_suppressHoverUntilMouseMove)
                     return;
+
+                if (IsItemDisabled(idx))
+                {
+                    if (_selectedIndex >= 0)
+                    {
+                        var oldElement = FindItemVisualElement(_selectedIndex);
+                        if (oldElement != null)
+                            oldElement.style.backgroundColor = new Color(0, 0, 0, 0);
+                    }
+
+                    var bg = HierarchyContextMenuSettings.BackgroundColor;
+                    container.style.backgroundColor = new Color(
+                        Mathf.Min(bg.r + 0.1f, 1f),
+                        Mathf.Min(bg.g + 0.1f, 1f),
+                        Mathf.Min(bg.b + 0.1f, 1f)
+                    );
+                    return;
+                }
 
                 var oldIdx = _selectedIndex;
                 _selectedIndex = idx;
@@ -512,7 +527,15 @@ namespace mhze.HierarchyContextMenu
                         oldElement.style.backgroundColor = new Color(0, 0, 0, 0);
                 }
 
-                container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
+                container.style.backgroundColor = HierarchyContextMenuSettings.HoverColor;
+            });
+
+            container.RegisterCallback<PointerLeaveEvent>(evt =>
+            {
+                var idx = (int)container.userData;
+                container.style.backgroundColor = idx == _selectedIndex
+                    ? HierarchyContextMenuSettings.HoverColor
+                    : new Color(0, 0, 0, 0);
             });
 
             container.RegisterCallback<PointerDownEvent>(evt =>
@@ -593,7 +616,7 @@ namespace mhze.HierarchyContextMenu
             if (item is BackItem)
             {
                 label.text = "\u2190  Back";
-                label.style.color = new Color(0.7f, 0.7f, 0.7f);
+                label.style.color = HierarchyContextMenuSettings.DimColor;
                 arrow.style.display = DisplayStyle.None;
                 icon.style.display = DisplayStyle.None;
                 ApplySelectionStyle(element, index);
@@ -612,7 +635,7 @@ namespace mhze.HierarchyContextMenu
                 element.style.paddingLeft = 0;
                 element.style.paddingRight = 0;
                 element.style.borderTopWidth = 1;
-                element.style.borderTopColor = new Color(0.3f, 0.3f, 0.3f);
+                element.style.borderTopColor = HierarchyContextMenuSettings.BorderColor;
                 element.style.marginTop = 4;
                 element.style.marginBottom = 4;
                 UnregisterHoverEvents(element);
@@ -622,7 +645,7 @@ namespace mhze.HierarchyContextMenu
             if (item is SpecialActionItem specialAction)
             {
                 label.text = specialAction.DisplayName;
-                label.style.color = specialAction.Enabled ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.4f, 0.4f, 0.4f);
+                label.style.color = specialAction.Enabled ? HierarchyContextMenuSettings.TextColor : HierarchyContextMenuSettings.DisabledTextColor;
                 arrow.style.display = DisplayStyle.None;
                 ApplyIcon(icon, specialAction.DisplayName, specialAction.Enabled);
                 ApplySelectionStyle(element, index);
@@ -633,7 +656,7 @@ namespace mhze.HierarchyContextMenu
             if (item is SpecialSubmenuItem submenuItem)
             {
                 label.text = submenuItem.DisplayName;
-                label.style.color = submenuItem.Enabled ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.4f, 0.4f, 0.4f);
+                label.style.color = submenuItem.Enabled ? HierarchyContextMenuSettings.TextColor : HierarchyContextMenuSettings.DisabledTextColor;
                 arrow.style.display = DisplayStyle.Flex;
                 ApplyIcon(icon, submenuItem.DisplayName, submenuItem.Enabled);
                 ApplySelectionStyle(element, index);
@@ -646,7 +669,7 @@ namespace mhze.HierarchyContextMenu
             if (item is MenuNode node)
             {
                 label.text = node.Name;
-                label.style.color = new Color(0.85f, 0.85f, 0.85f);
+                label.style.color = HierarchyContextMenuSettings.TextColor;
                 arrow.style.display = node.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
                 ApplyMenuIcon(icon, node.Name, node.IsCategory);
 
@@ -659,7 +682,7 @@ namespace mhze.HierarchyContextMenu
             {
                 var displayText = menuItem.DisplayName.Replace("/", " \u25B8 ");
                 label.text = displayText;
-                label.style.color = new Color(0.85f, 0.85f, 0.85f);
+                label.style.color = HierarchyContextMenuSettings.TextColor;
                 arrow.style.display = DisplayStyle.None;
                 ApplyMenuIcon(icon, menuItem.DisplayName, false);
 
@@ -673,12 +696,18 @@ namespace mhze.HierarchyContextMenu
         private void ApplySelectionStyle(VisualElement element, int index)
         {
             element.style.backgroundColor = _selectedIndex == index
-                ? new Color(0.22f, 0.42f, 0.75f)
+                ? HierarchyContextMenuSettings.HoverColor
                 : new Color(0, 0, 0, 0);
         }
 
         private void ApplyIcon(VisualElement icon, string displayName, bool enabled)
         {
+            if (!HierarchyContextMenuSettings.ShowIcons)
+            {
+                icon.style.display = DisplayStyle.None;
+                return;
+            }
+
             if (MenuIcons.SpecialItemIcons.TryGetValue(displayName, out var info))
             {
                 var tex = MenuIcons.Load(info.IconName);
@@ -700,6 +729,12 @@ namespace mhze.HierarchyContextMenu
 
         private void ApplyMenuIcon(VisualElement icon, string displayName, bool isCategory)
         {
+            if (!HierarchyContextMenuSettings.ShowIcons)
+            {
+                icon.style.display = DisplayStyle.None;
+                return;
+            }
+
             var iconName = MenuIcons.ResolveIcon(displayName, isCategory);
             var desaturate = iconName.Length > 0 && iconName[0] == '!';
             if (desaturate)

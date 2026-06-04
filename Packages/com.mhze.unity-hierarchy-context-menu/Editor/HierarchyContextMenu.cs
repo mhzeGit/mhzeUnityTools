@@ -16,6 +16,9 @@ namespace mhze.HierarchyContextMenu
 
         private static void OnHierarchyItemGUI(int instanceID, Rect selectionRect)
         {
+            if (!HierarchyContextMenuSettings.Enabled)
+                return;
+
             if (Event.current.type != EventType.ContextClick)
                 return;
 

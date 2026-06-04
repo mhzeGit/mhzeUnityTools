@@ -17,8 +17,6 @@ namespace mhze.HierarchyContextMenu
         private const float ItemHeight = 22f;
         private const float SubmenuWidth = 240f;
         private const long SubmenuDelayMs = 120;
-        private static readonly Color BgColor = new Color(0.12f, 0.12f, 0.12f);
-        private static readonly Color BorderColor = new Color(0.25f, 0.25f, 0.25f);
 
         public static SubmenuWindow Create(HierarchyContextMenuWindow parent, MenuNode category, Vector2 screenPos, float height, SubmenuWindow parentSubmenu = null)
         {
@@ -53,7 +51,7 @@ namespace mhze.HierarchyContextMenu
 
         private void CreateGUI()
         {
-            rootVisualElement.style.backgroundColor = BgColor;
+            rootVisualElement.style.backgroundColor = HierarchyContextMenuSettings.BackgroundColor;
 
             rootVisualElement.style.paddingLeft = 1;
             rootVisualElement.style.paddingRight = 1;
@@ -63,10 +61,10 @@ namespace mhze.HierarchyContextMenu
             rootVisualElement.style.borderLeftWidth = 1;
             rootVisualElement.style.borderRightWidth = 1;
             rootVisualElement.style.borderBottomWidth = 1;
-            rootVisualElement.style.borderTopColor = BorderColor;
-            rootVisualElement.style.borderLeftColor = BorderColor;
-            rootVisualElement.style.borderRightColor = BorderColor;
-            rootVisualElement.style.borderBottomColor = BorderColor;
+            rootVisualElement.style.borderTopColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderLeftColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderRightColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderBottomColor = HierarchyContextMenuSettings.BorderColor;
 
             _listView = new ListView(new List<MenuNode>(_category.Children), ItemHeight, MakeItem, BindItem);
             _listView.style.flexGrow = 1;
@@ -144,7 +142,7 @@ namespace mhze.HierarchyContextMenu
             var label = new Label();
             label.name = "item-label";
             label.style.fontSize = 13;
-            label.style.color = new Color(0.85f, 0.85f, 0.85f);
+            label.style.color = HierarchyContextMenuSettings.TextColor;
             label.style.whiteSpace = WhiteSpace.NoWrap;
             label.style.textOverflow = TextOverflow.Ellipsis;
             label.style.flexShrink = 1;
@@ -156,7 +154,7 @@ namespace mhze.HierarchyContextMenu
             arrow.name = "item-arrow";
             arrow.text = "\u25B8";
             arrow.style.fontSize = 12;
-            arrow.style.color = new Color(0.55f, 0.55f, 0.55f);
+            arrow.style.color = HierarchyContextMenuSettings.DimColor;
             arrow.style.marginLeft = 4;
             arrow.style.display = DisplayStyle.None;
             arrow.style.unityTextAlign = TextAnchor.MiddleRight;
@@ -192,7 +190,7 @@ namespace mhze.HierarchyContextMenu
                 var children = _category.Children;
                 if (idx >= 0 && idx < children.Count && children[idx].IsCategory)
                 {
-                    container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
+                    container.style.backgroundColor = HierarchyContextMenuSettings.HoverColor;
                     if (idx == _currentNestedIndex)
                     {
                         CancelSubmenuSchedule();
@@ -208,7 +206,12 @@ namespace mhze.HierarchyContextMenu
                 }
                 else
                 {
-                    container.style.backgroundColor = new Color(0.22f, 0.22f, 0.22f);
+                    var bg = HierarchyContextMenuSettings.BackgroundColor;
+                    container.style.backgroundColor = new Color(
+                        Mathf.Min(bg.r + 0.1f, 1f),
+                        Mathf.Min(bg.g + 0.1f, 1f),
+                        Mathf.Min(bg.b + 0.1f, 1f)
+                    );
                 }
             });
 
@@ -242,15 +245,22 @@ namespace mhze.HierarchyContextMenu
                 var child = _category.Children[index];
                 label.text = child.Name;
                 arrow.style.display = child.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
-                var iconName = MenuIcons.ResolveIcon(child.Name, child.IsCategory);
-                var desaturate = iconName.Length > 0 && iconName[0] == '!';
-                if (desaturate)
-                    iconName = iconName.Substring(1);
-                var tex = desaturate ? MenuIcons.LoadDesaturated(iconName) : MenuIcons.Load(iconName);
-                icon.style.backgroundImage = tex;
-                icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
-                if (tex != null)
-                    icon.style.unityBackgroundImageTintColor = Color.white;
+                if (!HierarchyContextMenuSettings.ShowIcons)
+                {
+                    icon.style.display = DisplayStyle.None;
+                }
+                else
+                {
+                    var iconName = MenuIcons.ResolveIcon(child.Name, child.IsCategory);
+                    var desaturate = iconName.Length > 0 && iconName[0] == '!';
+                    if (desaturate)
+                        iconName = iconName.Substring(1);
+                    var tex = desaturate ? MenuIcons.LoadDesaturated(iconName) : MenuIcons.Load(iconName);
+                    icon.style.backgroundImage = tex;
+                    icon.style.display = tex != null ? DisplayStyle.Flex : DisplayStyle.None;
+                    if (tex != null)
+                        icon.style.unityBackgroundImageTintColor = Color.white;
+                }
             }
         }
 

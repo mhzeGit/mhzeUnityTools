@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.mhze.unity-batch-renamer": {
+      "version": "file:com.mhze.unity-batch-renamer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.mhze.unity-editor-navigator": {
       "version": "file:com.mhze.unity-editor-navigator",
       "depth": 0,

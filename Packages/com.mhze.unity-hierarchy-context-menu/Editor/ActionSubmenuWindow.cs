@@ -11,8 +11,6 @@ namespace mhze.HierarchyContextMenu
         private ListView _listView;
         private List<SpecialActionItem> _items;
         private HierarchyContextMenuWindow _parent;
-        private static readonly Color BgColor = new Color(0.12f, 0.12f, 0.12f);
-        private static readonly Color BorderColor = new Color(0.25f, 0.25f, 0.25f);
         private const float ItemHeight = 22f;
         private const float SubmenuWidth = 240f;
 
@@ -50,7 +48,7 @@ namespace mhze.HierarchyContextMenu
 
         private void CreateGUI()
         {
-            rootVisualElement.style.backgroundColor = BgColor;
+            rootVisualElement.style.backgroundColor = HierarchyContextMenuSettings.BackgroundColor;
 
             rootVisualElement.style.paddingLeft = 1;
             rootVisualElement.style.paddingRight = 1;
@@ -60,10 +58,10 @@ namespace mhze.HierarchyContextMenu
             rootVisualElement.style.borderLeftWidth = 1;
             rootVisualElement.style.borderRightWidth = 1;
             rootVisualElement.style.borderBottomWidth = 1;
-            rootVisualElement.style.borderTopColor = BorderColor;
-            rootVisualElement.style.borderLeftColor = BorderColor;
-            rootVisualElement.style.borderRightColor = BorderColor;
-            rootVisualElement.style.borderBottomColor = BorderColor;
+            rootVisualElement.style.borderTopColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderLeftColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderRightColor = HierarchyContextMenuSettings.BorderColor;
+            rootVisualElement.style.borderBottomColor = HierarchyContextMenuSettings.BorderColor;
 
             _listView = new ListView(new List<SpecialActionItem>(_items), ItemHeight, MakeItem, BindItem);
             _listView.style.flexGrow = 1;
@@ -127,7 +125,7 @@ namespace mhze.HierarchyContextMenu
             var label = new Label();
             label.name = "item-label";
             label.style.fontSize = 13;
-            label.style.color = new Color(0.85f, 0.85f, 0.85f);
+            label.style.color = HierarchyContextMenuSettings.TextColor;
             label.style.whiteSpace = WhiteSpace.NoWrap;
             label.style.textOverflow = TextOverflow.Ellipsis;
             label.style.flexShrink = 1;
@@ -158,9 +156,16 @@ namespace mhze.HierarchyContextMenu
             {
                 var idx = (int)container.userData;
                 if (idx >= 0 && idx < _items.Count && _items[idx].Enabled)
-                    container.style.backgroundColor = new Color(0.22f, 0.42f, 0.75f);
+                    container.style.backgroundColor = HierarchyContextMenuSettings.HoverColor;
                 else
-                    container.style.backgroundColor = new Color(0.22f, 0.22f, 0.22f);
+                {
+                    var bg = HierarchyContextMenuSettings.BackgroundColor;
+                    container.style.backgroundColor = new Color(
+                        Mathf.Min(bg.r + 0.1f, 1f),
+                        Mathf.Min(bg.g + 0.1f, 1f),
+                        Mathf.Min(bg.b + 0.1f, 1f)
+                    );
+                }
             });
 
             container.RegisterCallback<PointerLeaveEvent>(evt =>
@@ -184,7 +189,7 @@ namespace mhze.HierarchyContextMenu
             {
                 var item = _items[index];
                 label.text = item.DisplayName;
-                label.style.color = item.Enabled ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.4f, 0.4f, 0.4f);
+                label.style.color = item.Enabled ? HierarchyContextMenuSettings.TextColor : HierarchyContextMenuSettings.DisabledTextColor;
             }
         }
     }

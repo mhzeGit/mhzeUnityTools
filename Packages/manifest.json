@@ -6,6 +6,7 @@
      "com.mhze.unity-git-integration": "file:Packages/com.mhze.unity-git-integration",
      "com.mhze.unity-editor-visual-tweaks": "file:Packages/com.mhze.unity-editor-visual-tweaks",
      "com.mhze.unity-hierarchy-context-menu": "file:Packages/com.mhze.unity-hierarchy-context-menu",
+     "com.mhze.unity-batch-renamer": "file:Packages/com.mhze.unity-batch-renamer",
     "com.unity.ai.navigation": "2.0.12",
     "com.unity.collab-proxy": "2.12.4",
     "com.unity.ide.rider": "3.0.39",
