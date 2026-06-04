@@ -538,10 +538,16 @@ namespace mhze.BatchRenamer
             {
                 if (string.IsNullOrEmpty(_text))
                     return new List<MatchEntry>();
-                int idx = name.IndexOf(_text, _comparison);
-                if (idx >= 0)
-                    return new List<MatchEntry> { new MatchEntry { Text = name.Substring(idx, _text.Length), Index = idx } };
-                return new List<MatchEntry>();
+                var results = new List<MatchEntry>();
+                int searchStart = 0;
+                while (searchStart < name.Length)
+                {
+                    int idx = name.IndexOf(_text, searchStart, _comparison);
+                    if (idx < 0) break;
+                    results.Add(new MatchEntry { Text = name.Substring(idx, _text.Length), Index = idx });
+                    searchStart = idx + _text.Length;
+                }
+                return results;
             }
 
             public string Describe() => $"Literal(\"{_text}\")";
@@ -553,10 +559,14 @@ namespace mhze.BatchRenamer
 
             public List<MatchEntry> Match(string name)
             {
+                var results = new List<MatchEntry>();
                 var match = NumberRegex.Match(name);
-                if (match.Success)
-                    return new List<MatchEntry> { new MatchEntry { Text = match.Value, Index = match.Index } };
-                return new List<MatchEntry>();
+                while (match.Success)
+                {
+                    results.Add(new MatchEntry { Text = match.Value, Index = match.Index });
+                    match = match.NextMatch();
+                }
+                return results;
             }
 
             public string Describe() => "Number";

@@ -391,7 +391,6 @@ namespace mhze.BatchRenamer
             CreateSectionHeader(section, "Numbers");
 
             _preserveNumbersToggle = new Toggle("Detect & Preserve Numbers");
-            _preserveNumbersToggle.value = true;
             var pnLabel = _preserveNumbersToggle.Q<Label>();
             if (pnLabel != null)
             {
