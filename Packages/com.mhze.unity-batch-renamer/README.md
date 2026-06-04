@@ -10,7 +10,8 @@ Batch Renamer lets you rename multiple Unity assets and GameObjects at once with
 
 ## Features
 - **Search & Replace** — search by literal text with optional case sensitivity.
-- **Boolean operators** — use `||` (OR), `&&` (AND), and parentheses for complex search patterns.
+- **Boolean operators** — use `||` (OR), `&&` (AND), and `[]` for grouping.
+- **`{Number}` token** — matches any digits in search; inserts the matched digits when used in replace.
 - **Category filters** — filter by asset type: Prefab, Material, Texture, Model, Audio, Script, Animation, Folder, Scene.
 - **Prefix / Suffix** — prepend or append text.
 - **Text Case** — None, Lowercase, Uppercase, TitleCase, SentenceCase, CamelCase, PascalCase.
@@ -34,9 +35,11 @@ Batch Renamer lets you rename multiple Unity assets and GameObjects at once with
    - Simple text: `player` matches names containing "player".
    - OR: `player||enemy` matches names containing either.
    - AND: `player&&armor` matches names containing both.
-   - Grouped: `(player||enemy)&&boss` — complex boolean logic.
+   - Grouped: `[player||enemy]&&boss` — complex boolean logic.
+   - `{Number}` matches any digits in the name.
 4. Toggle **Case Sensitive** to make matching exact.
 5. Enter replace text, prefix, suffix, or choose a text case mode.
+   - Use `{Number}` in replace to insert the matched digits (e.g. replace `{Number}` with `ID_{Number}` turns `_01` into `ID_01`).
 6. Preview all changes in the scrollable list.
 7. Click **Rename Selected** to apply.
 
@@ -46,8 +49,10 @@ Batch Renamer lets you rename multiple Unity assets and GameObjects at once with
 | `hero` | any name containing "hero" |
 | `hero||villain` | any name containing "hero" or "villain" (or both) |
 | `hero&&sword` | any name containing both "hero" and "sword" |
-| `(hero\|\|villain)&&boss` | any name containing "boss" and either "hero" or "villain" |
+| `[hero\|\|villain]&&boss` | any name containing "boss" and either "hero" or "villain" |
 | `Hero` (case-sensitive ON) | only names with exactly "Hero" (not "hero" or "HERO") |
+| `{Number}` | any name containing digits |
+| `hero_{Number}` | any name containing "hero_" followed by digits |
 
 ## Notes
 - GameObject renames support Undo (Ctrl+Z).

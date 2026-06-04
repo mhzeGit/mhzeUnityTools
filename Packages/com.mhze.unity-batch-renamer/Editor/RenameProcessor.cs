@@ -35,7 +35,7 @@ namespace mhze.BatchRenamer
         public Object Target;
         public string OriginalName;
         public string NewName;
-        public List<string> MatchedTexts;
+        public List<SearchExpression.MatchEntry> MatchedTexts;
         public bool IsValid = true;
     }
 
@@ -172,18 +172,18 @@ namespace mhze.BatchRenamer
 
             foreach (var item in Items)
             {
-                List<string> matchedTexts = null;
+                List<SearchExpression.MatchEntry> matchedEntries = null;
                 if (_cachedExpression != null)
-                    matchedTexts = _cachedExpression.Match(item.OriginalName);
-                bool matchesSearch = _cachedExpression == null || matchedTexts.Count > 0;
+                    matchedEntries = _cachedExpression.Match(item.OriginalName);
+                bool matchesSearch = _cachedExpression == null || matchedEntries.Count > 0;
                 bool matchesType = !hasActiveFilters || EnabledCategories.Contains(ClassifyObject(item.Target));
 
                 item.IsValid = matchesSearch && matchesType;
-                item.MatchedTexts = matchesSearch ? matchedTexts : null;
+                item.MatchedTexts = matchesSearch ? matchedEntries : null;
 
                 if (matchesSearch)
                 {
-                    item.NewName = ComputeNewName(item.OriginalName, matchedTexts);
+                    item.NewName = ComputeNewName(item.OriginalName, matchedEntries);
                 }
                 else
                 {
@@ -191,11 +191,11 @@ namespace mhze.BatchRenamer
                 }
 
                 if (_cachedExpression != null && patternChanged && Items.Count <= 5)
-                    Debug.Log($"[BatchRenamer]  item='{item.OriginalName}' match={matchesSearch} valid={item.IsValid} matched='{(matchedTexts != null ? string.Join(",", matchedTexts) : "null")}' new='{item.NewName}'");
+                    Debug.Log($"[BatchRenamer]  item='{item.OriginalName}' match={matchesSearch} valid={item.IsValid} matched='{(matchedEntries != null ? string.Join(",", matchedEntries.ConvertAll(e => e.Text)) : "null")}' new='{item.NewName}'");
             }
         }
 
-        private string ComputeNewName(string originalName, List<string> matchedTexts)
+        private string ComputeNewName(string originalName, List<SearchExpression.MatchEntry> matchedEntries)
         {
             string result = originalName;
             string preservedNumber = null;
@@ -210,10 +210,51 @@ namespace mhze.BatchRenamer
                 }
             }
 
-            if (matchedTexts != null)
+            if (matchedEntries != null && matchedEntries.Count > 0)
             {
-                foreach (var mt in matchedTexts)
-                    result = result.Replace(mt, ReplaceText);
+                var sorted = new List<SearchExpression.MatchEntry>(matchedEntries);
+                sorted.Sort((a, b) => a.Index.CompareTo(b.Index));
+
+                bool contiguous = true;
+                int next = sorted[0].Index + sorted[0].Text.Length;
+                for (int i = 1; i < sorted.Count && contiguous; i++)
+                {
+                    if (sorted[i].Index != next)
+                        contiguous = false;
+                    else
+                        next = sorted[i].Index + sorted[i].Text.Length;
+                }
+
+                bool hasNumberToken = ReplaceText.IndexOf("{Number}", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (contiguous && hasNumberToken && sorted.Count > 1)
+                {
+                    string number = "";
+                    foreach (var e in sorted)
+                    {
+                        var nm = Regex.Match(e.Text, @"\d+");
+                        if (nm.Success) { number = nm.Value; break; }
+                    }
+                    var resolved = Regex.Replace(ReplaceText, @"\{number\}", number, RegexOptions.IgnoreCase);
+                    int spanStart = sorted[0].Index;
+                    int spanEnd = sorted[sorted.Count - 1].Index + sorted[sorted.Count - 1].Text.Length;
+                    result = result.Substring(0, spanStart) + resolved + result.Substring(spanEnd);
+                }
+                else
+                {
+                    sorted.Sort((a, b) => b.Index.CompareTo(a.Index));
+                    foreach (var entry in sorted)
+                    {
+                        string replacement = ReplaceText;
+                        if (hasNumberToken)
+                        {
+                            var numberMatch = Regex.Match(entry.Text, @"\d+");
+                            string numberVal = numberMatch.Success ? numberMatch.Value : "";
+                            replacement = Regex.Replace(replacement, @"\{number\}", numberVal, RegexOptions.IgnoreCase);
+                        }
+                        result = result.Substring(0, entry.Index) + replacement + result.Substring(entry.Index + entry.Text.Length);
+                    }
+                }
             }
 
             if (!string.IsNullOrEmpty(Prefix))
@@ -323,7 +364,7 @@ namespace mhze.BatchRenamer
                 if (PrefabUtility.IsPartOfAnyPrefab(go) || PrefabUtility.GetPrefabAssetType(go) != PrefabAssetType.NotAPrefab)
                     return AssetCategory.Prefab;
 
-                return AssetCategory.Other;
+                return AssetCategory.GameObject;
             }
 
             string assetPath = AssetDatabase.GetAssetPath(obj);
@@ -463,15 +504,22 @@ namespace mhze.BatchRenamer
         Animation,
         Folder,
         Scene,
+        GameObject,
         Other
     }
 
     public class SearchExpression
     {
+        public struct MatchEntry
+        {
+            public string Text;
+            public int Index;
+        }
+
         public interface INode
         {
-            // Returns all matched substrings if the name matches, empty list otherwise.
-            List<string> Match(string name);
+            // Returns all matched substrings with their positions if the name matches, empty list otherwise.
+            List<MatchEntry> Match(string name);
             string Describe();
         }
 
@@ -486,17 +534,32 @@ namespace mhze.BatchRenamer
                 _comparison = comparison;
             }
 
-            public List<string> Match(string name)
+            public List<MatchEntry> Match(string name)
             {
                 if (string.IsNullOrEmpty(_text))
-                    return new List<string>();
+                    return new List<MatchEntry>();
                 int idx = name.IndexOf(_text, _comparison);
                 if (idx >= 0)
-                    return new List<string> { name.Substring(idx, _text.Length) };
-                return new List<string>();
+                    return new List<MatchEntry> { new MatchEntry { Text = name.Substring(idx, _text.Length), Index = idx } };
+                return new List<MatchEntry>();
             }
 
             public string Describe() => $"Literal(\"{_text}\")";
+        }
+
+        public class NumberNode : INode
+        {
+            private static readonly Regex NumberRegex = new Regex(@"\d+");
+
+            public List<MatchEntry> Match(string name)
+            {
+                var match = NumberRegex.Match(name);
+                if (match.Success)
+                    return new List<MatchEntry> { new MatchEntry { Text = match.Value, Index = match.Index } };
+                return new List<MatchEntry>();
+            }
+
+            public string Describe() => "Number";
         }
 
         public class OrNode : INode
@@ -510,9 +573,9 @@ namespace mhze.BatchRenamer
                 _right = right;
             }
 
-            public List<string> Match(string name)
+            public List<MatchEntry> Match(string name)
             {
-                var results = new List<string>();
+                var results = new List<MatchEntry>();
                 results.AddRange(_left.Match(name));
                 results.AddRange(_right.Match(name));
                 return results;
@@ -532,13 +595,13 @@ namespace mhze.BatchRenamer
                 _right = right;
             }
 
-            public List<string> Match(string name)
+            public List<MatchEntry> Match(string name)
             {
                 var leftResult = _left.Match(name);
-                if (leftResult.Count == 0) return new List<string>();
+                if (leftResult.Count == 0) return new List<MatchEntry>();
                 var rightResult = _right.Match(name);
-                if (rightResult.Count == 0) return new List<string>();
-                var results = new List<string>();
+                if (rightResult.Count == 0) return new List<MatchEntry>();
+                var results = new List<MatchEntry>();
                 results.AddRange(leftResult);
                 results.AddRange(rightResult);
                 return results;
@@ -554,10 +617,10 @@ namespace mhze.BatchRenamer
             _root = root;
         }
 
-        // Returns all matched substrings if name matches, empty list otherwise.
-        public List<string> Match(string name)
+        // Returns all matched entries if name matches, empty list otherwise.
+        public List<MatchEntry> Match(string name)
         {
-            return _root?.Match(name) ?? new List<string>();
+            return _root?.Match(name) ?? new List<MatchEntry>();
         }
 
         public string Describe()
@@ -590,7 +653,35 @@ namespace mhze.BatchRenamer
                     continue;
                 }
 
-                if (input[i] == '(' || input[i] == ')')
+                if (input[i] == '{')
+                {
+                    int close = i + 1;
+                    while (close < input.Length && input[close] != '}')
+                        close++;
+                    if (close < input.Length)
+                    {
+                        var word = input.Substring(i + 1, close - i - 1).Trim();
+                        if (word.Equals("number", StringComparison.OrdinalIgnoreCase))
+                        {
+                            tokens.Add("{Number}");
+                            i = close + 1;
+                            continue;
+                        }
+                    }
+                    // Not {Number} — read as literal from {
+                    var fallback = "";
+                    while (i < input.Length && input[i] != '|' && input[i] != '&' && input[i] != '[' && input[i] != ']')
+                    {
+                        fallback += input[i];
+                        i++;
+                    }
+                    var trimmed = fallback.Trim();
+                    if (trimmed.Length > 0)
+                        tokens.Add(trimmed);
+                    continue;
+                }
+
+                if (input[i] == '[' || input[i] == ']')
                 {
                     tokens.Add(input[i].ToString());
                     i++;
@@ -614,7 +705,7 @@ namespace mhze.BatchRenamer
                 }
 
                 var lit = "";
-                while (i < input.Length && input[i] != '|' && input[i] != '&' && input[i] != '(' && input[i] != ')')
+                while (i < input.Length && input[i] != '{' && input[i] != '[' && input[i] != ']' && input[i] != '|' && input[i] != '&')
                 {
                     lit += input[i];
                     i++;
@@ -644,9 +735,17 @@ namespace mhze.BatchRenamer
         {
             var left = ParseFactor(tokens, ref pos, comparison);
 
-            while (pos < tokens.Count && tokens[pos] == "&&")
+            while (pos < tokens.Count)
             {
-                pos++;
+                if (tokens[pos] == "&&")
+                {
+                    pos++;
+                }
+                else if (tokens[pos] == "||" || tokens[pos] == "]")
+                {
+                    break;
+                }
+                // implicit AND — consecutive factors are AND-connected
                 var right = ParseFactor(tokens, ref pos, comparison);
                 left = new AndNode(left, right);
             }
@@ -659,13 +758,19 @@ namespace mhze.BatchRenamer
             if (pos >= tokens.Count)
                 return new Literal("", comparison);
 
-            if (tokens[pos] == "(")
+            if (tokens[pos] == "[")
             {
                 pos++;
                 var expr = ParseExpression(tokens, ref pos, comparison);
-                if (pos < tokens.Count && tokens[pos] == ")")
+                if (pos < tokens.Count && tokens[pos] == "]")
                     pos++;
                 return expr;
+            }
+
+            if (tokens[pos] == "{Number}")
+            {
+                pos++;
+                return new NumberNode();
             }
 
             var text = tokens[pos];

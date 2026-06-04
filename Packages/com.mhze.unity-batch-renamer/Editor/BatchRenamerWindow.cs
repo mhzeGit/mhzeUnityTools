@@ -39,7 +39,11 @@ namespace mhze.BatchRenamer
         private static readonly Color MatchHighlight = new Color(0.9f, 0.7f, 0.1f);
         private static readonly Color PreviewBg = new Color(0.1f, 0.1f, 0.1f);
 
-        private readonly Dictionary<AssetCategory, Toggle> _filterToggles = new Dictionary<AssetCategory, Toggle>();
+        private readonly HashSet<AssetCategory> _filterSelectedCategories = new HashSet<AssetCategory>();
+        private VisualElement _filterDropdownButton;
+        private Label _filterSummaryLabel;
+        private VisualElement _filterPopup;
+        private bool _filterPopupOpen;
 
         public static void ShowWindow(Object[] selectedObjects)
         {
@@ -127,19 +131,136 @@ namespace mhze.BatchRenamer
             csRow.Add(_caseSensitiveToggle);
             section.Add(csRow);
 
+            var help = new Label("&& (AND)  || (OR)  [] (group)  {Number} (digits)");
+            help.style.fontSize = 11;
+            help.style.color = TextDim;
+            help.style.marginLeft = 70;
+            help.style.marginTop = 0;
+            help.style.marginBottom = 2;
+            help.style.whiteSpace = WhiteSpace.NoWrap;
+            section.Add(help);
+
             rootVisualElement.Add(section);
         }
 
         private void BuildFilterSection()
         {
+            _filterSelectedCategories.Clear();
+            var categories = (AssetCategory[])Enum.GetValues(typeof(AssetCategory));
+            foreach (var cat in categories)
+            {
+                if (cat != AssetCategory.All)
+                    _filterSelectedCategories.Add(cat);
+            }
+
             var section = CreateSection();
             CreateSectionHeader(section, "Filters");
 
-            var grid = new VisualElement();
-            grid.style.flexDirection = FlexDirection.Row;
-            grid.style.flexWrap = Wrap.Wrap;
-            grid.style.marginTop = 4;
-            grid.style.marginBottom = 4;
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Center;
+            row.style.minHeight = 26;
+            row.name = "filter-row";
+
+            var spacer = new Label("");
+            spacer.style.minWidth = 70;
+            row.Add(spacer);
+
+            _filterDropdownButton = new VisualElement();
+            _filterDropdownButton.style.flexGrow = 1;
+            _filterDropdownButton.style.borderTopWidth = 1;
+            _filterDropdownButton.style.borderLeftWidth = 1;
+            _filterDropdownButton.style.borderRightWidth = 1;
+            _filterDropdownButton.style.borderBottomWidth = 1;
+            _filterDropdownButton.style.borderTopColor = BorderColor;
+            _filterDropdownButton.style.borderLeftColor = BorderColor;
+            _filterDropdownButton.style.borderRightColor = BorderColor;
+            _filterDropdownButton.style.borderBottomColor = BorderColor;
+            _filterDropdownButton.style.backgroundColor = BgInput;
+            _filterDropdownButton.style.paddingLeft = 8;
+            _filterDropdownButton.style.paddingRight = 8;
+            _filterDropdownButton.style.paddingTop = 4;
+            _filterDropdownButton.style.paddingBottom = 4;
+            _filterDropdownButton.style.flexDirection = FlexDirection.Row;
+            _filterDropdownButton.style.justifyContent = Justify.SpaceBetween;
+            _filterDropdownButton.style.alignItems = Align.Center;
+            _filterDropdownButton.RegisterCallback<MouseDownEvent>(_ => ToggleFilterPopup());
+
+            _filterSummaryLabel = new Label("All");
+            _filterSummaryLabel.style.fontSize = 12;
+            _filterSummaryLabel.style.color = TextPrimary;
+            _filterSummaryLabel.style.flexGrow = 1;
+            _filterSummaryLabel.style.whiteSpace = WhiteSpace.NoWrap;
+            _filterDropdownButton.Add(_filterSummaryLabel);
+
+            var arrow = new Label("\u25BC");
+            arrow.style.fontSize = 9;
+            arrow.style.color = TextSecondary;
+            arrow.style.marginLeft = 6;
+            arrow.style.flexShrink = 0;
+            _filterDropdownButton.Add(arrow);
+
+            row.Add(_filterDropdownButton);
+            section.Add(row);
+            rootVisualElement.Add(section);
+        }
+
+        private void ToggleFilterPopup()
+        {
+            if (_filterPopupOpen)
+                CloseFilterPopup();
+            else
+                OpenFilterPopup();
+        }
+
+        private void OpenFilterPopup()
+        {
+            _filterPopupOpen = true;
+
+            var popup = new VisualElement();
+            popup.name = "filter-section-popup";
+            popup.style.position = Position.Absolute;
+            popup.style.left = 0;
+            popup.style.top = _filterDropdownButton.layout.height;
+            popup.style.width = _filterDropdownButton.layout.width;
+            popup.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f);
+            popup.style.borderTopWidth = 1;
+            popup.style.borderLeftWidth = 1;
+            popup.style.borderRightWidth = 1;
+            popup.style.borderBottomWidth = 1;
+            popup.style.borderTopColor = BorderColor;
+            popup.style.borderLeftColor = BorderColor;
+            popup.style.borderRightColor = BorderColor;
+            popup.style.borderBottomColor = BorderColor;
+            popup.style.paddingTop = 4;
+            popup.style.paddingBottom = 4;
+            popup.style.flexDirection = FlexDirection.Column;
+
+            var noneRow = new VisualElement();
+            noneRow.style.flexDirection = FlexDirection.Row;
+            noneRow.style.alignItems = Align.Center;
+            noneRow.style.paddingLeft = 8;
+            noneRow.style.paddingRight = 8;
+            noneRow.style.paddingTop = 2;
+            noneRow.style.paddingBottom = 2;
+            noneRow.style.minHeight = 22;
+            noneRow.name = "filter-none-row";
+            noneRow.RegisterCallback<MouseDownEvent>(_ => SelectNoneFilter());
+
+            var noneLabel = new Label("None");
+            noneLabel.style.fontSize = 12;
+            noneLabel.style.color = TextDim;
+            noneRow.Add(noneLabel);
+            popup.Add(noneRow);
+
+            var sep = new VisualElement();
+            sep.style.height = 1;
+            sep.style.backgroundColor = BorderColor;
+            sep.style.marginLeft = 4;
+            sep.style.marginRight = 4;
+            sep.style.marginTop = 2;
+            sep.style.marginBottom = 2;
+            popup.Add(sep);
 
             var categories = (AssetCategory[])Enum.GetValues(typeof(AssetCategory));
             foreach (var cat in categories)
@@ -147,51 +268,100 @@ namespace mhze.BatchRenamer
                 if (cat == AssetCategory.All) continue;
 
                 var toggle = new Toggle(cat.ToString());
-                toggle.value = true;
-                toggle.style.width = StyleKeyword.Auto;
-                toggle.style.minWidth = 100;
-                toggle.style.marginRight = 4;
-                toggle.style.marginBottom = 4;
+                toggle.value = _filterSelectedCategories.Contains(cat);
+                toggle.style.flexDirection = FlexDirection.Row;
+                toggle.style.alignItems = Align.Center;
+                toggle.style.paddingLeft = 8;
+                toggle.style.paddingRight = 8;
+                toggle.style.paddingTop = 2;
+                toggle.style.paddingBottom = 2;
+                toggle.style.minHeight = 22;
                 toggle.style.unityTextAlign = TextAnchor.MiddleLeft;
 
-                var label = toggle.Q<Label>();
-                if (label != null)
+                var toggleLabel = toggle.Q<Label>();
+                if (toggleLabel != null)
                 {
-                    label.style.fontSize = 12;
-                    label.style.color = TextPrimary;
-                    label.style.marginLeft = 4;
+                    toggleLabel.style.fontSize = 12;
+                    toggleLabel.style.color = TextPrimary;
+                    toggleLabel.style.marginLeft = 4;
                 }
 
-                toggle.RegisterValueChangedCallback(_ => MarkPreviewDirty());
-                _filterToggles[cat] = toggle;
-                grid.Add(toggle);
+                var capturedCat = cat;
+                toggle.RegisterValueChangedCallback(evt =>
+                {
+                    if (evt.newValue)
+                        _filterSelectedCategories.Add(capturedCat);
+                    else
+                        _filterSelectedCategories.Remove(capturedCat);
+                    UpdateFilterSummary();
+                    MarkPreviewDirty();
+                });
+
+                popup.Add(toggle);
             }
 
-            var allToggle = new Toggle("All");
-            allToggle.value = true;
-            allToggle.style.minWidth = 100;
-            allToggle.style.marginRight = 4;
-            allToggle.style.marginBottom = 4;
-            allToggle.style.unityTextAlign = TextAnchor.MiddleLeft;
+            _filterPopup = popup;
 
-            var allLabel = allToggle.Q<Label>();
-            if (allLabel != null)
+            var btnWorld = _filterDropdownButton.worldBound;
+            var rootWorld = rootVisualElement.worldBound;
+            popup.style.left = btnWorld.x - rootWorld.x;
+            popup.style.top = btnWorld.yMax - rootWorld.y;
+            popup.style.width = btnWorld.width;
+            rootVisualElement.Add(popup);
+
+            RegisterClickAwayHandler();
+        }
+
+        private void RegisterClickAwayHandler()
+        {
+            rootVisualElement.RegisterCallback<MouseDownEvent>(OnRootMouseDown, TrickleDown.TrickleDown);
+        }
+
+        private void OnRootMouseDown(MouseDownEvent evt)
+        {
+            rootVisualElement.UnregisterCallback<MouseDownEvent>(OnRootMouseDown, TrickleDown.TrickleDown);
+
+            var target = evt.target as VisualElement;
+            if (target != null && _filterPopup != null)
             {
-                allLabel.style.fontSize = 12;
-                allLabel.style.color = TextPrimary;
-                allLabel.style.marginLeft = 4;
+                if (_filterDropdownButton != null && (target == _filterDropdownButton || _filterDropdownButton.Contains(target)))
+                    return;
+                if (_filterPopup.Contains(target) || target == _filterPopup)
+                    return;
             }
 
-            allToggle.RegisterValueChangedCallback(evt =>
-            {
-                foreach (var kvp in _filterToggles)
-                    kvp.Value.SetValueWithoutNotify(evt.newValue);
-                MarkPreviewDirty();
-            });
+            CloseFilterPopup();
+        }
 
-            grid.Add(allToggle);
-            section.Add(grid);
-            rootVisualElement.Add(section);
+        private void CloseFilterPopup()
+        {
+            _filterPopupOpen = false;
+            rootVisualElement.UnregisterCallback<MouseDownEvent>(OnRootMouseDown, TrickleDown.TrickleDown);
+
+            if (_filterPopup != null && _filterPopup.parent != null)
+                _filterPopup.parent.Remove(_filterPopup);
+            _filterPopup = null;
+        }
+
+        private void SelectNoneFilter()
+        {
+            _filterSelectedCategories.Clear();
+            CloseFilterPopup();
+            UpdateFilterSummary();
+            MarkPreviewDirty();
+        }
+
+        private void UpdateFilterSummary()
+        {
+            int count = _filterSelectedCategories.Count;
+            int total = Enum.GetValues(typeof(AssetCategory)).Length - 1;
+
+            if (count == total)
+                _filterSummaryLabel.text = "All";
+            else if (count == 0)
+                _filterSummaryLabel.text = "None";
+            else
+                _filterSummaryLabel.text = $"{count} selected";
         }
 
         private void BuildModifySection()
@@ -474,6 +644,12 @@ namespace mhze.BatchRenamer
                 _pendingRefresh.Pause();
                 _pendingRefresh = null;
             }
+
+            rootVisualElement.UnregisterCallback<MouseDownEvent>(OnRootMouseDown, TrickleDown.TrickleDown);
+
+            if (_filterPopup != null && _filterPopup.parent != null)
+                _filterPopup.parent.Remove(_filterPopup);
+            _filterPopup = null;
         }
 
         private void RefreshPreview()
@@ -487,13 +663,7 @@ namespace mhze.BatchRenamer
             _processor.PreserveNumbers = _preserveNumbersToggle?.value ?? false;
             _processor.NumberFormat = _numberFormatField != null ? (NumberFormatPreset)_numberFormatField.value : NumberFormatPreset.UnderscoreN;
 
-            var activeCategories = new HashSet<AssetCategory>();
-            foreach (var kvp in _filterToggles)
-            {
-                if (kvp.Value.value)
-                    activeCategories.Add(kvp.Key);
-            }
-            _processor.SetActiveCategories(activeCategories);
+            _processor.SetActiveCategories(_filterSelectedCategories);
             _processor.RefreshPreview();
 
             int matchCount = _processor.Items.Count(i => i.IsValid);
@@ -585,7 +755,7 @@ namespace mhze.BatchRenamer
             _previewContainer.Add(row);
         }
 
-        private static VisualElement BuildOldNameHighlight(string name, List<string> matchedTexts, bool isValid, bool caseSensitive)
+        private static VisualElement BuildOldNameHighlight(string name, List<SearchExpression.MatchEntry> matchedTexts, bool isValid, bool caseSensitive)
         {
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
@@ -604,20 +774,11 @@ namespace mhze.BatchRenamer
                 return container;
             }
 
-            var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-
             var intervals = new List<(int start, int end)>();
-            foreach (var mt in matchedTexts)
+            foreach (var entry in matchedTexts)
             {
-                if (string.IsNullOrEmpty(mt)) continue;
-                int searchStart = 0;
-                while (searchStart < name.Length)
-                {
-                    int idx = name.IndexOf(mt, searchStart, comparison);
-                    if (idx < 0) break;
-                    intervals.Add((idx, idx + mt.Length));
-                    searchStart = idx + mt.Length;
-                }
+                if (string.IsNullOrEmpty(entry.Text)) continue;
+                intervals.Add((entry.Index, entry.Index + entry.Text.Length));
             }
 
             intervals.Sort((a, b) =>
