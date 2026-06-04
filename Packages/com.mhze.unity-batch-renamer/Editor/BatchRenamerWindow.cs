@@ -554,7 +554,7 @@ namespace mhze.BatchRenamer
             icon.style.flexShrink = 0;
             row.Add(icon);
 
-            var oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedText, item.IsValid, _processor.CaseSensitive);
+            var oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedTexts, item.IsValid, _processor.CaseSensitive);
             oldContainer.style.marginRight = 8;
             oldContainer.style.flexShrink = 1;
             row.Add(oldContainer);
@@ -574,7 +574,7 @@ namespace mhze.BatchRenamer
             _previewContainer.Add(row);
         }
 
-        private static VisualElement BuildOldNameHighlight(string name, string matchedText, bool isValid, bool caseSensitive)
+        private static VisualElement BuildOldNameHighlight(string name, List<string> matchedTexts, bool isValid, bool caseSensitive)
         {
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
@@ -583,7 +583,7 @@ namespace mhze.BatchRenamer
 
             var baseColor = isValid ? TextSecondary : TextDim;
 
-            if (string.IsNullOrEmpty(matchedText))
+            if (matchedTexts == null || matchedTexts.Count == 0)
             {
                 var label = new Label(name);
                 label.style.fontSize = 12;
@@ -594,40 +594,58 @@ namespace mhze.BatchRenamer
             }
 
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            int searchStart = 0;
-            while (searchStart < name.Length)
-            {
-                int idx = name.IndexOf(matchedText, searchStart, comparison);
-                if (idx < 0)
-                {
-                    var remaining = new Label(name.Substring(searchStart));
-                    remaining.style.fontSize = 12;
-                    remaining.style.color = baseColor;
-                    remaining.style.whiteSpace = WhiteSpace.NoWrap;
-                    remaining.style.flexShrink = 0;
-                    container.Add(remaining);
-                    break;
-                }
 
-                if (idx > searchStart)
+            var intervals = new List<(int start, int end)>();
+            foreach (var mt in matchedTexts)
+            {
+                if (string.IsNullOrEmpty(mt)) continue;
+                int searchStart = 0;
+                while (searchStart < name.Length)
                 {
-                    var before = new Label(name.Substring(searchStart, idx - searchStart));
+                    int idx = name.IndexOf(mt, searchStart, comparison);
+                    if (idx < 0) break;
+                    intervals.Add((idx, idx + mt.Length));
+                    searchStart = idx + mt.Length;
+                }
+            }
+
+            intervals.Sort((a, b) =>
+            {
+                int cmp = a.start.CompareTo(b.start);
+                return cmp != 0 ? cmp : b.end.CompareTo(a.end);
+            });
+
+            int pos = 0;
+            foreach (var (start, end) in intervals)
+            {
+                if (start < pos) continue;
+                if (start > pos)
+                {
+                    var before = new Label(name.Substring(pos, start - pos));
                     before.style.fontSize = 12;
                     before.style.color = baseColor;
                     before.style.whiteSpace = WhiteSpace.NoWrap;
                     before.style.flexShrink = 0;
                     container.Add(before);
                 }
-
-                var match = new Label(name.Substring(idx, matchedText.Length));
+                var match = new Label(name.Substring(start, end - start));
                 match.style.fontSize = 12;
                 match.style.color = MatchHighlight;
                 match.style.whiteSpace = WhiteSpace.NoWrap;
                 match.style.unityFontStyleAndWeight = FontStyle.Bold;
                 match.style.flexShrink = 0;
                 container.Add(match);
+                pos = end;
+            }
 
-                searchStart = idx + matchedText.Length;
+            if (pos < name.Length)
+            {
+                var remaining = new Label(name.Substring(pos));
+                remaining.style.fontSize = 12;
+                remaining.style.color = baseColor;
+                remaining.style.whiteSpace = WhiteSpace.NoWrap;
+                remaining.style.flexShrink = 0;
+                container.Add(remaining);
             }
 
             return container;

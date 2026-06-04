@@ -35,7 +35,7 @@ namespace mhze.BatchRenamer
         public Object Target;
         public string OriginalName;
         public string NewName;
-        public string MatchedText;
+        public List<string> MatchedTexts;
         public bool IsValid = true;
     }
 
@@ -172,17 +172,18 @@ namespace mhze.BatchRenamer
 
             foreach (var item in Items)
             {
-                string matchedText = null;
-                bool matchesSearch = _cachedExpression == null ||
-                    ((matchedText = _cachedExpression.Match(item.OriginalName)) != null);
+                List<string> matchedTexts = null;
+                if (_cachedExpression != null)
+                    matchedTexts = _cachedExpression.Match(item.OriginalName);
+                bool matchesSearch = _cachedExpression == null || matchedTexts.Count > 0;
                 bool matchesType = !hasActiveFilters || EnabledCategories.Contains(ClassifyObject(item.Target));
 
                 item.IsValid = matchesSearch && matchesType;
-                item.MatchedText = matchesSearch ? matchedText : null;
+                item.MatchedTexts = matchesSearch ? matchedTexts : null;
 
                 if (matchesSearch)
                 {
-                    item.NewName = ComputeNewName(item.OriginalName, matchedText);
+                    item.NewName = ComputeNewName(item.OriginalName, matchedTexts);
                 }
                 else
                 {
@@ -190,11 +191,11 @@ namespace mhze.BatchRenamer
                 }
 
                 if (_cachedExpression != null && patternChanged && Items.Count <= 5)
-                    Debug.Log($"[BatchRenamer]  item='{item.OriginalName}' match={matchesSearch} valid={item.IsValid} matched='{matchedText}' new='{item.NewName}'");
+                    Debug.Log($"[BatchRenamer]  item='{item.OriginalName}' match={matchesSearch} valid={item.IsValid} matched='{(matchedTexts != null ? string.Join(",", matchedTexts) : "null")}' new='{item.NewName}'");
             }
         }
 
-        private string ComputeNewName(string originalName, string matchedText)
+        private string ComputeNewName(string originalName, List<string> matchedTexts)
         {
             string result = originalName;
             string preservedNumber = null;
@@ -209,9 +210,10 @@ namespace mhze.BatchRenamer
                 }
             }
 
-            if (matchedText != null)
+            if (matchedTexts != null)
             {
-                result = result.Replace(matchedText, ReplaceText);
+                foreach (var mt in matchedTexts)
+                    result = result.Replace(mt, ReplaceText);
             }
 
             if (!string.IsNullOrEmpty(Prefix))
@@ -468,8 +470,8 @@ namespace mhze.BatchRenamer
     {
         public interface INode
         {
-            // Returns the matched text if name matches, null otherwise.
-            string Match(string name);
+            // Returns all matched substrings if the name matches, empty list otherwise.
+            List<string> Match(string name);
             string Describe();
         }
 
@@ -484,12 +486,14 @@ namespace mhze.BatchRenamer
                 _comparison = comparison;
             }
 
-            public string Match(string name)
+            public List<string> Match(string name)
             {
-                if (string.IsNullOrEmpty(_text)) return name;
+                if (string.IsNullOrEmpty(_text))
+                    return new List<string>();
                 int idx = name.IndexOf(_text, _comparison);
-                if (idx >= 0) return name.Substring(idx, _text.Length);
-                return null;
+                if (idx >= 0)
+                    return new List<string> { name.Substring(idx, _text.Length) };
+                return new List<string>();
             }
 
             public string Describe() => $"Literal(\"{_text}\")";
@@ -506,11 +510,12 @@ namespace mhze.BatchRenamer
                 _right = right;
             }
 
-            public string Match(string name)
+            public List<string> Match(string name)
             {
-                var leftResult = _left.Match(name);
-                if (leftResult != null) return leftResult;
-                return _right.Match(name);
+                var results = new List<string>();
+                results.AddRange(_left.Match(name));
+                results.AddRange(_right.Match(name));
+                return results;
             }
 
             public string Describe() => $"Or({_left.Describe()}, {_right.Describe()})";
@@ -527,13 +532,16 @@ namespace mhze.BatchRenamer
                 _right = right;
             }
 
-            public string Match(string name)
+            public List<string> Match(string name)
             {
                 var leftResult = _left.Match(name);
-                if (leftResult == null) return null;
+                if (leftResult.Count == 0) return new List<string>();
                 var rightResult = _right.Match(name);
-                if (rightResult == null) return null;
-                return leftResult;
+                if (rightResult.Count == 0) return new List<string>();
+                var results = new List<string>();
+                results.AddRange(leftResult);
+                results.AddRange(rightResult);
+                return results;
             }
 
             public string Describe() => $"And({_left.Describe()}, {_right.Describe()})";
@@ -546,10 +554,10 @@ namespace mhze.BatchRenamer
             _root = root;
         }
 
-        // Returns the matched text if name matches, null otherwise.
-        public string Match(string name)
+        // Returns all matched substrings if name matches, empty list otherwise.
+        public List<string> Match(string name)
         {
-            return _root?.Match(name);
+            return _root?.Match(name) ?? new List<string>();
         }
 
         public string Describe()
