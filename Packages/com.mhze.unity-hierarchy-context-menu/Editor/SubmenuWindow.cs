@@ -9,7 +9,7 @@ namespace mhze.HierarchyContextMenu
     {
         private ListView _listView;
         private MenuNode _category;
-        private HierarchyContextMenuWindow _parent;
+        private IContextMenuHost _parent;
         private SubmenuWindow _nestedSubmenu;
         private SubmenuWindow _parentSubmenu;
         private IVisualElementScheduledItem _submenuSchedule;
@@ -18,7 +18,7 @@ namespace mhze.HierarchyContextMenu
         private const float SubmenuWidth = 240f;
         private const long SubmenuDelayMs = 120;
 
-        public static SubmenuWindow Create(HierarchyContextMenuWindow parent, MenuNode category, Vector2 screenPos, float height, SubmenuWindow parentSubmenu = null)
+        public static SubmenuWindow Create(IContextMenuHost parent, MenuNode category, Vector2 screenPos, float height, SubmenuWindow parentSubmenu = null)
         {
             var rect = new Rect(screenPos.x, screenPos.y, 1, 1);
             var instance = CreateInstance<SubmenuWindow>();

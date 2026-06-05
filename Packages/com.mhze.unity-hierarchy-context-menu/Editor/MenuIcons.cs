@@ -45,6 +45,22 @@ namespace mhze.HierarchyContextMenu
             { "Unpack", new ItemIconInfo("Prefab Icon") },
             { "Unpack Completely", new ItemIconInfo("Prefab Icon") },
             { "Remove Unused Overrides...", new ItemIconInfo("Prefab Icon") },
+
+            // Project context menu icons
+            { "Copy Path", new ItemIconInfo("d_RectTransform Icon") },
+            { "Select Dependencies", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
+            { "Select Previous", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
+            { "Reimport All", new ItemIconInfo("Refresh") },
+            { "Show in Explorer", new ItemIconInfo("Project Icon") },
+            { "Open", new ItemIconInfo("UnityEditor.SceneView") },
+            { "Open Scene Additive", new ItemIconInfo("UnityEditor.SceneView") },
+            { "Properties...", new ItemIconInfo("d_Settings") },
+            { "Reimport", new ItemIconInfo("Refresh") },
+            { "Import New Asset...", new ItemIconInfo("d_Import") },
+            { "Import Package", new ItemIconInfo("d_Package Manager") },
+            { "Custom Package...", new ItemIconInfo("d_Package Manager") },
+            { "Export Package...", new ItemIconInfo("d_Package Manager") },
+            { "Refresh", new ItemIconInfo("Refresh") },
         };
 
         private static readonly Dictionary<string, Texture2D> _cache = new();

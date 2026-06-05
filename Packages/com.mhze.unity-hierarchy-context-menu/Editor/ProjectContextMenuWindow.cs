@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 
 namespace mhze.HierarchyContextMenu
 {
-    class HierarchyContextMenuWindow : EditorWindow, IContextMenuHost
+    class ProjectContextMenuWindow : EditorWindow, IContextMenuHost
     {
         private ListView _listView;
         private VisualElement _contentContainer;
@@ -24,8 +24,9 @@ namespace mhze.HierarchyContextMenu
         private bool _ready;
         private int _selectedIndex = -1;
 
-        private static HierarchyContextMenuWindow _instance;
+        private static ProjectContextMenuWindow _instance;
         public static bool IsOpen => _instance != null;
+        public static bool ClickedOnItem { get; set; }
 
         private const float WindowWidth = 420f;
         private const float ItemHeight = 22f;
@@ -37,16 +38,6 @@ namespace mhze.HierarchyContextMenu
         private IVisualElementScheduledItem _submenuSchedule;
         private bool _suppressHoverUntilMouseMove;
 
-        private bool IsPrefabContext
-        {
-            get
-            {
-                var go = Selection.activeGameObject;
-                if (go == null) return false;
-                return PrefabUtility.IsPartOfPrefabInstance(go);
-            }
-        }
-
         public static void Show(Vector2 screenPoint, float desiredHeight)
         {
             if (_instance != null)
@@ -55,7 +46,7 @@ namespace mhze.HierarchyContextMenu
             }
 
             var buttonRect = new Rect(screenPoint.x, screenPoint.y, 1, 1);
-            _instance = CreateInstance<HierarchyContextMenuWindow>();
+            _instance = CreateInstance<ProjectContextMenuWindow>();
             _instance.ShowAsDropDown(buttonRect, new Vector2(WindowWidth, desiredHeight));
         }
 
@@ -71,7 +62,7 @@ namespace mhze.HierarchyContextMenu
 
         private void CreateGUI()
         {
-            _allItems = new List<HierarchyMenuItem>(HierarchyItemIndexer.Items);
+            _allItems = new List<HierarchyMenuItem>(ProjectItemIndexer.Items);
             _filteredItems = new List<HierarchyMenuItem>();
 
             BuildTree();
@@ -118,7 +109,7 @@ namespace mhze.HierarchyContextMenu
 
         private void BuildTree()
         {
-            _rootNode = new MenuNode { Name = "GameObject", Children = new List<MenuNode>() };
+            _rootNode = new MenuNode { Name = "Assets", Children = new List<MenuNode>() };
 
             foreach (var item in _allItems)
             {
@@ -169,63 +160,70 @@ namespace mhze.HierarchyContextMenu
 
         private List<object> BuildRootLevelItems()
         {
-            var selectionValid = Selection.gameObjects.Length > 0;
-            var activeValid = Selection.activeGameObject != null;
+            var selectionValid = ClickedOnItem && Selection.objects.Length > 0;
+            var activeValid = ClickedOnItem && Selection.activeObject != null;
 
             var items = new List<object>();
 
-            items.Add(new SpecialActionItem { DisplayName = "Cut", Action = () => MenuActions.CutSelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Copy", Action = () => MenuActions.CopySelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Paste", Action = () => MenuActions.PasteAsChildOfClicked(this) });
+            // 1. Create category (from tree, at the very top)
+            var createNode = _rootNode.Children.FirstOrDefault(c => c.Name == "Create");
+            if (createNode != null)
+                items.Add(createNode);
+
+            // 2-6. File operations
+            items.Add(new SpecialActionItem { DisplayName = "Show in Explorer", Action = () => ProjectContextMenuActions.ShowInExplorer(this), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Open", Action = () => ProjectContextMenuActions.OpenAsset(this), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Open Scene Additive", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Open Scene Additive"), Enabled = activeValid && AssetDatabase.GetAssetPath(Selection.activeObject).EndsWith(".unity") });
+            items.Add(new SpecialActionItem { DisplayName = "Delete", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Delete"), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Rename", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Rename"), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Copy Path", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Copy Path"), Enabled = activeValid });
+
+            items.Add(new SeparatorItem());
+
+            // 7-8. Clipboard
+            items.Add(new SpecialActionItem { DisplayName = "Copy", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Copy"), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Paste", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Paste") });
+
+            items.Add(new SeparatorItem());
+
+            // 9-11. Scene references
+            items.Add(new SpecialActionItem { DisplayName = "Find References in Scene", Action = () => ProjectContextMenuActions.FindReferencesInScene(this), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Select Dependencies", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Select Dependencies"), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Select Previous", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Select Previous"), Enabled = activeValid });
+
+            items.Add(new SeparatorItem());
+
+            // 15-16. Reimport
+            items.Add(new SpecialActionItem { DisplayName = "Reimport", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport"), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Reimport All", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport All"), Enabled = selectionValid });
+
+            items.Add(new SeparatorItem());
+
+            // 17-19. Import/Export
+            items.Add(new SpecialActionItem { DisplayName = "Import New Asset...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Import New Asset...") });
             items.Add(new SpecialSubmenuItem
             {
-                DisplayName = "Paste Special",
+                DisplayName = "Import Package",
                 Children = new List<SpecialActionItem>
                 {
-                    new SpecialActionItem { DisplayName = "Paste As Child", Action = () => MenuActions.PasteAsChild(this) },
-                    new SpecialActionItem { DisplayName = "Paste As Sibling", Action = () => MenuActions.PasteAsSibling(this) },
+                    new SpecialActionItem { DisplayName = "Custom Package...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Import Package/Custom Package...") },
                 }
             });
-            items.Add(new SpecialActionItem { DisplayName = "Rename", Action = () => MenuActions.RenameSelected(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Duplicate", Action = () => MenuActions.DuplicateSelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Delete", Action = () => MenuActions.DeleteSelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Export Package...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Export Package..."), Enabled = selectionValid });
 
             items.Add(new SeparatorItem());
 
-            items.Add(new SpecialActionItem { DisplayName = "Select All", Action = () => MenuActions.SelectAll(this) });
-            items.Add(new SpecialActionItem { DisplayName = "Deselect All", Action = () => MenuActions.DeselectAll(this), Enabled = activeValid });
-            items.Add(new SpecialActionItem { DisplayName = "Invert Selection", Action = () => MenuActions.InvertSelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Select Children", Action = () => MenuActions.SelectChildren(this), Enabled = selectionValid });
+            // 20-21. Properties/Refresh
+            items.Add(new SpecialActionItem { DisplayName = "Properties...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Properties..."), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Refresh", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Refresh") });
 
-            items.Add(new SeparatorItem());
-
-            items.Add(new SpecialActionItem { DisplayName = "Find References in Scene", Action = () => MenuActions.FindReferencesInScene(this), Enabled = activeValid });
-            items.Add(new SpecialActionItem { DisplayName = "Set as Default Parent", Action = () => MenuActions.SetAsDefaultParent(this), Enabled = activeValid });
-
-            items.Add(new SeparatorItem());
-
-            if (IsPrefabContext)
+            // Remaining tree items (from other packages) at the bottom
+            var remainingNodes = _rootNode.Children.Where(c => c.Name != "Create").ToList();
+            if (remainingNodes.Count > 0)
             {
-                items.Add(new SpecialSubmenuItem
-                {
-                    DisplayName = "Prefab",
-                    Children = new List<SpecialActionItem>
-                    {
-                        new SpecialActionItem { DisplayName = "Open Asset in Context", Action = () => MenuActions.OpenAssetInContext(this) },
-                        new SpecialActionItem { DisplayName = "Open Asset in Isolation", Action = () => MenuActions.OpenAssetInIsolation(this) },
-                        new SpecialActionItem { DisplayName = "Select Asset", Action = () => MenuActions.SelectPrefabAsset(this) },
-                        new SpecialActionItem { DisplayName = "Select Root", Action = () => MenuActions.SelectPrefabRoot(this) },
-                        new SpecialActionItem { DisplayName = "Replace...", Action = () => MenuActions.ReplacePrefab(this) },
-                        new SpecialActionItem { DisplayName = "Replace and Keep Overrides...", Action = () => MenuActions.ReplacePrefabKeepOverrides(this) },
-                        new SpecialActionItem { DisplayName = "Unpack", Action = () => MenuActions.UnpackPrefab(this) },
-                        new SpecialActionItem { DisplayName = "Unpack Completely", Action = () => MenuActions.UnpackPrefabCompletely(this) },
-                        new SpecialActionItem { DisplayName = "Remove Unused Overrides...", Action = () => MenuActions.RemoveUnusedOverrides(this) },
-                    }
-                });
                 items.Add(new SeparatorItem());
+                items.AddRange(remainingNodes);
             }
-
-            items.AddRange(_rootNode.Children);
 
             return items;
         }
@@ -579,8 +577,8 @@ namespace mhze.HierarchyContextMenu
                     }
                     else if (clickedItem is SpecialSubmenuItem submenu)
                     {
-                        if (submenu.DisplayName == "Prefab")
-                            ShowPrefabSubmenu(submenu, container);
+                        if (submenu.DisplayName == "Import Package")
+                            ShowActionSubmenu(submenu, container);
                         else
                             ShowSpecialSubmenuLevel(submenu);
                     }
@@ -661,8 +659,8 @@ namespace mhze.HierarchyContextMenu
                 ApplyIcon(icon, submenuItem.DisplayName, submenuItem.Enabled);
                 ApplySelectionStyle(element, index);
                 UnregisterHoverEvents(element);
-                if (submenuItem.DisplayName == "Prefab")
-                    RegisterPrefabHoverEvents(element, submenuItem);
+                if (submenuItem.DisplayName == "Import Package")
+                    RegisterActionSubmenuHoverEvents(element, submenuItem);
                 return;
             }
 
@@ -697,7 +695,7 @@ namespace mhze.HierarchyContextMenu
 
                     var searchLower = _lastSearchText.ToLower();
                     var nameLower = itemName.ToLower();
-                    var searchIdx = nameLower.IndexOf(searchLower, System.StringComparison.Ordinal);
+                    var searchIdx = nameLower.IndexOf(searchLower, StringComparison.Ordinal);
 
                     string itemText;
                     if (searchIdx >= 0)
@@ -726,7 +724,6 @@ namespace mhze.HierarchyContextMenu
 
                 UnregisterHoverEvents(element);
             }
-
         }
 
         private void ApplySelectionStyle(VisualElement element, int index)
@@ -852,7 +849,7 @@ namespace mhze.HierarchyContextMenu
             _currentSubmenu = SubmenuWindow.Create(this, category, screenPos, desiredHeight);
         }
 
-        private void ShowPrefabSubmenu(SpecialSubmenuItem submenu, VisualElement hoveredItem)
+        private void ShowActionSubmenu(SpecialSubmenuItem submenu, VisualElement hoveredItem)
         {
             if (_isSearching)
                 return;
@@ -895,19 +892,16 @@ namespace mhze.HierarchyContextMenu
             }
         }
 
-        private void RegisterPrefabHoverEvents(VisualElement element, SpecialSubmenuItem submenu)
+        void IContextMenuHost.CancelSubmenuSchedule() => CancelSubmenuSchedule();
+        void IContextMenuHost.ScheduleHideSubmenu() => ScheduleHideSubmenu();
+
+        private void RegisterActionSubmenuHoverEvents(VisualElement element, SpecialSubmenuItem submenu)
         {
-            element.RegisterCallback<PointerEnterEvent, SpecialSubmenuItem>(OnPrefabItemPointerEnter, submenu);
-            element.RegisterCallback<PointerLeaveEvent, SpecialSubmenuItem>(OnPrefabItemPointerLeave, submenu);
+            element.RegisterCallback<PointerEnterEvent, SpecialSubmenuItem>(OnActionSubmenuPointerEnter, submenu);
+            element.RegisterCallback<PointerLeaveEvent, SpecialSubmenuItem>(OnActionSubmenuPointerLeave, submenu);
         }
 
-        private void UnregisterPrefabHoverEvents(VisualElement element)
-        {
-            element.UnregisterCallback<PointerEnterEvent, SpecialSubmenuItem>(OnPrefabItemPointerEnter);
-            element.UnregisterCallback<PointerLeaveEvent, SpecialSubmenuItem>(OnPrefabItemPointerLeave);
-        }
-
-        private void OnPrefabItemPointerEnter(PointerEnterEvent evt, SpecialSubmenuItem submenu)
+        private void OnActionSubmenuPointerEnter(PointerEnterEvent evt, SpecialSubmenuItem submenu)
         {
             if (_isSearching)
                 return;
@@ -922,12 +916,12 @@ namespace mhze.HierarchyContextMenu
                 {
                     var targetElement = FindItemVisualElement(capturedIndex);
                     if (targetElement != null)
-                        ShowPrefabSubmenu(submenu, targetElement);
+                        ShowActionSubmenu(submenu, targetElement);
                 }
             }).StartingIn(SubmenuDelayMs);
         }
 
-        private void OnPrefabItemPointerLeave(PointerLeaveEvent evt, SpecialSubmenuItem submenu)
+        private void OnActionSubmenuPointerLeave(PointerLeaveEvent evt, SpecialSubmenuItem submenu)
         {
             if (_isSearching)
                 return;
@@ -1187,9 +1181,16 @@ namespace mhze.HierarchyContextMenu
             {
                 if (submenu.Enabled)
                 {
-                    var element = FindItemVisualElement(_selectedIndex);
-                    if (element != null)
+                    if (submenu.DisplayName == "Import Package")
+                    {
+                        var element = FindItemVisualElement(_selectedIndex);
+                        if (element != null)
+                            ShowActionSubmenu(submenu, element);
+                    }
+                    else
+                    {
                         ShowSpecialSubmenuLevel(submenu);
+                    }
                 }
             }
         }
@@ -1203,8 +1204,5 @@ namespace mhze.HierarchyContextMenu
                 EditorApplication.ExecuteMenuItem(menuPath);
             };
         }
-
-        void IContextMenuHost.CancelSubmenuSchedule() => CancelSubmenuSchedule();
-        void IContextMenuHost.ScheduleHideSubmenu() => ScheduleHideSubmenu();
     }
 }

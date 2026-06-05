@@ -10,7 +10,7 @@ namespace mhze.HierarchyContextMenu
         private static ActionSubmenuWindow _instance;
         private ListView _listView;
         private List<SpecialActionItem> _items;
-        private HierarchyContextMenuWindow _parent;
+        private IContextMenuHost _parent;
         private const float ItemHeight = 22f;
         private const float SubmenuWidth = 240f;
 
@@ -23,7 +23,7 @@ namespace mhze.HierarchyContextMenu
             }
         }
 
-        public static ActionSubmenuWindow Create(HierarchyContextMenuWindow parent, List<SpecialActionItem> items, Vector2 screenPos, float height)
+        public static ActionSubmenuWindow Create(IContextMenuHost parent, List<SpecialActionItem> items, Vector2 screenPos, float height)
         {
             var rect = new Rect(screenPos.x, screenPos.y, 1, 1);
             var instance = CreateInstance<ActionSubmenuWindow>();
