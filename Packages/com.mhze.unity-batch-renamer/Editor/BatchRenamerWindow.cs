@@ -97,6 +97,7 @@ namespace mhze.BatchRenamer
             BuildFilterSection(leftColumn);
             BuildModifySection(leftColumn);
             BuildNumberSection(leftColumn);
+            BuildHelpSection(leftColumn);
 
             BuildPreviewSection(rightColumn);
             BuildActionsSection(rightColumn);
@@ -212,23 +213,7 @@ namespace mhze.BatchRenamer
             csRow.Add(_caseSensitiveToggle);
             section.Add(csRow);
 
-            var help = new Label("&& (AND)  || (OR)  [] (group)  {Number} (digits)  ! (NOT)");
-            help.style.fontSize = 11;
-            help.style.color = TextDim;
-            help.style.marginLeft = 70;
-            help.style.marginTop = 0;
-            help.style.marginBottom = 2;
-            help.style.whiteSpace = WhiteSpace.NoWrap;
-            section.Add(help);
 
-            var condHelp = new Label("?word:val or ?word:true:false in Prefix/Suffix/Replace");
-            condHelp.style.fontSize = 11;
-            condHelp.style.color = TextDim;
-            condHelp.style.marginLeft = 70;
-            condHelp.style.marginTop = 0;
-            condHelp.style.marginBottom = 4;
-            condHelp.style.whiteSpace = WhiteSpace.NoWrap;
-            section.Add(condHelp);
 
             parent.Add(section);
         }
@@ -502,6 +487,62 @@ namespace mhze.BatchRenamer
             _numberFormatField.RegisterValueChangedCallback(_ => MarkPreviewDirty());
             StyleField(_numberFormatField);
             section.Add(_numberFormatField);
+
+            parent.Add(section);
+        }
+
+        private void BuildHelpSection(VisualElement parent)
+        {
+            var section = new VisualElement();
+            section.style.marginTop = 8;
+            section.style.marginBottom = 4;
+            section.style.paddingLeft = 4;
+            section.style.borderTopWidth = 1;
+            section.style.borderTopColor = BorderColor;
+            section.style.paddingTop = 6;
+
+            var header = new Label("Search Operators");
+            header.style.fontSize = 12;
+            header.style.color = TextPrimary;
+            header.style.unityFontStyleAndWeight = FontStyle.Bold;
+            header.style.marginBottom = 4;
+            section.Add(header);
+
+            var items = new (string glyph, string desc)[]
+            {
+                ("||", "OR \u2014 matches either term (e.g. Apple||Carrot)"),
+                ("&&", "AND \u2014 matches only if both terms present (e.g. Apple&&Carrot)"),
+                ("!", "NOT \u2014 excludes matches containing the term"),
+                ("[]", "Group \u2014 precedence grouping for complex expressions"),
+                ("{Number}", "Digits \u2014 inserts/preserves digit sequences"),
+                ("?", "Condition \u2014 ternary: ?term:ifTrue:ifFalse"),
+            };
+
+            foreach (var (glyph, desc) in items)
+            {
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.marginBottom = 2;
+                row.style.alignItems = Align.FlexStart;
+
+                var glyphLabel = new Label(glyph);
+                glyphLabel.style.fontSize = 11;
+                glyphLabel.style.color = AccentBlue;
+                glyphLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+                glyphLabel.style.minWidth = 30;
+                glyphLabel.style.marginRight = 6;
+                glyphLabel.style.marginTop = 0;
+                row.Add(glyphLabel);
+
+                var descLabel = new Label(desc);
+                descLabel.style.fontSize = 11;
+                descLabel.style.color = TextDim;
+                descLabel.style.whiteSpace = WhiteSpace.Normal;
+                descLabel.style.flexShrink = 1;
+                row.Add(descLabel);
+
+                section.Add(row);
+            }
 
             parent.Add(section);
         }
