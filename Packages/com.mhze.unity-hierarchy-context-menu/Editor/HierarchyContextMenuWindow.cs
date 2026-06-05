@@ -680,11 +680,47 @@ namespace mhze.HierarchyContextMenu
             }
             else if (item is HierarchyMenuItem menuItem)
             {
-                var displayText = menuItem.DisplayName.Replace("/", " \u25B8 ");
-                label.text = displayText;
-                label.style.color = HierarchyContextMenuSettings.TextColor;
                 arrow.style.display = DisplayStyle.None;
                 ApplyMenuIcon(icon, menuItem.DisplayName, false);
+
+                if (_isSearching && !string.IsNullOrEmpty(_lastSearchText))
+                {
+                    var displayName = menuItem.DisplayName;
+                    var lastSlash = displayName.LastIndexOf('/');
+                    var dirPath = lastSlash >= 0 ? displayName.Substring(0, lastSlash) : "";
+                    var itemName = lastSlash >= 0 ? displayName.Substring(lastSlash + 1) : displayName;
+
+                    var dimHex = ColorUtility.ToHtmlStringRGB(HierarchyContextMenuSettings.DimColor);
+                    var dirText = string.IsNullOrEmpty(dirPath)
+                        ? ""
+                        : $"<color=#{dimHex}>{dirPath.Replace("/", " \u25B8 ")} \u25B8 </color>";
+
+                    var searchLower = _lastSearchText.ToLower();
+                    var nameLower = itemName.ToLower();
+                    var searchIdx = nameLower.IndexOf(searchLower, System.StringComparison.Ordinal);
+
+                    string itemText;
+                    if (searchIdx >= 0)
+                    {
+                        var before = itemName.Substring(0, searchIdx);
+                        var match = itemName.Substring(searchIdx, _lastSearchText.Length);
+                        var after = itemName.Substring(searchIdx + _lastSearchText.Length);
+                        itemText = $"{before}<b>{match}</b>{after}";
+                    }
+                    else
+                    {
+                        itemText = itemName;
+                    }
+
+                    label.text = dirText + itemText;
+                    label.style.color = HierarchyContextMenuSettings.TextColor;
+                }
+                else
+                {
+                    var displayText = menuItem.DisplayName.Replace("/", " \u25B8 ");
+                    label.text = displayText;
+                    label.style.color = HierarchyContextMenuSettings.TextColor;
+                }
 
                 ApplySelectionStyle(element, index);
 
