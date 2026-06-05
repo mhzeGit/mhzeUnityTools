@@ -48,8 +48,8 @@ namespace mhze.BatchRenamer
         public static void ShowWindow(Object[] selectedObjects)
         {
             var window = GetWindow<BatchRenamerWindow>(true, "Batch Rename");
-            window.minSize = new Vector2(500, 680);
-            window.maxSize = new Vector2(800, 1400);
+            window.minSize = new Vector2(700, 500);
+            window.maxSize = new Vector2(1000, 1200);
             window._processor.CollectFromObjects(selectedObjects);
             if (window._previewContainer != null)
             {
@@ -72,12 +72,38 @@ namespace mhze.BatchRenamer
             rootVisualElement.style.paddingBottom = 8;
 
             BuildHeader();
-            BuildSearchReplaceSection();
-            BuildFilterSection();
-            BuildModifySection();
-            BuildNumberSection();
-            BuildPreviewSection();
-            BuildActionsSection();
+
+            var mainRow = new VisualElement();
+            mainRow.style.flexDirection = FlexDirection.Row;
+            mainRow.style.flexGrow = 1;
+            mainRow.style.minHeight = 0;
+
+            var leftColumn = new VisualElement();
+            leftColumn.style.flexDirection = FlexDirection.Column;
+            leftColumn.style.flexGrow = 0;
+            leftColumn.style.flexShrink = 0;
+            leftColumn.style.marginRight = 12;
+            leftColumn.style.minWidth = 280;
+            leftColumn.style.maxWidth = 380;
+
+            var rightColumn = new VisualElement();
+            rightColumn.style.flexDirection = FlexDirection.Column;
+            rightColumn.style.flexGrow = 1;
+            rightColumn.style.flexShrink = 1;
+            rightColumn.style.minWidth = 300;
+            rightColumn.style.minHeight = 0;
+
+            BuildSearchReplaceSection(leftColumn);
+            BuildFilterSection(leftColumn);
+            BuildModifySection(leftColumn);
+            BuildNumberSection(leftColumn);
+
+            BuildPreviewSection(rightColumn);
+            BuildActionsSection(rightColumn);
+
+            mainRow.Add(leftColumn);
+            mainRow.Add(rightColumn);
+            rootVisualElement.Add(mainRow);
 
             if (_previewDirty)
             {
@@ -99,7 +125,7 @@ namespace mhze.BatchRenamer
             rootVisualElement.Add(header);
         }
 
-        private void BuildSearchReplaceSection()
+        private void BuildSearchReplaceSection(VisualElement parent)
         {
             var section = CreateSection();
 
@@ -140,10 +166,10 @@ namespace mhze.BatchRenamer
             help.style.whiteSpace = WhiteSpace.NoWrap;
             section.Add(help);
 
-            rootVisualElement.Add(section);
+            parent.Add(section);
         }
 
-        private void BuildFilterSection()
+        private void BuildFilterSection(VisualElement parent)
         {
             _filterSelectedCategories.Clear();
             var categories = (AssetCategory[])Enum.GetValues(typeof(AssetCategory));
@@ -202,7 +228,7 @@ namespace mhze.BatchRenamer
 
             row.Add(_filterDropdownButton);
             section.Add(row);
-            rootVisualElement.Add(section);
+            parent.Add(section);
         }
 
         private void ToggleFilterPopup()
@@ -364,7 +390,7 @@ namespace mhze.BatchRenamer
                 _filterSummaryLabel.text = $"{count} selected";
         }
 
-        private void BuildModifySection()
+        private void BuildModifySection(VisualElement parent)
         {
             var section = CreateSection();
             CreateSectionHeader(section, "Modify");
@@ -382,10 +408,10 @@ namespace mhze.BatchRenamer
             StyleField(_caseField);
             section.Add(_caseField);
 
-            rootVisualElement.Add(section);
+            parent.Add(section);
         }
 
-        private void BuildNumberSection()
+        private void BuildNumberSection(VisualElement parent)
         {
             var section = CreateSection();
             CreateSectionHeader(section, "Numbers");
@@ -413,12 +439,16 @@ namespace mhze.BatchRenamer
             StyleField(_numberFormatField);
             section.Add(_numberFormatField);
 
-            rootVisualElement.Add(section);
+            parent.Add(section);
         }
 
-        private void BuildPreviewSection()
+        private void BuildPreviewSection(VisualElement parent)
         {
-            var section = CreateSection();
+            var section = new VisualElement();
+            section.style.flexGrow = 1;
+            section.style.display = DisplayStyle.Flex;
+            section.style.flexDirection = FlexDirection.Column;
+            section.style.minHeight = 0;
 
             var headerRow = new VisualElement();
             headerRow.style.flexDirection = FlexDirection.Row;
@@ -449,6 +479,7 @@ namespace mhze.BatchRenamer
             section.Add(headerRow);
 
             _previewScrollView = new ScrollView(ScrollViewMode.Vertical);
+            _previewScrollView.style.flexGrow = 1;
             _previewScrollView.style.backgroundColor = PreviewBg;
             _previewScrollView.style.borderTopWidth = 1;
             _previewScrollView.style.borderLeftWidth = 1;
@@ -458,8 +489,7 @@ namespace mhze.BatchRenamer
             _previewScrollView.style.borderLeftColor = BorderColor;
             _previewScrollView.style.borderRightColor = BorderColor;
             _previewScrollView.style.borderBottomColor = BorderColor;
-            _previewScrollView.style.minHeight = 180;
-            _previewScrollView.style.maxHeight = 400;
+            _previewScrollView.style.minHeight = 60;
             _previewScrollView.style.marginBottom = 8;
             _previewScrollView.style.paddingTop = 4;
             _previewScrollView.style.paddingBottom = 4;
@@ -472,17 +502,18 @@ namespace mhze.BatchRenamer
             _previewScrollView.Add(_previewContainer);
             section.Add(_previewScrollView);
 
-            rootVisualElement.Add(section);
+            parent.Add(section);
         }
 
-        private void BuildActionsSection()
+        private void BuildActionsSection(VisualElement parent)
         {
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
             container.style.justifyContent = Justify.FlexEnd;
             container.style.alignItems = Align.Center;
-            container.style.marginTop = 4;
+            container.style.marginTop = 0;
             container.style.marginBottom = 4;
+            container.style.flexShrink = 0;
 
             _statusLabel = new Label("");
             _statusLabel.style.fontSize = 11;
@@ -512,7 +543,7 @@ namespace mhze.BatchRenamer
             _renameButton.style.unityTextAlign = TextAnchor.MiddleCenter;
             container.Add(_renameButton);
 
-            rootVisualElement.Add(container);
+            parent.Add(container);
         }
 
         private void StyleField(VisualElement field)
