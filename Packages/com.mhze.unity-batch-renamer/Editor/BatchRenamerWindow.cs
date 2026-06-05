@@ -501,23 +501,48 @@ namespace mhze.BatchRenamer
             {
                 if (cat == AssetCategory.All) continue;
 
-                var toggle = new Toggle(cat.ToString());
-                toggle.value = _filterSelectedCategories.Contains(cat);
-                toggle.style.flexDirection = FlexDirection.Row;
-                toggle.style.alignItems = Align.Center;
-                toggle.style.paddingLeft = 8;
-                toggle.style.paddingRight = 8;
-                toggle.style.paddingTop = 2;
-                toggle.style.paddingBottom = 2;
-                toggle.style.minHeight = 22;
-                toggle.style.unityTextAlign = TextAnchor.MiddleLeft;
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.Center;
+                row.style.paddingLeft = 8;
+                row.style.paddingRight = 4;
+                row.style.paddingTop = 2;
+                row.style.paddingBottom = 2;
+                row.style.minHeight = 22;
 
-                var toggleLabel = toggle.Q<Label>();
-                if (toggleLabel != null)
+                var iconImage = new Image();
+                iconImage.image = GetAssetCategoryIcon(cat);
+                iconImage.style.width = 16;
+                iconImage.style.height = 16;
+                iconImage.style.marginRight = 4;
+                iconImage.style.flexShrink = 0;
+                row.Add(iconImage);
+
+                var toggleLabel = new Label(cat.ToString());
+                toggleLabel.style.fontSize = 12;
+                toggleLabel.style.color = TextPrimary;
+                toggleLabel.style.marginLeft = 4;
+                toggleLabel.style.flexGrow = 1;
+                row.Add(toggleLabel);
+
+                var toggle = new Toggle();
+                toggle.value = _filterSelectedCategories.Contains(cat);
+                toggle.style.flexShrink = 0;
+                toggle.style.paddingLeft = 0;
+                toggle.style.paddingRight = 0;
+                toggle.style.marginLeft = 0;
+                toggle.style.marginRight = 0;
+                toggle.style.marginTop = 0;
+                toggle.style.marginBottom = 0;
+                row.Add(toggle);
+
+                var toggleInput = toggle.Q(classes: "unity-base-field__input");
+                if (toggleInput != null)
                 {
-                    toggleLabel.style.fontSize = 12;
-                    toggleLabel.style.color = TextPrimary;
-                    toggleLabel.style.marginLeft = 4;
+                    toggleInput.style.paddingLeft = 0;
+                    toggleInput.style.paddingRight = 0;
+                    toggleInput.style.marginLeft = 0;
+                    toggleInput.style.marginRight = 0;
                 }
 
                 var capturedCat = cat;
@@ -531,7 +556,15 @@ namespace mhze.BatchRenamer
                     MarkPreviewDirty();
                 });
 
-                popup.Add(toggle);
+                row.RegisterCallback<MouseDownEvent>(evt =>
+                {
+                    var target = evt.target as VisualElement;
+                    if (target == toggle || toggle.Contains(target))
+                        return;
+                    toggle.value = !toggle.value;
+                });
+
+                popup.Add(row);
             }
 
             _filterPopup = popup;
@@ -600,23 +633,48 @@ namespace mhze.BatchRenamer
             {
                 if (cat == HierarchyCategory.All) continue;
 
-                var toggle = new Toggle(cat.ToString());
-                toggle.value = _hierarchySelectedCategories.Contains(cat);
-                toggle.style.flexDirection = FlexDirection.Row;
-                toggle.style.alignItems = Align.Center;
-                toggle.style.paddingLeft = 8;
-                toggle.style.paddingRight = 8;
-                toggle.style.paddingTop = 2;
-                toggle.style.paddingBottom = 2;
-                toggle.style.minHeight = 22;
-                toggle.style.unityTextAlign = TextAnchor.MiddleLeft;
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.Center;
+                row.style.paddingLeft = 8;
+                row.style.paddingRight = 4;
+                row.style.paddingTop = 2;
+                row.style.paddingBottom = 2;
+                row.style.minHeight = 22;
 
-                var toggleLabel = toggle.Q<Label>();
-                if (toggleLabel != null)
+                var iconImage = new Image();
+                iconImage.image = GetHierarchyCategoryIcon(cat);
+                iconImage.style.width = 16;
+                iconImage.style.height = 16;
+                iconImage.style.marginRight = 4;
+                iconImage.style.flexShrink = 0;
+                row.Add(iconImage);
+
+                var toggleLabel = new Label(cat.ToString());
+                toggleLabel.style.fontSize = 12;
+                toggleLabel.style.color = TextPrimary;
+                toggleLabel.style.marginLeft = 4;
+                toggleLabel.style.flexGrow = 1;
+                row.Add(toggleLabel);
+
+                var toggle = new Toggle();
+                toggle.value = _hierarchySelectedCategories.Contains(cat);
+                toggle.style.flexShrink = 0;
+                toggle.style.paddingLeft = 0;
+                toggle.style.paddingRight = 0;
+                toggle.style.marginLeft = 0;
+                toggle.style.marginRight = 0;
+                toggle.style.marginTop = 0;
+                toggle.style.marginBottom = 0;
+                row.Add(toggle);
+
+                var toggleInput = toggle.Q(classes: "unity-base-field__input");
+                if (toggleInput != null)
                 {
-                    toggleLabel.style.fontSize = 12;
-                    toggleLabel.style.color = TextPrimary;
-                    toggleLabel.style.marginLeft = 4;
+                    toggleInput.style.paddingLeft = 0;
+                    toggleInput.style.paddingRight = 0;
+                    toggleInput.style.marginLeft = 0;
+                    toggleInput.style.marginRight = 0;
                 }
 
                 var capturedCat = cat;
@@ -630,7 +688,15 @@ namespace mhze.BatchRenamer
                     MarkPreviewDirty();
                 });
 
-                popup.Add(toggle);
+                row.RegisterCallback<MouseDownEvent>(evt =>
+                {
+                    var target = evt.target as VisualElement;
+                    if (target == toggle || toggle.Contains(target))
+                        return;
+                    toggle.value = !toggle.value;
+                });
+
+                popup.Add(row);
             }
 
             _filterPopup = popup;
@@ -725,6 +791,47 @@ namespace mhze.BatchRenamer
                 else
                     _filterSummaryLabel.text = $"{count} selected";
             }
+        }
+
+        private static Texture2D GetAssetCategoryIcon(AssetCategory cat)
+        {
+            var name = cat switch
+            {
+                AssetCategory.Prefab => "Prefab Icon",
+                AssetCategory.Material => "PreMatCube",
+                AssetCategory.Texture => "Texture2D Icon",
+                AssetCategory.Model => "PrefabModel Icon",
+                AssetCategory.Audio => "AudioSource Icon",
+                AssetCategory.Script => "d_Script Icon",
+                AssetCategory.Animation => "UnityEditor.AnimationWindow",
+                AssetCategory.Folder => "Folder Icon",
+                AssetCategory.Scene => "UnityEditor.SceneView",
+                AssetCategory.GameObject => "GameObject Icon",
+                AssetCategory.Other => "d_DefaultAsset Icon",
+                _ => "d_DefaultAsset Icon",
+            };
+            return EditorGUIUtility.IconContent(name).image as Texture2D;
+        }
+
+        private static Texture2D GetHierarchyCategoryIcon(HierarchyCategory cat)
+        {
+            var name = cat switch
+            {
+                HierarchyCategory.MeshRenderer => "MeshRenderer Icon",
+                HierarchyCategory.MeshFilter => "MeshFilter Icon",
+                HierarchyCategory.Collider => "d_editicon.sml",
+                HierarchyCategory.Rigidbody => "d_editicon.sml",
+                HierarchyCategory.Animator => "Animator Icon",
+                HierarchyCategory.AudioSource => "AudioSource Icon",
+                HierarchyCategory.Light => "Light Icon",
+                HierarchyCategory.Camera => "Camera Icon",
+                HierarchyCategory.ParticleSystem => "ParticleShapeTool",
+                HierarchyCategory.Canvas => "Canvas Icon",
+                HierarchyCategory.Script => "d_Script Icon",
+                HierarchyCategory.Empty => "GameObject Icon",
+                _ => "GameObject Icon",
+            };
+            return EditorGUIUtility.IconContent(name).image as Texture2D;
         }
 
         private void BuildModifySection(VisualElement parent)
@@ -1222,7 +1329,7 @@ namespace mhze.BatchRenamer
 
                     var dirIcon = new VisualElement();
                     Texture2D folderIcon = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
-                    dirIcon.style.backgroundImage = folderIcon != null ? new Background(folderIcon) : StyleKeyword.None;
+                    dirIcon.style.backgroundImage = folderIcon != null ? Background.FromTexture2D(folderIcon) : StyleKeyword.None;
                     dirIcon.style.width = 16;
                     dirIcon.style.height = 16;
                     dirIcon.style.marginRight = 6;
@@ -1315,7 +1422,7 @@ namespace mhze.BatchRenamer
                 if (!string.IsNullOrEmpty(assetPath) && AssetDatabase.IsValidFolder(assetPath))
                     thumb = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
             }
-            icon.style.backgroundImage = thumb != null ? new Background(thumb) : StyleKeyword.None;
+            icon.style.backgroundImage = thumb != null ? Background.FromTexture2D(thumb) : StyleKeyword.None;
             icon.style.width = 16;
             icon.style.height = 16;
             icon.style.marginRight = 6;
