@@ -91,6 +91,18 @@ namespace mhze.HierarchyContextMenu
 
             var lower = displayName.ToLowerInvariant();
 
+            var lastSlash = lower.LastIndexOf('/');
+            if (lastSlash >= 0)
+            {
+                var lastSegment = lower.Substring(lastSlash + 1);
+                switch (lastSegment)
+                {
+                    case "adaptive probe volume":
+                    case "adaptive probe volumes":
+                        return "d_LightProbeGroup Icon";
+                }
+            }
+
             switch (lower)
             {
                 case "create empty":
@@ -146,6 +158,9 @@ namespace mhze.HierarchyContextMenu
                     return "d_Spotlight Icon";
                 case "light probe group":
                     return "LightProbeGroup Gizmo";
+                case "adaptive probe volume":
+                case "adaptive probe volumes":
+                    return "d_LightProbeGroup Icon";
                 case "reflection probe":
                     return "ReflectionProbeSelector";
 
