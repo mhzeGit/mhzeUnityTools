@@ -1004,7 +1004,7 @@ namespace mhze.BatchRenamer
             rightColumn.style.flexBasis = 0;
             rightColumn.style.overflow = Overflow.Hidden;
 
-            var newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName);
+            var newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, _processor.Prefix, _processor.Suffix, _processor.ReplaceText);
             rightColumn.Add(newNameContainer);
 
             row.Add(rightColumn);
@@ -1098,7 +1098,7 @@ namespace mhze.BatchRenamer
             return container;
         }
 
-        private static VisualElement BuildDiffDisplay(string oldName, string newName)
+        private static VisualElement BuildDiffDisplay(string oldName, string newName, List<SearchExpression.MatchEntry> matchedEntries, string prefixText, string suffixText, string replaceText)
         {
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
@@ -1115,82 +1115,107 @@ namespace mhze.BatchRenamer
                 return container;
             }
 
-            var (prefix, middle, suffix) = ComputeDiff(oldName, newName);
+            var changedRanges = new List<(int start, int end)>();
 
-            if (prefix.Length > 0)
+            if (!string.IsNullOrEmpty(prefixText))
             {
-                var pLabel = new Label(prefix);
-                pLabel.style.fontSize = 12;
-                pLabel.style.color = TextPrimary;
-                pLabel.style.whiteSpace = WhiteSpace.Pre;
-                pLabel.style.flexShrink = 0;
-                pLabel.style.paddingLeft = 0;
-                pLabel.style.paddingRight = 0;
-                pLabel.style.marginLeft = 0;
-                pLabel.style.marginRight = 0;
-                pLabel.style.borderLeftWidth = 0;
-                pLabel.style.borderRightWidth = 0;
-                container.Add(pLabel);
+                changedRanges.Add((0, prefixText.Length));
             }
 
-            if (middle.Length > 0)
+            if (matchedEntries != null && matchedEntries.Count > 0 && !string.IsNullOrEmpty(replaceText))
             {
-                var mLabel = new Label(middle);
-                mLabel.style.fontSize = 12;
-                mLabel.style.color = GreenHighlight;
-                mLabel.style.whiteSpace = WhiteSpace.Pre;
-                mLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
-                mLabel.style.flexShrink = 0;
-                mLabel.style.paddingLeft = 0;
-                mLabel.style.paddingRight = 0;
-                mLabel.style.marginLeft = 0;
-                mLabel.style.marginRight = 0;
-                mLabel.style.borderLeftWidth = 0;
-                mLabel.style.borderRightWidth = 0;
-                container.Add(mLabel);
+                var sorted = new List<SearchExpression.MatchEntry>(matchedEntries);
+                sorted.Sort((a, b) => a.Index.CompareTo(b.Index));
+
+                int shift = 0;
+                foreach (var entry in sorted)
+                {
+                    if (entry.Index < 0 || string.IsNullOrEmpty(entry.Text)) continue;
+                    int start = entry.Index + (prefixText?.Length ?? 0) + shift;
+                    int repLen = replaceText.Length;
+                    int end = start + repLen;
+                    changedRanges.Add((start, end));
+                    shift += repLen - entry.Text.Length;
+                }
             }
 
-            if (suffix.Length > 0)
+            if (!string.IsNullOrEmpty(suffixText))
             {
-                var sLabel = new Label(suffix);
-                sLabel.style.fontSize = 12;
-                sLabel.style.color = TextPrimary;
-                sLabel.style.whiteSpace = WhiteSpace.Pre;
-                sLabel.style.flexShrink = 0;
-                sLabel.style.paddingLeft = 0;
-                sLabel.style.paddingRight = 0;
-                sLabel.style.marginLeft = 0;
-                sLabel.style.marginRight = 0;
-                sLabel.style.borderLeftWidth = 0;
-                sLabel.style.borderRightWidth = 0;
-                container.Add(sLabel);
+                changedRanges.Add((newName.Length - suffixText.Length, newName.Length));
+            }
+
+            changedRanges.Sort((a, b) => a.start.CompareTo(b.start));
+            var merged = new List<(int start, int end)>();
+            foreach (var range in changedRanges)
+            {
+                if (range.start >= newName.Length) continue;
+                if (merged.Count > 0 && range.start <= merged[merged.Count - 1].end)
+                {
+                    merged[merged.Count - 1] = (merged[merged.Count - 1].start, Math.Max(merged[merged.Count - 1].end, range.end));
+                }
+                else
+                {
+                    merged.Add(range);
+                }
+            }
+
+            int pos = 0;
+            foreach (var (start, end) in merged)
+            {
+                int clampedStart = Math.Max(start, pos);
+                int clampedEnd = Math.Max(clampedStart, Math.Min(end, newName.Length));
+                if (clampedEnd <= clampedStart) continue;
+
+                if (clampedStart > pos)
+                {
+                    var before = new Label(newName.Substring(pos, clampedStart - pos));
+                    before.style.fontSize = 12;
+                    before.style.color = TextPrimary;
+                    before.style.whiteSpace = WhiteSpace.Pre;
+                    before.style.flexShrink = 0;
+                    before.style.paddingLeft = 0;
+                    before.style.paddingRight = 0;
+                    before.style.marginLeft = 0;
+                    before.style.marginRight = 0;
+                    before.style.borderLeftWidth = 0;
+                    before.style.borderRightWidth = 0;
+                    container.Add(before);
+                }
+
+                var changed = new Label(newName.Substring(clampedStart, clampedEnd - clampedStart));
+                changed.style.fontSize = 12;
+                changed.style.color = GreenHighlight;
+                changed.style.whiteSpace = WhiteSpace.Pre;
+                changed.style.unityFontStyleAndWeight = FontStyle.Bold;
+                changed.style.flexShrink = 0;
+                changed.style.paddingLeft = 0;
+                changed.style.paddingRight = 0;
+                changed.style.marginLeft = 0;
+                changed.style.marginRight = 0;
+                changed.style.borderLeftWidth = 0;
+                changed.style.borderRightWidth = 0;
+                container.Add(changed);
+
+                pos = clampedEnd;
+            }
+
+            if (pos < newName.Length)
+            {
+                var after = new Label(newName.Substring(pos));
+                after.style.fontSize = 12;
+                after.style.color = TextPrimary;
+                after.style.whiteSpace = WhiteSpace.Pre;
+                after.style.flexShrink = 0;
+                after.style.paddingLeft = 0;
+                after.style.paddingRight = 0;
+                after.style.marginLeft = 0;
+                after.style.marginRight = 0;
+                after.style.borderLeftWidth = 0;
+                after.style.borderRightWidth = 0;
+                container.Add(after);
             }
 
             return container;
-        }
-
-        private static (string prefix, string middle, string suffix) ComputeDiff(string oldName, string newName)
-        {
-            int minLen = Math.Min(oldName.Length, newName.Length);
-
-            int prefixLen = 0;
-            while (prefixLen < minLen && oldName[prefixLen] == newName[prefixLen])
-                prefixLen++;
-
-            int suffixLen = 0;
-            int oldMaxSuffix = oldName.Length - prefixLen;
-            int newMaxSuffix = newName.Length - prefixLen;
-            int maxSuffix = Math.Min(oldMaxSuffix, newMaxSuffix);
-
-            while (suffixLen < maxSuffix &&
-                   oldName[oldName.Length - 1 - suffixLen] == newName[newName.Length - 1 - suffixLen])
-                suffixLen++;
-
-            string prefix = newName.Substring(0, prefixLen);
-            string middle = newName.Substring(prefixLen, newName.Length - prefixLen - suffixLen);
-            string suffix = newName.Substring(newName.Length - suffixLen);
-
-            return (prefix, middle, suffix);
         }
 
         private void OnRenameClicked()
