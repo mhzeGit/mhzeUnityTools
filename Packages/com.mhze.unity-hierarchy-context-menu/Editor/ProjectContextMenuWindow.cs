@@ -178,34 +178,34 @@ namespace mhze.HierarchyContextMenu
             var ctrl = Application.platform == RuntimePlatform.OSXEditor ? "Cmd" : "Ctrl";
 
             // 2-6. File operations
-            items.Add(new SpecialActionItem { DisplayName = "Show in Explorer", MenuPath = "Assets/Show in Explorer", Action = () => ProjectContextMenuActions.ShowInExplorer(this), Enabled = true });
-            items.Add(new SpecialActionItem { DisplayName = "Open", MenuPath = "Assets/Open", Action = () => ProjectContextMenuActions.OpenAsset(this), Enabled = activeValid });
-            items.Add(new SpecialActionItem { DisplayName = "Open Scene Additive", MenuPath = "Assets/Open Scene Additive", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Open Scene Additive"), Enabled = activeValid && AssetDatabase.GetAssetPath(Selection.activeObject).EndsWith(".unity") });
-            items.Add(new SpecialActionItem { DisplayName = "Delete", MenuPath = "Edit/Delete", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Delete"), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Rename", MenuPath = "Edit/Rename", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Rename"), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Copy Path", MenuPath = "Assets/Copy Path", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Copy Path"), Enabled = true });
+            items.Add(new SpecialActionItem { DisplayName = "Show in Explorer", Action = () => ProjectContextMenuActions.ShowInExplorer(this), Enabled = true });
+            items.Add(new SpecialActionItem { DisplayName = "Open", ShortcutText = "Enter", Action = () => ProjectContextMenuActions.OpenAsset(this), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Open Scene Additive", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Open Scene Additive"), Enabled = activeValid && AssetDatabase.GetAssetPath(Selection.activeObject).EndsWith(".unity") });
+            items.Add(new SpecialActionItem { DisplayName = "Delete", ShortcutText = "Del", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Delete"), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Rename", ShortcutText = "F2", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Rename"), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Copy Path", ShortcutText = ctrl + "+Alt+C", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Copy Path"), Enabled = true });
 
             items.Add(new SeparatorItem());
 
             // 7-8. Clipboard
-            items.Add(new SpecialActionItem { DisplayName = "Copy", MenuPath = "Edit/Copy", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Copy"), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Paste", MenuPath = "Edit/Paste", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Paste") });
+            items.Add(new SpecialActionItem { DisplayName = "Copy", ShortcutText = ctrl + "+C", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Copy"), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Paste", ShortcutText = ctrl + "+V", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Paste") });
 
             items.Add(new SeparatorItem());
 
             // 9-11. Scene references
             items.Add(new SpecialActionItem { DisplayName = "Find References in Scene", Action = () => ProjectContextMenuActions.FindReferencesInScene(this), Enabled = activeValid });
-            items.Add(new SpecialActionItem { DisplayName = "Select Dependencies", MenuPath = "Assets/Select Dependencies", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Select Dependencies"), Enabled = activeValid });
-            items.Add(new SpecialActionItem { DisplayName = "Select Previous", MenuPath = "Assets/Select Previous", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Select Previous"), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Select Dependencies", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Select Dependencies"), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Select Previous", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Select Previous"), Enabled = activeValid });
 
             items.Add(new SeparatorItem());
 
             // Refresh + Reimport
-            items.Add(new SpecialActionItem { DisplayName = "Refresh", MenuPath = "Assets/Refresh", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Refresh") });
+            items.Add(new SpecialActionItem { DisplayName = "Refresh", ShortcutText = ctrl + "+R", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Refresh") });
 
             // Reimport
-            items.Add(new SpecialActionItem { DisplayName = "Reimport", MenuPath = "Assets/Reimport", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport"), Enabled = true });
-            items.Add(new SpecialActionItem { DisplayName = "Reimport All", MenuPath = "Assets/Reimport All", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport All"), Enabled = true });
+            items.Add(new SpecialActionItem { DisplayName = "Reimport", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport"), Enabled = true });
+            items.Add(new SpecialActionItem { DisplayName = "Reimport All", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport All"), Enabled = true });
 
             items.Add(new SeparatorItem());
 
@@ -677,12 +677,9 @@ namespace mhze.HierarchyContextMenu
                 label.text = specialAction.DisplayName;
                 label.style.color = specialAction.Enabled ? HierarchyContextMenuSettings.TextColor : HierarchyContextMenuSettings.DisabledTextColor;
                 arrow.style.display = DisplayStyle.None;
-                var shortcutText = specialAction.ShortcutText;
-                if (string.IsNullOrEmpty(shortcutText) && !string.IsNullOrEmpty(specialAction.MenuPath))
-                    shortcutText = ShortcutResolver.GetShortcut(specialAction.MenuPath);
-                if (!string.IsNullOrEmpty(shortcutText))
+                if (!string.IsNullOrEmpty(specialAction.ShortcutText))
                 {
-                    shortcut.text = shortcutText;
+                    shortcut.text = specialAction.ShortcutText;
                     shortcut.style.display = DisplayStyle.Flex;
                 }
                 ApplyIcon(icon, specialAction.DisplayName, specialAction.Enabled);
