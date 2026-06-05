@@ -40,6 +40,7 @@ namespace mhze.BatchRenamer
         private static readonly Color PreviewBg = new Color(0.1f, 0.1f, 0.1f);
 
         private readonly HashSet<AssetCategory> _filterSelectedCategories = new HashSet<AssetCategory>();
+        private VisualElement _leftColumn;
         private VisualElement _filterDropdownButton;
         private Label _filterSummaryLabel;
         private VisualElement _filterPopup;
@@ -48,8 +49,6 @@ namespace mhze.BatchRenamer
         public static void ShowWindow(Object[] selectedObjects)
         {
             var window = GetWindow<BatchRenamerWindow>(true, "Batch Rename");
-            window.minSize = new Vector2(700, 500);
-            window.maxSize = new Vector2(1000, 1200);
             window._processor.CollectFromObjects(selectedObjects);
             if (window._previewContainer != null)
             {
@@ -79,6 +78,7 @@ namespace mhze.BatchRenamer
             mainRow.style.minHeight = 0;
 
             var leftColumn = new VisualElement();
+            _leftColumn = leftColumn;
             leftColumn.style.flexDirection = FlexDirection.Column;
             leftColumn.style.flexGrow = 0;
             leftColumn.style.flexShrink = 0;
@@ -105,11 +105,44 @@ namespace mhze.BatchRenamer
             mainRow.Add(rightColumn);
             rootVisualElement.Add(mainRow);
 
+            rootVisualElement.schedule.Execute(() =>
+            {
+                if (_leftColumn != null && _leftColumn.childCount > 0)
+                    AdjustWindowSize();
+            }).StartingIn(50);
+
             if (_previewDirty)
             {
                 RefreshPreview();
                 _previewDirty = false;
             }
+        }
+
+        private void AdjustWindowSize()
+        {
+            if (_leftColumn == null) return;
+
+            float controlsHeight = 0;
+            foreach (var child in _leftColumn.Children())
+            {
+                controlsHeight += child.layout.height;
+            }
+
+            float headerHeight = 50;
+            float rootPadding = 16;
+            float minPreviewHeight = 180;
+            float actionsHeight = 36;
+
+            float requiredHeight = Mathf.Ceil(rootPadding + headerHeight + controlsHeight + minPreviewHeight + actionsHeight);
+
+            float leftWidth = _leftColumn.resolvedStyle.width;
+            if (leftWidth <= 0) leftWidth = 320;
+            float rightMinWidth = 300;
+            float gap = 12;
+            float hPadding = 24;
+            float requiredWidth = Mathf.Ceil(leftWidth + gap + rightMinWidth + hPadding);
+
+            minSize = new Vector2(requiredWidth, requiredHeight);
         }
 
         private void BuildHeader()
