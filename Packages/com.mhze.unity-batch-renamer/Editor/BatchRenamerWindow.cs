@@ -28,6 +28,7 @@ namespace mhze.BatchRenamer
         private readonly RenameProcessor _processor = new RenameProcessor();
         private bool _previewDirty = true;
         private IVisualElementScheduledItem _pendingRefresh;
+        private Object[] _pendingObjects;
 
         private static readonly Color BgDark = new Color(0.12f, 0.12f, 0.12f);
         private static readonly Color BgInput = new Color(0.17f, 0.17f, 0.17f);
@@ -64,18 +65,14 @@ namespace mhze.BatchRenamer
                 }
             }
             var window = GetWindow<BatchRenamerWindow>(true, "Batch Rename");
-            window._processor.CollectFromObjects(selectedObjects);
+            window._pendingObjects = selectedObjects;
+            window.Show();
+
             if (window._previewContainer != null)
             {
-                window.RefreshPreview();
-                window._previewDirty = false;
+                window.ShowLoadingState();
+                window.rootVisualElement.schedule.Execute(window.ProcessPendingObjects).StartingIn(50);
             }
-            else
-            {
-                window._previewDirty = true;
-            }
-            window.Show();
-            Debug.Log($"[BatchRenamer] ShowWindow done, _previewDirty={window._previewDirty}");
         }
 
         private void CreateGUI()
@@ -130,7 +127,12 @@ namespace mhze.BatchRenamer
             }).StartingIn(50);
 
             Debug.Log($"[BatchRenamer] CreateGUI: _previewDirty={_previewDirty}, Items.Count={_processor.Items.Count}");
-            if (_previewDirty)
+            if (_pendingObjects != null)
+            {
+                ShowLoadingState();
+                rootVisualElement.schedule.Execute(ProcessPendingObjects).StartingIn(50);
+            }
+            else if (_previewDirty)
             {
                 Debug.Log($"[BatchRenamer] CreateGUI: calling RefreshPreview from _previewDirty, Items.Count={_processor.Items.Count}");
                 RefreshPreview();
@@ -145,8 +147,54 @@ namespace mhze.BatchRenamer
             var selObjs = BatchRenamer.GetSelectedProjectAssets();
             Debug.Log($"[BatchRenamer] OnSelectionChange fired, assetGUIDs based objects count={selObjs?.Length}, _previewContainer={_previewContainer != null}");
 
-            _processor.CollectFromObjects(selObjs);
-            MarkPreviewDirty();
+            bool hasFolders = selObjs != null && selObjs.Any(o =>
+            {
+                var p = AssetDatabase.GetAssetPath(o);
+                return !string.IsNullOrEmpty(p) && AssetDatabase.IsValidFolder(p);
+            });
+
+            if (hasFolders)
+            {
+                _pendingObjects = selObjs;
+                ShowLoadingState();
+                rootVisualElement.schedule.Execute(ProcessPendingObjects).StartingIn(50);
+            }
+            else
+            {
+                _processor.CollectFromObjects(selObjs);
+                MarkPreviewDirty();
+            }
+        }
+
+        private void ShowLoadingState()
+        {
+            if (_previewHeader != null)
+                _previewHeader.text = "Preview (loading...)";
+            if (_previewContainer != null)
+            {
+                _previewContainer.Clear();
+                var loading = new Label("Loading assets...");
+                loading.style.color = TextSecondary;
+                loading.style.fontSize = 14;
+                loading.style.paddingTop = 30;
+                loading.style.unityTextAlign = TextAnchor.MiddleCenter;
+                loading.style.alignSelf = Align.Center;
+                _previewContainer.Add(loading);
+            }
+            if (_renameButton != null)
+                _renameButton.SetEnabled(false);
+            if (_statusLabel != null)
+                _statusLabel.text = "Loading...";
+        }
+
+        private void ProcessPendingObjects()
+        {
+            if (_pendingObjects == null) return;
+            var objects = _pendingObjects;
+            _pendingObjects = null;
+            Debug.Log($"[BatchRenamer] ProcessPendingObjects: processing {objects.Length} objects");
+            _processor.CollectFromObjects(objects);
+            RefreshPreview();
         }
 
         private void AdjustWindowSize()
