@@ -919,6 +919,14 @@ namespace mhze.BatchRenamer
             int validCount = 0;
             int changedCount = 0;
 
+            var itemByPath = new Dictionary<string, RenameItem>();
+            foreach (var item in _processor.Items)
+            {
+                string p = AssetDatabase.GetAssetPath(item.Target);
+                if (!string.IsNullOrEmpty(p))
+                    itemByPath[p] = item;
+            }
+
             var groups = new Dictionary<string, List<RenameItem>>();
             var groupNames = new Dictionary<string, string>();
             var rootItems = new List<RenameItem>();
@@ -938,7 +946,8 @@ namespace mhze.BatchRenamer
 
                 int lastSlash = path.LastIndexOf('/');
                 string parentPath = path.Substring(0, lastSlash);
-                string parentName = path.Substring(lastSlash + 1);
+                int dirSlash = parentPath.LastIndexOf('/');
+                string parentName = dirSlash >= 0 ? parentPath.Substring(dirSlash + 1) : parentPath;
 
                 if (!groups.ContainsKey(parentPath))
                 {
@@ -969,46 +978,56 @@ namespace mhze.BatchRenamer
                 }
                 firstItem = false;
 
-                var dirRow = new VisualElement();
-                dirRow.style.flexDirection = FlexDirection.Row;
-                dirRow.style.alignItems = Align.Center;
-                dirRow.style.paddingTop = 3;
-                dirRow.style.paddingBottom = 1;
-                dirRow.style.paddingLeft = 4;
-                dirRow.style.paddingRight = 4;
-                dirRow.style.minHeight = 22;
-                dirRow.style.borderBottomWidth = 1;
-                dirRow.style.borderBottomColor = new Color(0.15f, 0.15f, 0.15f);
-                dirRow.style.backgroundColor = new Color(0.14f, 0.14f, 0.14f);
+                if (itemByPath.TryGetValue(parentPath, out var folderItem))
+                {
+                    BuildPreviewRow(folderItem, 0);
+                }
+                else
+                {
+                    var dirRow = new VisualElement();
+                    dirRow.style.flexDirection = FlexDirection.Row;
+                    dirRow.style.alignItems = Align.Center;
+                    dirRow.style.paddingTop = 3;
+                    dirRow.style.paddingBottom = 1;
+                    dirRow.style.paddingLeft = 4;
+                    dirRow.style.paddingRight = 4;
+                    dirRow.style.minHeight = 22;
+                    dirRow.style.borderBottomWidth = 1;
+                    dirRow.style.borderBottomColor = new Color(0.15f, 0.15f, 0.15f);
+                    dirRow.style.backgroundColor = new Color(0.14f, 0.14f, 0.14f);
 
-                var dirLeft = new VisualElement();
-                dirLeft.style.flexDirection = FlexDirection.Row;
-                dirLeft.style.alignItems = Align.Center;
-                dirLeft.style.flexGrow = 1;
-                dirLeft.style.flexBasis = 0;
+                    var dirLeft = new VisualElement();
+                    dirLeft.style.flexDirection = FlexDirection.Row;
+                    dirLeft.style.alignItems = Align.Center;
+                    dirLeft.style.flexGrow = 1;
+                    dirLeft.style.flexBasis = 0;
 
-                var dirIcon = new VisualElement();
-                Texture2D folderIcon = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
-                dirIcon.style.backgroundImage = folderIcon != null ? new Background(folderIcon) : StyleKeyword.None;
-                dirIcon.style.width = 16;
-                dirIcon.style.height = 16;
-                dirIcon.style.marginRight = 6;
-                dirIcon.style.flexShrink = 0;
-                dirLeft.Add(dirIcon);
+                    var dirIcon = new VisualElement();
+                    Texture2D folderIcon = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
+                    dirIcon.style.backgroundImage = folderIcon != null ? new Background(folderIcon) : StyleKeyword.None;
+                    dirIcon.style.width = 16;
+                    dirIcon.style.height = 16;
+                    dirIcon.style.marginRight = 6;
+                    dirIcon.style.flexShrink = 0;
+                    dirLeft.Add(dirIcon);
 
-                var dirLabel = new Label(groupNames[parentPath]);
-                dirLabel.style.fontSize = 12;
-                dirLabel.style.color = TextPrimary;
-                dirLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
-                dirLabel.style.whiteSpace = WhiteSpace.Pre;
-                dirLabel.style.flexShrink = 1;
-                dirLeft.Add(dirLabel);
+                    var dirLabel = new Label(groupNames[parentPath]);
+                    dirLabel.style.fontSize = 12;
+                    dirLabel.style.color = TextPrimary;
+                    dirLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+                    dirLabel.style.whiteSpace = WhiteSpace.Pre;
+                    dirLabel.style.flexShrink = 1;
+                    dirLeft.Add(dirLabel);
 
-                dirRow.Add(dirLeft);
-                _previewContainer.Add(dirRow);
+                    dirRow.Add(dirLeft);
+                    _previewContainer.Add(dirRow);
+                }
 
                 foreach (var item in items)
                 {
+                    string itemPath = AssetDatabase.GetAssetPath(item.Target);
+                    if (!string.IsNullOrEmpty(itemPath) && groups.ContainsKey(itemPath))
+                        continue;
                     BuildPreviewRow(item, 1);
                 }
             }

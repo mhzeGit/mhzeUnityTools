@@ -122,6 +122,15 @@ namespace mhze.BatchRenamer
 
                 if (AssetDatabase.IsValidFolder(path))
                 {
+                    if (visited.Add(path))
+                    {
+                        Items.Add(new RenameItem
+                        {
+                            Target = obj,
+                            OriginalName = obj.name
+                        });
+                        Debug.Log($"[BatchRenamer]   ADDED folder item: '{obj.name}' path='{path}'");
+                    }
                     CollectFromFolder(path, visited);
                 }
                 else if (visited.Add(path))
