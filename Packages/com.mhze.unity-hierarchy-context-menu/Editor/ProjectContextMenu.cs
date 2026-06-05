@@ -6,15 +6,17 @@ namespace mhze.HierarchyContextMenu
     [InitializeOnLoad]
     static class ProjectContextMenu
     {
-        private static bool _contextClickPending;
-        private static bool _mouseOverAnyItem;
-        private static Vector2 _contextClickScreenPos;
+        private static bool _handlingContextClick;
+        private static bool _pendingOpen;
+        private static bool _mouseOverItem;
+        private static Vector2 _pendingScreenPos;
 
         static ProjectContextMenu()
         {
 #pragma warning disable CS0618
             EditorApplication.projectWindowItemOnGUI += OnProjectItemGUI;
 #pragma warning restore CS0618
+            EditorApplication.update += OnEditorUpdate;
         }
 
         private static void OnProjectItemGUI(string guid, Rect selectionRect)
@@ -28,22 +30,18 @@ namespace mhze.HierarchyContextMenu
             if (ProjectContextMenuWindow.IsOpen)
                 return;
 
-            // First callback to see the ContextClick: consume event and schedule menu
-            if (!_contextClickPending)
+            if (!_handlingContextClick)
             {
-                _contextClickPending = true;
-                _mouseOverAnyItem = false;
-                _contextClickScreenPos = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
+                _handlingContextClick = true;
+                _pendingOpen = true;
+                _mouseOverItem = false;
+                _pendingScreenPos = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
                 Event.current.Use();
-
-                EditorApplication.delayCall -= OpenContextMenu;
-                EditorApplication.delayCall += OpenContextMenu;
             }
 
-            // Every callback checks if mouse is over its rect
             if (selectionRect.Contains(Event.current.mousePosition))
             {
-                _mouseOverAnyItem = true;
+                _mouseOverItem = true;
                 var assetPath = AssetDatabase.GUIDToAssetPath(guid);
                 var asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
                 if (asset != null)
@@ -51,21 +49,26 @@ namespace mhze.HierarchyContextMenu
             }
         }
 
-        private static void OpenContextMenu()
+        private static void OnEditorUpdate()
         {
-            EditorApplication.delayCall -= OpenContextMenu;
-            if (!_contextClickPending)
+            if (!_pendingOpen)
                 return;
-            _contextClickPending = false;
+            _pendingOpen = false;
 
-            ProjectContextMenuWindow.ClickedOnItem = _mouseOverAnyItem;
+            ProjectContextMenuWindow.ClickedOnItem = _mouseOverItem;
 
             ProjectItemIndexer.EnsureIndexed();
 
             int rootItemCount = 22;
             float desiredHeight = Mathf.Max(44f + (rootItemCount * 22f), 60f);
 
-            ProjectContextMenuWindow.Show(_contextClickScreenPos, desiredHeight);
+            ProjectContextMenuWindow.Show(_pendingScreenPos, desiredHeight);
+        }
+
+        internal static void ResetHandlingContextClick()
+        {
+            _handlingContextClick = false;
+            _pendingOpen = false;
         }
     }
 }

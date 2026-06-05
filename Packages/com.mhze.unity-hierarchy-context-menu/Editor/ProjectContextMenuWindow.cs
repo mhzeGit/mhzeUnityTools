@@ -45,6 +45,8 @@ namespace mhze.HierarchyContextMenu
                 _instance.Close();
             }
 
+            ProjectContextMenu.ResetHandlingContextClick();
+
             var buttonRect = new Rect(screenPoint.x, screenPoint.y, 1, 1);
             _instance = CreateInstance<ProjectContextMenuWindow>();
             _instance.ShowAsDropDown(buttonRect, new Vector2(WindowWidth, desiredHeight));
@@ -171,12 +173,12 @@ namespace mhze.HierarchyContextMenu
                 items.Add(createNode);
 
             // 2-6. File operations
-            items.Add(new SpecialActionItem { DisplayName = "Show in Explorer", Action = () => ProjectContextMenuActions.ShowInExplorer(this), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Show in Explorer", Action = () => ProjectContextMenuActions.ShowInExplorer(this), Enabled = true });
             items.Add(new SpecialActionItem { DisplayName = "Open", Action = () => ProjectContextMenuActions.OpenAsset(this), Enabled = activeValid });
             items.Add(new SpecialActionItem { DisplayName = "Open Scene Additive", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Open Scene Additive"), Enabled = activeValid && AssetDatabase.GetAssetPath(Selection.activeObject).EndsWith(".unity") });
             items.Add(new SpecialActionItem { DisplayName = "Delete", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Delete"), Enabled = selectionValid });
             items.Add(new SpecialActionItem { DisplayName = "Rename", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Edit/Rename"), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Copy Path", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Copy Path"), Enabled = activeValid });
+            items.Add(new SpecialActionItem { DisplayName = "Copy Path", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Copy Path"), Enabled = true });
 
             items.Add(new SeparatorItem());
 
@@ -193,14 +195,18 @@ namespace mhze.HierarchyContextMenu
 
             items.Add(new SeparatorItem());
 
-            // 15-16. Reimport
-            items.Add(new SpecialActionItem { DisplayName = "Reimport", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport"), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Reimport All", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport All"), Enabled = selectionValid });
+            // Refresh + Reimport
+            items.Add(new SpecialActionItem { DisplayName = "Refresh", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Refresh") });
+
+            // Reimport
+            items.Add(new SpecialActionItem { DisplayName = "Reimport", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport"), Enabled = true });
+            items.Add(new SpecialActionItem { DisplayName = "Reimport All", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport All"), Enabled = true });
 
             items.Add(new SeparatorItem());
 
-            // 17-19. Import/Export
-            items.Add(new SpecialActionItem { DisplayName = "Import New Asset...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Import New Asset...") });
+            // Import/Export section
+            items.Add(new SpecialActionItem { DisplayName = "View in Package Manager", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/View in Package Manager"), Enabled = true });
+            items.Add(new SpecialActionItem { DisplayName = "Create UPM Package", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Create UPM Package"), Enabled = true });
             items.Add(new SpecialSubmenuItem
             {
                 DisplayName = "Import Package",
@@ -209,21 +215,22 @@ namespace mhze.HierarchyContextMenu
                     new SpecialActionItem { DisplayName = "Custom Package...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Import Package/Custom Package...") },
                 }
             });
-            items.Add(new SpecialActionItem { DisplayName = "Export Package...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Export Package..."), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Export Package...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Export Package..."), Enabled = true });
+            items.Add(new SpecialActionItem { DisplayName = "Export As UPM Package", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Export As UPM Package"), Enabled = true });
+            items.Add(new SpecialActionItem { DisplayName = "Import New Asset...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Import New Asset...") });
+            items.Add(new SpecialActionItem { DisplayName = "Extract Material", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Extract Materials"), Enabled = true });
 
-            items.Add(new SeparatorItem());
-
-            // 20-21. Properties/Refresh
-            items.Add(new SpecialActionItem { DisplayName = "Properties...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Properties..."), Enabled = activeValid });
-            items.Add(new SpecialActionItem { DisplayName = "Refresh", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Refresh") });
-
-            // Remaining tree items (from other packages) at the bottom
+            // Remaining tree items (from other packages)
             var remainingNodes = _rootNode.Children.Where(c => c.Name != "Create").ToList();
             if (remainingNodes.Count > 0)
             {
                 items.Add(new SeparatorItem());
                 items.AddRange(remainingNodes);
             }
+
+            // Properties (always last)
+            items.Add(new SeparatorItem());
+            items.Add(new SpecialActionItem { DisplayName = "Properties...", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Properties..."), Enabled = true });
 
             return items;
         }
@@ -341,7 +348,7 @@ namespace mhze.HierarchyContextMenu
 
             var searchIcon = new VisualElement();
             var iconTex = MenuIcons.Load("Search Icon");
-            searchIcon.style.backgroundImage = iconTex != null ? new Background(iconTex) : StyleKeyword.None;
+            searchIcon.style.backgroundImage = iconTex != null ? Background.FromTexture2D(iconTex) : StyleKeyword.None;
             searchIcon.style.width = 14;
             searchIcon.style.height = 14;
             searchIcon.style.marginRight = 4;

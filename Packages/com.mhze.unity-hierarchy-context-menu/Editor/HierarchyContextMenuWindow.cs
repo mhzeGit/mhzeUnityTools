@@ -343,7 +343,7 @@ namespace mhze.HierarchyContextMenu
 
             var searchIcon = new VisualElement();
             var iconTex = MenuIcons.Load("Search Icon");
-            searchIcon.style.backgroundImage = iconTex != null ? new Background(iconTex) : StyleKeyword.None;
+            searchIcon.style.backgroundImage = iconTex != null ? Background.FromTexture2D(iconTex) : StyleKeyword.None;
             searchIcon.style.width = 14;
             searchIcon.style.height = 14;
             searchIcon.style.marginRight = 4;

@@ -51,7 +51,7 @@ namespace mhze.HierarchyContextMenu
             { "Select Dependencies", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
             { "Select Previous", new ItemIconInfo("UnityEditor.SceneHierarchyWindow") },
             { "Reimport All", new ItemIconInfo("Refresh") },
-            { "Show in Explorer", new ItemIconInfo("Project Icon") },
+            { "Show in Explorer", new ItemIconInfo("Folder Icon") },
             { "Open", new ItemIconInfo("UnityEditor.SceneView") },
             { "Open Scene Additive", new ItemIconInfo("UnityEditor.SceneView") },
             { "Properties...", new ItemIconInfo("d_Settings") },
@@ -60,6 +60,10 @@ namespace mhze.HierarchyContextMenu
             { "Import Package", new ItemIconInfo("d_Package Manager") },
             { "Custom Package...", new ItemIconInfo("d_Package Manager") },
             { "Export Package...", new ItemIconInfo("d_Package Manager") },
+            { "View in Package Manager", new ItemIconInfo("d_Package Manager") },
+            { "Create UPM Package", new ItemIconInfo("d_Package Manager") },
+            { "Export As UPM Package", new ItemIconInfo("d_Package Manager") },
+            { "Extract Material", new ItemIconInfo("PreMatCube") },
             { "Refresh", new ItemIconInfo("Refresh") },
         };
 

@@ -16,13 +16,17 @@ namespace mhze.HierarchyContextMenu
             "Properties...",
             "Reimport",
             "Reimport All",
+            "Refresh",
+            "View in Package Manager",
+            "Create UPM Package",
             "Import New Asset...",
             "Import Package/Custom Package...",
             "Export Package...",
+            "Export As UPM Package",
+            "Extract Materials",
             "Find References In Scene",
             "Select Dependencies",
             "Select Previous",
-            "Refresh",
         };
 
         private static List<HierarchyMenuItem> _items;
