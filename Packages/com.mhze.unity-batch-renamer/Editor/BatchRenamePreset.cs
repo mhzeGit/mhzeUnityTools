@@ -18,6 +18,7 @@ namespace mhze.BatchRenamer
         public NumberFormatPreset numberFormat = NumberFormatPreset.UnderscoreN;
         public bool caseSensitive;
         public List<AssetCategory> enabledCategories = new List<AssetCategory>();
+        public List<HierarchyCategory> enabledHierarchyCategories = new List<HierarchyCategory>();
     }
 
     public class BatchRenamePreset : ScriptableObject

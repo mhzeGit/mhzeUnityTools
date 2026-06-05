@@ -43,7 +43,9 @@ namespace mhze.BatchRenamer
         private static readonly Color PreviewBg = new Color(0.1f, 0.1f, 0.1f);
 
         private readonly HashSet<AssetCategory> _filterSelectedCategories = new HashSet<AssetCategory>();
+        private readonly HashSet<HierarchyCategory> _hierarchySelectedCategories = new HashSet<HierarchyCategory>();
         private VisualElement _leftColumn;
+        private VisualElement _filterSectionContent;
         private VisualElement _filterDropdownButton;
 
         private BatchRenamePreset _currentPreset;
@@ -163,6 +165,7 @@ namespace mhze.BatchRenamer
             else
             {
                 _processor.CollectFromObjects(selObjs);
+                RefreshFilterUI();
                 MarkPreviewDirty();
             }
         }
@@ -195,6 +198,7 @@ namespace mhze.BatchRenamer
             _pendingObjects = null;
             Debug.Log($"[BatchRenamer] ProcessPendingObjects: processing {objects.Length} objects");
             _processor.CollectFromObjects(objects);
+            RefreshFilterUI();
             RefreshPreview();
         }
 
@@ -291,6 +295,92 @@ namespace mhze.BatchRenamer
 
         private void BuildFilterSection(VisualElement parent)
         {
+            var section = CreateSection();
+            CreateSectionHeader(section, "Filters");
+
+            _filterSectionContent = new VisualElement();
+            section.Add(_filterSectionContent);
+            parent.Add(section);
+
+            RefreshFilterUI();
+        }
+
+        private void RefreshFilterUI()
+        {
+            _filterSectionContent.Clear();
+            _filterDropdownButton = null;
+            _filterSummaryLabel = null;
+            CloseFilterPopup();
+
+            if (_processor.IsHierarchyMode)
+            {
+                BuildHierarchyFilterUI(_filterSectionContent);
+            }
+            else
+            {
+                BuildProjectFilterUI(_filterSectionContent);
+            }
+        }
+
+        private void BuildHierarchyFilterUI(VisualElement container)
+        {
+            _hierarchySelectedCategories.Clear();
+            var categories = (HierarchyCategory[])Enum.GetValues(typeof(HierarchyCategory));
+            foreach (var cat in categories)
+            {
+                if (cat != HierarchyCategory.All)
+                    _hierarchySelectedCategories.Add(cat);
+            }
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Center;
+            row.style.minHeight = 26;
+            row.name = "hierarchy-filter-row";
+
+            var spacer = new Label("");
+            spacer.style.minWidth = 70;
+            row.Add(spacer);
+
+            _filterDropdownButton = new VisualElement();
+            _filterDropdownButton.style.flexGrow = 1;
+            _filterDropdownButton.style.borderTopWidth = 1;
+            _filterDropdownButton.style.borderLeftWidth = 1;
+            _filterDropdownButton.style.borderRightWidth = 1;
+            _filterDropdownButton.style.borderBottomWidth = 1;
+            _filterDropdownButton.style.borderTopColor = BorderColor;
+            _filterDropdownButton.style.borderLeftColor = BorderColor;
+            _filterDropdownButton.style.borderRightColor = BorderColor;
+            _filterDropdownButton.style.borderBottomColor = BorderColor;
+            _filterDropdownButton.style.backgroundColor = BgInput;
+            _filterDropdownButton.style.paddingLeft = 8;
+            _filterDropdownButton.style.paddingRight = 8;
+            _filterDropdownButton.style.paddingTop = 4;
+            _filterDropdownButton.style.paddingBottom = 4;
+            _filterDropdownButton.style.flexDirection = FlexDirection.Row;
+            _filterDropdownButton.style.justifyContent = Justify.SpaceBetween;
+            _filterDropdownButton.style.alignItems = Align.Center;
+            _filterDropdownButton.RegisterCallback<MouseDownEvent>(_ => ToggleFilterPopup());
+
+            _filterSummaryLabel = new Label("All");
+            _filterSummaryLabel.style.fontSize = 12;
+            _filterSummaryLabel.style.color = TextPrimary;
+            _filterSummaryLabel.style.flexGrow = 1;
+            _filterSummaryLabel.style.whiteSpace = WhiteSpace.NoWrap;
+            _filterDropdownButton.Add(_filterSummaryLabel);
+
+            var arrow = new Label("\u25BC");
+            arrow.style.fontSize = 9;
+            arrow.style.color = TextSecondary;
+            arrow.style.marginLeft = 6;
+            arrow.style.flexShrink = 0;
+            _filterDropdownButton.Add(arrow);
+
+            row.Add(_filterDropdownButton);
+            container.Add(row);
+        }
+
+        private void BuildProjectFilterUI(VisualElement container)
+        {
             _filterSelectedCategories.Clear();
             var categories = (AssetCategory[])Enum.GetValues(typeof(AssetCategory));
             foreach (var cat in categories)
@@ -298,9 +388,6 @@ namespace mhze.BatchRenamer
                 if (cat != AssetCategory.All)
                     _filterSelectedCategories.Add(cat);
             }
-
-            var section = CreateSection();
-            CreateSectionHeader(section, "Filters");
 
             var row = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
@@ -347,14 +434,15 @@ namespace mhze.BatchRenamer
             _filterDropdownButton.Add(arrow);
 
             row.Add(_filterDropdownButton);
-            section.Add(row);
-            parent.Add(section);
+            container.Add(row);
         }
 
         private void ToggleFilterPopup()
         {
             if (_filterPopupOpen)
                 CloseFilterPopup();
+            else if (_processor.IsHierarchyMode)
+                OpenHierarchyFilterPopup();
             else
                 OpenFilterPopup();
         }
@@ -458,6 +546,105 @@ namespace mhze.BatchRenamer
             RegisterClickAwayHandler();
         }
 
+        private void OpenHierarchyFilterPopup()
+        {
+            _filterPopupOpen = true;
+
+            var popup = new VisualElement();
+            popup.name = "filter-section-popup-hierarchy";
+            popup.style.position = Position.Absolute;
+            popup.style.left = 0;
+            popup.style.top = _filterDropdownButton.layout.height;
+            popup.style.width = _filterDropdownButton.layout.width;
+            popup.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f);
+            popup.style.borderTopWidth = 1;
+            popup.style.borderLeftWidth = 1;
+            popup.style.borderRightWidth = 1;
+            popup.style.borderBottomWidth = 1;
+            popup.style.borderTopColor = BorderColor;
+            popup.style.borderLeftColor = BorderColor;
+            popup.style.borderRightColor = BorderColor;
+            popup.style.borderBottomColor = BorderColor;
+            popup.style.paddingTop = 4;
+            popup.style.paddingBottom = 4;
+            popup.style.flexDirection = FlexDirection.Column;
+
+            var noneRow = new VisualElement();
+            noneRow.style.flexDirection = FlexDirection.Row;
+            noneRow.style.alignItems = Align.Center;
+            noneRow.style.paddingLeft = 8;
+            noneRow.style.paddingRight = 8;
+            noneRow.style.paddingTop = 2;
+            noneRow.style.paddingBottom = 2;
+            noneRow.style.minHeight = 22;
+            noneRow.name = "hierarchy-filter-none-row";
+            noneRow.RegisterCallback<MouseDownEvent>(_ => SelectNoneHierarchyFilter());
+
+            var noneLabel = new Label("None");
+            noneLabel.style.fontSize = 12;
+            noneLabel.style.color = TextDim;
+            noneRow.Add(noneLabel);
+            popup.Add(noneRow);
+
+            var sep = new VisualElement();
+            sep.style.height = 1;
+            sep.style.backgroundColor = BorderColor;
+            sep.style.marginLeft = 4;
+            sep.style.marginRight = 4;
+            sep.style.marginTop = 2;
+            sep.style.marginBottom = 2;
+            popup.Add(sep);
+
+            var categories = (HierarchyCategory[])Enum.GetValues(typeof(HierarchyCategory));
+            foreach (var cat in categories)
+            {
+                if (cat == HierarchyCategory.All) continue;
+
+                var toggle = new Toggle(cat.ToString());
+                toggle.value = _hierarchySelectedCategories.Contains(cat);
+                toggle.style.flexDirection = FlexDirection.Row;
+                toggle.style.alignItems = Align.Center;
+                toggle.style.paddingLeft = 8;
+                toggle.style.paddingRight = 8;
+                toggle.style.paddingTop = 2;
+                toggle.style.paddingBottom = 2;
+                toggle.style.minHeight = 22;
+                toggle.style.unityTextAlign = TextAnchor.MiddleLeft;
+
+                var toggleLabel = toggle.Q<Label>();
+                if (toggleLabel != null)
+                {
+                    toggleLabel.style.fontSize = 12;
+                    toggleLabel.style.color = TextPrimary;
+                    toggleLabel.style.marginLeft = 4;
+                }
+
+                var capturedCat = cat;
+                toggle.RegisterValueChangedCallback(evt =>
+                {
+                    if (evt.newValue)
+                        _hierarchySelectedCategories.Add(capturedCat);
+                    else
+                        _hierarchySelectedCategories.Remove(capturedCat);
+                    UpdateFilterSummary();
+                    MarkPreviewDirty();
+                });
+
+                popup.Add(toggle);
+            }
+
+            _filterPopup = popup;
+
+            var btnWorld = _filterDropdownButton.worldBound;
+            var rootWorld = rootVisualElement.worldBound;
+            popup.style.left = btnWorld.x - rootWorld.x;
+            popup.style.top = btnWorld.yMax - rootWorld.y;
+            popup.style.width = btnWorld.width;
+            rootVisualElement.Add(popup);
+
+            RegisterClickAwayHandler();
+        }
+
         private void RegisterClickAwayHandler()
         {
             rootVisualElement.RegisterCallback<MouseDownEvent>(OnRootMouseDown);
@@ -491,7 +678,22 @@ namespace mhze.BatchRenamer
 
         private void SelectNoneFilter()
         {
-            _filterSelectedCategories.Clear();
+            if (_processor.IsHierarchyMode)
+            {
+                _hierarchySelectedCategories.Clear();
+            }
+            else
+            {
+                _filterSelectedCategories.Clear();
+            }
+            CloseFilterPopup();
+            UpdateFilterSummary();
+            MarkPreviewDirty();
+        }
+
+        private void SelectNoneHierarchyFilter()
+        {
+            _hierarchySelectedCategories.Clear();
             CloseFilterPopup();
             UpdateFilterSummary();
             MarkPreviewDirty();
@@ -499,15 +701,30 @@ namespace mhze.BatchRenamer
 
         private void UpdateFilterSummary()
         {
-            int count = _filterSelectedCategories.Count;
-            int total = Enum.GetValues(typeof(AssetCategory)).Length - 1;
+            if (_processor.IsHierarchyMode)
+            {
+                int count = _hierarchySelectedCategories.Count;
+                int total = Enum.GetValues(typeof(HierarchyCategory)).Length - 1;
 
-            if (count == total)
-                _filterSummaryLabel.text = "All";
-            else if (count == 0)
-                _filterSummaryLabel.text = "None";
+                if (count == total)
+                    _filterSummaryLabel.text = "All";
+                else if (count == 0)
+                    _filterSummaryLabel.text = "None";
+                else
+                    _filterSummaryLabel.text = $"{count} selected";
+            }
             else
-                _filterSummaryLabel.text = $"{count} selected";
+            {
+                int count = _filterSelectedCategories.Count;
+                int total = Enum.GetValues(typeof(AssetCategory)).Length - 1;
+
+                if (count == total)
+                    _filterSummaryLabel.text = "All";
+                else if (count == 0)
+                    _filterSummaryLabel.text = "None";
+                else
+                    _filterSummaryLabel.text = $"{count} selected";
+            }
         }
 
         private void BuildModifySection(VisualElement parent)
@@ -893,6 +1110,7 @@ namespace mhze.BatchRenamer
             _processor.PreserveNumbers = _preserveNumbersToggle?.value ?? false;
             _processor.NumberFormat = _numberFormatField != null ? (NumberFormatPreset)_numberFormatField.value : NumberFormatPreset.UnderscoreN;
 
+            _processor.EnabledHierarchyCategories = _hierarchySelectedCategories;
             _processor.SetActiveCategories(_filterSelectedCategories);
 
             if (_currentPreset != null && _currentPreset.operations.Count > 0)
@@ -1483,6 +1701,11 @@ namespace mhze.BatchRenamer
             _filterSelectedCategories.Clear();
             foreach (var cat in op.enabledCategories)
                 _filterSelectedCategories.Add(cat);
+
+            _hierarchySelectedCategories.Clear();
+            foreach (var cat in op.enabledHierarchyCategories)
+                _hierarchySelectedCategories.Add(cat);
+
             UpdateFilterSummary();
         }
 

@@ -39,6 +39,23 @@ namespace mhze.BatchRenamer
         public bool IsValid = true;
     }
 
+    public enum HierarchyCategory
+    {
+        All,
+        MeshRenderer,
+        MeshFilter,
+        Collider,
+        Rigidbody,
+        Animator,
+        AudioSource,
+        Light,
+        Camera,
+        ParticleSystem,
+        Canvas,
+        Script,
+        Empty
+    }
+
     public class RenameProcessor
     {
         public string SearchPattern = "";
@@ -50,6 +67,8 @@ namespace mhze.BatchRenamer
         public NumberFormatPreset NumberFormat = NumberFormatPreset.UnderscoreN;
         public bool CaseSensitive = false;
         public HashSet<AssetCategory> EnabledCategories = new HashSet<AssetCategory>();
+        public bool IsHierarchyMode { get; set; }
+        public HashSet<HierarchyCategory> EnabledHierarchyCategories = new HashSet<HierarchyCategory>();
 
         public List<RenameItem> Items = new List<RenameItem>();
         private SearchExpression _cachedExpression;
@@ -107,6 +126,7 @@ namespace mhze.BatchRenamer
 
         private void CollectFromProjectSelection(Object[] objects)
         {
+            IsHierarchyMode = false;
             Debug.Log($"[BatchRenamer] CollectFromProjectSelection called with {objects.Length} objects");
             var visited = new HashSet<string>();
             foreach (var obj in objects)
@@ -176,6 +196,7 @@ namespace mhze.BatchRenamer
 
         private void CollectFromHierarchySelection(Object[] objects)
         {
+            IsHierarchyMode = true;
             foreach (var obj in objects)
             {
                 var go = obj as GameObject;
@@ -206,17 +227,24 @@ namespace mhze.BatchRenamer
                     Debug.Log($"[BatchRenamer] Parsed '{SearchPattern}' (caseSensitive={CaseSensitive}) → {_cachedExpression.Describe()}");
             }
 
-            bool hasActiveFilters = EnabledCategories.Count > 0;
-
             foreach (var item in Items)
             {
                 List<SearchExpression.MatchEntry> matchedEntries = null;
                 if (_cachedExpression != null)
                     matchedEntries = _cachedExpression.Match(item.OriginalName);
                 bool matchesSearch = _cachedExpression == null || matchedEntries.Count > 0;
-                bool matchesType = !hasActiveFilters || EnabledCategories.Contains(ClassifyObject(item.Target));
+                bool matchesFilter;
+                if (IsHierarchyMode)
+                {
+                    matchesFilter = MatchesHierarchyFilter(item);
+                }
+                else
+                {
+                    bool hasActiveFilters = EnabledCategories.Count > 0;
+                    matchesFilter = !hasActiveFilters || EnabledCategories.Contains(ClassifyObject(item.Target));
+                }
 
-                item.IsValid = matchesSearch && matchesType;
+                item.IsValid = matchesSearch && matchesFilter;
                 item.MatchedTexts = matchesSearch ? matchedEntries : null;
 
                 if (matchesSearch)
@@ -447,6 +475,63 @@ namespace mhze.BatchRenamer
             }
         }
 
+        private bool MatchesHierarchyFilter(RenameItem item)
+        {
+            var go = item.Target as GameObject;
+            if (go == null) return false;
+
+            int totalCategories = Enum.GetValues(typeof(HierarchyCategory)).Length - 1;
+            bool allCategoriesSelected = EnabledHierarchyCategories.Count == totalCategories;
+
+            if (!allCategoriesSelected && EnabledHierarchyCategories.Count > 0)
+            {
+                bool matchesAnyCategory = false;
+                foreach (var cat in EnabledHierarchyCategories)
+                {
+                    if (HasComponentOfCategory(go, cat))
+                    {
+                        matchesAnyCategory = true;
+                        break;
+                    }
+                }
+                if (!matchesAnyCategory)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool HasComponentOfCategory(GameObject go, HierarchyCategory category)
+        {
+            switch (category)
+            {
+                case HierarchyCategory.MeshRenderer: return go.GetComponent<MeshRenderer>() != null;
+                case HierarchyCategory.MeshFilter: return go.GetComponent<MeshFilter>() != null;
+                case HierarchyCategory.Collider: return go.GetComponent<Collider>() != null;
+                case HierarchyCategory.Rigidbody: return go.GetComponent<Rigidbody>() != null;
+                case HierarchyCategory.Animator: return go.GetComponent<Animator>() != null;
+                case HierarchyCategory.AudioSource: return go.GetComponent<AudioSource>() != null;
+                case HierarchyCategory.Light: return go.GetComponent<Light>() != null;
+                case HierarchyCategory.Camera: return go.GetComponent<Camera>() != null;
+                case HierarchyCategory.ParticleSystem: return go.GetComponent<ParticleSystem>() != null;
+                case HierarchyCategory.Canvas: return go.GetComponent<Canvas>() != null;
+                case HierarchyCategory.Script:
+                    var comps = go.GetComponents<Component>();
+                    foreach (var c in comps)
+                    {
+                        if (c is MonoBehaviour)
+                            return true;
+                    }
+                    return false;
+                case HierarchyCategory.Empty:
+                    if (go.transform.childCount > 0)
+                        return false;
+                    var allComps = go.GetComponents<Component>();
+                    return allComps.Length == 1 && allComps[0] is Transform;
+                default: return false;
+            }
+        }
+
         public static AssetCategory ClassifyObject(Object obj)
         {
             if (obj == null) return AssetCategory.Other;
@@ -623,6 +708,7 @@ namespace mhze.BatchRenamer
             NumberFormat = op.numberFormat;
             CaseSensitive = op.caseSensitive;
             EnabledCategories = new HashSet<AssetCategory>(op.enabledCategories);
+            EnabledHierarchyCategories = new HashSet<HierarchyCategory>(op.enabledHierarchyCategories);
         }
 
         public void RunOperations(List<BatchRenameOperation> operations)
