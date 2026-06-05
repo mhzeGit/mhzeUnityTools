@@ -261,7 +261,7 @@ namespace mhze.BatchRenamer
                 }
             }
 
-            var realEntries = matchedEntries?.FindAll(e => e.Index >= 0 && e.Text.Length > 0);
+            var realEntries = matchedEntries?.FindAll(e => e.Index >= 0 && e.Text.Length > 0 && e.Index + e.Text.Length <= result.Length);
             if (realEntries != null && realEntries.Count > 0)
             {
                 var sorted = new List<SearchExpression.MatchEntry>(realEntries);
