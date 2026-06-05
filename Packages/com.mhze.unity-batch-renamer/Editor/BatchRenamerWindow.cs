@@ -1055,6 +1055,12 @@ namespace mhze.BatchRenamer
                     before.style.color = baseColor;
                     before.style.whiteSpace = WhiteSpace.Pre;
                     before.style.flexShrink = 0;
+                    before.style.paddingLeft = 0;
+                    before.style.paddingRight = 0;
+                    before.style.marginLeft = 0;
+                    before.style.marginRight = 0;
+                    before.style.borderLeftWidth = 0;
+                    before.style.borderRightWidth = 0;
                     container.Add(before);
                 }
                 var match = new Label(name.Substring(start, end - start));
@@ -1063,6 +1069,12 @@ namespace mhze.BatchRenamer
                 match.style.whiteSpace = WhiteSpace.Pre;
                 match.style.unityFontStyleAndWeight = FontStyle.Bold;
                 match.style.flexShrink = 0;
+                match.style.paddingLeft = 0;
+                match.style.paddingRight = 0;
+                match.style.marginLeft = 0;
+                match.style.marginRight = 0;
+                match.style.borderLeftWidth = 0;
+                match.style.borderRightWidth = 0;
                 container.Add(match);
                 pos = end;
             }
@@ -1074,6 +1086,12 @@ namespace mhze.BatchRenamer
                 remaining.style.color = baseColor;
                 remaining.style.whiteSpace = WhiteSpace.Pre;
                 remaining.style.flexShrink = 0;
+                remaining.style.paddingLeft = 0;
+                remaining.style.paddingRight = 0;
+                remaining.style.marginLeft = 0;
+                remaining.style.marginRight = 0;
+                remaining.style.borderLeftWidth = 0;
+                remaining.style.borderRightWidth = 0;
                 container.Add(remaining);
             }
 
@@ -1106,6 +1124,12 @@ namespace mhze.BatchRenamer
                 pLabel.style.color = TextPrimary;
                 pLabel.style.whiteSpace = WhiteSpace.Pre;
                 pLabel.style.flexShrink = 0;
+                pLabel.style.paddingLeft = 0;
+                pLabel.style.paddingRight = 0;
+                pLabel.style.marginLeft = 0;
+                pLabel.style.marginRight = 0;
+                pLabel.style.borderLeftWidth = 0;
+                pLabel.style.borderRightWidth = 0;
                 container.Add(pLabel);
             }
 
@@ -1117,6 +1141,12 @@ namespace mhze.BatchRenamer
                 mLabel.style.whiteSpace = WhiteSpace.Pre;
                 mLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
                 mLabel.style.flexShrink = 0;
+                mLabel.style.paddingLeft = 0;
+                mLabel.style.paddingRight = 0;
+                mLabel.style.marginLeft = 0;
+                mLabel.style.marginRight = 0;
+                mLabel.style.borderLeftWidth = 0;
+                mLabel.style.borderRightWidth = 0;
                 container.Add(mLabel);
             }
 
@@ -1127,6 +1157,12 @@ namespace mhze.BatchRenamer
                 sLabel.style.color = TextPrimary;
                 sLabel.style.whiteSpace = WhiteSpace.Pre;
                 sLabel.style.flexShrink = 0;
+                sLabel.style.paddingLeft = 0;
+                sLabel.style.paddingRight = 0;
+                sLabel.style.marginLeft = 0;
+                sLabel.style.marginRight = 0;
+                sLabel.style.borderLeftWidth = 0;
+                sLabel.style.borderRightWidth = 0;
                 container.Add(sLabel);
             }
 
