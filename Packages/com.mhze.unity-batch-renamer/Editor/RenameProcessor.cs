@@ -67,6 +67,7 @@ namespace mhze.BatchRenamer
         public NumberFormatPreset NumberFormat = NumberFormatPreset.UnderscoreN;
         public bool CaseSensitive = false;
         public HashSet<AssetCategory> EnabledCategories = new HashSet<AssetCategory>();
+        public HashSet<TextureSubCategory> EnabledTextureSubCategories = new HashSet<TextureSubCategory>();
         public bool IsHierarchyMode { get; set; }
         public HashSet<HierarchyCategory> EnabledHierarchyCategories = new HashSet<HierarchyCategory>();
 
@@ -241,7 +242,21 @@ namespace mhze.BatchRenamer
                 else
                 {
                     bool hasActiveFilters = EnabledCategories.Count > 0;
-                    matchesFilter = !hasActiveFilters || EnabledCategories.Contains(ClassifyObject(item.Target));
+                    if (!hasActiveFilters)
+                    {
+                        matchesFilter = true;
+                    }
+                    else
+                    {
+                        var cat = ClassifyObject(item.Target);
+                        matchesFilter = EnabledCategories.Contains(cat);
+
+                        if (matchesFilter && cat == AssetCategory.Texture && EnabledTextureSubCategories.Count > 0)
+                        {
+                            var subCat = ClassifyTexture(item.Target);
+                            matchesFilter = EnabledTextureSubCategories.Contains(subCat);
+                        }
+                    }
                 }
 
                 item.IsValid = matchesSearch && matchesFilter;
@@ -606,6 +621,27 @@ namespace mhze.BatchRenamer
             return AssetCategory.Other;
         }
 
+        public static TextureSubCategory ClassifyTexture(Object obj)
+        {
+            if (obj == null) return TextureSubCategory.Default;
+
+            string path = AssetDatabase.GetAssetPath(obj);
+            if (string.IsNullOrEmpty(path)) return TextureSubCategory.Default;
+
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null) return TextureSubCategory.Default;
+
+            switch (importer.textureType)
+            {
+                case TextureImporterType.NormalMap:
+                    return TextureSubCategory.NormalMap;
+                case TextureImporterType.Sprite:
+                    return TextureSubCategory.Sprite;
+                default:
+                    return TextureSubCategory.Default;
+            }
+        }
+
         public void ApplyRenames()
         {
             var (renamedCount, errorCount, hasHierarchyItems) = RenameCore();
@@ -709,6 +745,7 @@ namespace mhze.BatchRenamer
             NumberFormat = op.numberFormat;
             CaseSensitive = op.caseSensitive;
             EnabledCategories = new HashSet<AssetCategory>(op.enabledCategories);
+            EnabledTextureSubCategories = new HashSet<TextureSubCategory>(op.enabledTextureSubCategories);
             EnabledHierarchyCategories = new HashSet<HierarchyCategory>(op.enabledHierarchyCategories);
         }
 
@@ -775,6 +812,13 @@ namespace mhze.BatchRenamer
         Scene,
         GameObject,
         Other
+    }
+
+    public enum TextureSubCategory
+    {
+        Default,
+        NormalMap,
+        Sprite
     }
 
     public class SearchExpression

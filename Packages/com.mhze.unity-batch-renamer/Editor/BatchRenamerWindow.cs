@@ -43,6 +43,7 @@ namespace mhze.BatchRenamer
         private static readonly Color PreviewBg = new Color(0.1f, 0.1f, 0.1f);
 
         private readonly HashSet<AssetCategory> _filterSelectedCategories = new HashSet<AssetCategory>();
+        private readonly HashSet<TextureSubCategory> _filterTextureSubCategories = new HashSet<TextureSubCategory>();
         private readonly HashSet<HierarchyCategory> _hierarchySelectedCategories = new HashSet<HierarchyCategory>();
         private VisualElement _leftColumn;
         private VisualElement _filterSectionContent;
@@ -382,12 +383,16 @@ namespace mhze.BatchRenamer
         private void BuildProjectFilterUI(VisualElement container)
         {
             _filterSelectedCategories.Clear();
+            _filterTextureSubCategories.Clear();
             var categories = (AssetCategory[])Enum.GetValues(typeof(AssetCategory));
             foreach (var cat in categories)
             {
                 if (cat != AssetCategory.All)
                     _filterSelectedCategories.Add(cat);
             }
+            var textureSubTypes = (TextureSubCategory[])Enum.GetValues(typeof(TextureSubCategory));
+            foreach (var sub in textureSubTypes)
+                _filterTextureSubCategories.Add(sub);
 
             var row = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
@@ -497,6 +502,7 @@ namespace mhze.BatchRenamer
             popup.Add(sep);
 
             var categories = (AssetCategory[])Enum.GetValues(typeof(AssetCategory));
+            VisualElement textureSubContainer = null;
             foreach (var cat in categories)
             {
                 if (cat == AssetCategory.All) continue;
@@ -552,6 +558,25 @@ namespace mhze.BatchRenamer
                         _filterSelectedCategories.Add(capturedCat);
                     else
                         _filterSelectedCategories.Remove(capturedCat);
+
+                    if (capturedCat == AssetCategory.Texture && textureSubContainer != null)
+                    {
+                        textureSubContainer.style.display = evt.newValue ? DisplayStyle.Flex : DisplayStyle.None;
+                        if (evt.newValue)
+                        {
+                            var subTypes = (TextureSubCategory[])Enum.GetValues(typeof(TextureSubCategory));
+                            foreach (var sub in subTypes)
+                                _filterTextureSubCategories.Add(sub);
+                            var subToggles = textureSubContainer.Query<Toggle>().ToList();
+                            foreach (var st in subToggles)
+                                st.value = true;
+                        }
+                        else
+                        {
+                            _filterTextureSubCategories.Clear();
+                        }
+                    }
+
                     UpdateFilterSummary();
                     MarkPreviewDirty();
                 });
@@ -565,6 +590,74 @@ namespace mhze.BatchRenamer
                 });
 
                 popup.Add(row);
+
+                if (cat == AssetCategory.Texture)
+                {
+                    textureSubContainer = new VisualElement();
+                    textureSubContainer.style.paddingLeft = 28;
+                    textureSubContainer.style.display = toggle.value ? DisplayStyle.Flex : DisplayStyle.None;
+
+                    var subTypes = (TextureSubCategory[])Enum.GetValues(typeof(TextureSubCategory));
+                    foreach (var sub in subTypes)
+                    {
+                        var subRow = new VisualElement();
+                        subRow.style.flexDirection = FlexDirection.Row;
+                        subRow.style.alignItems = Align.Center;
+                        subRow.style.paddingRight = 4;
+                        subRow.style.paddingTop = 2;
+                        subRow.style.paddingBottom = 2;
+                        subRow.style.minHeight = 22;
+
+                        var subToggle = new Toggle();
+                        subToggle.value = _filterTextureSubCategories.Contains(sub);
+                        subToggle.style.flexShrink = 0;
+                        subToggle.style.paddingLeft = 0;
+                        subToggle.style.paddingRight = 0;
+                        subToggle.style.marginLeft = 0;
+                        subToggle.style.marginRight = 0;
+                        subToggle.style.marginTop = 0;
+                        subToggle.style.marginBottom = 0;
+                        subRow.Add(subToggle);
+
+                        var subToggleInput = subToggle.Q(classes: "unity-base-field__input");
+                        if (subToggleInput != null)
+                        {
+                            subToggleInput.style.paddingLeft = 0;
+                            subToggleInput.style.paddingRight = 0;
+                            subToggleInput.style.marginLeft = 0;
+                            subToggleInput.style.marginRight = 0;
+                        }
+
+                        var subLabel = new Label(sub.ToString());
+                        subLabel.style.fontSize = 12;
+                        subLabel.style.color = TextPrimary;
+                        subLabel.style.marginLeft = 4;
+                        subLabel.style.flexGrow = 1;
+                        subRow.Add(subLabel);
+
+                        var capturedSub = sub;
+                        subToggle.RegisterValueChangedCallback(evt =>
+                        {
+                            if (evt.newValue)
+                                _filterTextureSubCategories.Add(capturedSub);
+                            else
+                                _filterTextureSubCategories.Remove(capturedSub);
+                            MarkPreviewDirty();
+                        });
+
+                        subRow.RegisterCallback<MouseDownEvent>(evt =>
+                        {
+                            var target = evt.target as VisualElement;
+                            if (target == subToggle || subToggle.Contains(target))
+                                return;
+                            subToggle.value = !subToggle.value;
+                        });
+
+                        textureSubContainer.Add(subRow);
+                    }
+
+                    popup.Add(textureSubContainer);
+                }
             }
 
             _filterPopup = popup;
@@ -751,6 +844,7 @@ namespace mhze.BatchRenamer
             else
             {
                 _filterSelectedCategories.Clear();
+                _filterTextureSubCategories.Clear();
             }
             CloseFilterPopup();
             UpdateFilterSummary();
@@ -1220,6 +1314,7 @@ namespace mhze.BatchRenamer
 
             _processor.EnabledHierarchyCategories = _hierarchySelectedCategories;
             _processor.SetActiveCategories(_filterSelectedCategories);
+            _processor.EnabledTextureSubCategories = _filterTextureSubCategories;
 
             if (_currentPreset != null && _currentPreset.operations.Count > 0)
                 _processor.ApplyOperation(_currentPreset.operations[0]);
@@ -1809,6 +1904,10 @@ namespace mhze.BatchRenamer
             _filterSelectedCategories.Clear();
             foreach (var cat in op.enabledCategories)
                 _filterSelectedCategories.Add(cat);
+
+            _filterTextureSubCategories.Clear();
+            foreach (var sub in op.enabledTextureSubCategories)
+                _filterTextureSubCategories.Add(sub);
 
             _hierarchySelectedCategories.Clear();
             foreach (var cat in op.enabledHierarchyCategories)
