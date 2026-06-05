@@ -133,6 +133,17 @@ namespace mhze.HierarchyContextMenu
             label.style.flexGrow = 1;
             container.Add(label);
 
+            var shortcut = new Label();
+            shortcut.name = "item-shortcut";
+            shortcut.style.fontSize = 12;
+            shortcut.style.color = HierarchyContextMenuSettings.DimColor;
+            shortcut.style.whiteSpace = WhiteSpace.NoWrap;
+            shortcut.style.flexShrink = 0;
+            shortcut.style.marginLeft = 12;
+            shortcut.style.unityTextAlign = TextAnchor.MiddleRight;
+            shortcut.style.display = DisplayStyle.None;
+            container.Add(shortcut);
+
             container.RegisterCallback<PointerDownEvent>(evt =>
             {
                 if (evt.button == 0)
@@ -185,11 +196,21 @@ namespace mhze.HierarchyContextMenu
             element.style.minHeight = ItemHeight;
 
             var label = element.Q<Label>("item-label");
+            var shortcut = element.Q<Label>("item-shortcut");
             if (index >= 0 && index < _items.Count)
             {
                 var item = _items[index];
                 label.text = item.DisplayName;
                 label.style.color = item.Enabled ? HierarchyContextMenuSettings.TextColor : HierarchyContextMenuSettings.DisabledTextColor;
+                if (!string.IsNullOrEmpty(item.ShortcutText))
+                {
+                    shortcut.text = item.ShortcutText;
+                    shortcut.style.display = DisplayStyle.Flex;
+                }
+                else
+                {
+                    shortcut.style.display = DisplayStyle.None;
+                }
             }
         }
     }

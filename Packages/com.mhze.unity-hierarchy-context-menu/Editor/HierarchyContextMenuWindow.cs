@@ -140,7 +140,10 @@ namespace mhze.HierarchyContextMenu
                     }
 
                     if (i == segments.Length - 1)
+                    {
                         child.MenuPath = item.MenuPath;
+                        child.ShortcutText = item.ShortcutText;
+                    }
 
                     current = child;
                 }
@@ -174,9 +177,11 @@ namespace mhze.HierarchyContextMenu
 
             var items = new List<object>();
 
-            items.Add(new SpecialActionItem { DisplayName = "Cut", Action = () => MenuActions.CutSelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Copy", Action = () => MenuActions.CopySelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Paste", Action = () => MenuActions.PasteAsChildOfClicked(this) });
+            var ctrl = Application.platform == RuntimePlatform.OSXEditor ? "Cmd" : "Ctrl";
+
+            items.Add(new SpecialActionItem { DisplayName = "Cut", ShortcutText = ctrl + "+X", Action = () => MenuActions.CutSelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Copy", ShortcutText = ctrl + "+C", Action = () => MenuActions.CopySelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Paste", ShortcutText = ctrl + "+V", Action = () => MenuActions.PasteAsChildOfClicked(this) });
             items.Add(new SpecialSubmenuItem
             {
                 DisplayName = "Paste Special",
@@ -186,13 +191,13 @@ namespace mhze.HierarchyContextMenu
                     new SpecialActionItem { DisplayName = "Paste As Sibling", Action = () => MenuActions.PasteAsSibling(this) },
                 }
             });
-            items.Add(new SpecialActionItem { DisplayName = "Rename", Action = () => MenuActions.RenameSelected(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Duplicate", Action = () => MenuActions.DuplicateSelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Delete", Action = () => MenuActions.DeleteSelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Rename", ShortcutText = "F2", Action = () => MenuActions.RenameSelected(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Duplicate", ShortcutText = ctrl + "+D", Action = () => MenuActions.DuplicateSelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Delete", ShortcutText = "Del", Action = () => MenuActions.DeleteSelection(this), Enabled = selectionValid });
 
             items.Add(new SeparatorItem());
 
-            items.Add(new SpecialActionItem { DisplayName = "Select All", Action = () => MenuActions.SelectAll(this) });
+            items.Add(new SpecialActionItem { DisplayName = "Select All", ShortcutText = ctrl + "+A", Action = () => MenuActions.SelectAll(this) });
             items.Add(new SpecialActionItem { DisplayName = "Deselect All", Action = () => MenuActions.DeselectAll(this), Enabled = activeValid });
             items.Add(new SpecialActionItem { DisplayName = "Invert Selection", Action = () => MenuActions.InvertSelection(this), Enabled = selectionValid });
             items.Add(new SpecialActionItem { DisplayName = "Select Children", Action = () => MenuActions.SelectChildren(this), Enabled = selectionValid });
@@ -477,6 +482,17 @@ namespace mhze.HierarchyContextMenu
             label.style.flexGrow = 1;
             container.Add(label);
 
+            var shortcut = new Label();
+            shortcut.name = "item-shortcut";
+            shortcut.style.fontSize = 12;
+            shortcut.style.color = HierarchyContextMenuSettings.DimColor;
+            shortcut.style.whiteSpace = WhiteSpace.NoWrap;
+            shortcut.style.flexShrink = 0;
+            shortcut.style.marginLeft = 12;
+            shortcut.style.unityTextAlign = TextAnchor.MiddleRight;
+            shortcut.style.display = DisplayStyle.None;
+            container.Add(shortcut);
+
             var arrow = new Label();
             arrow.name = "item-arrow";
             arrow.text = "\u25B8";
@@ -599,6 +615,7 @@ namespace mhze.HierarchyContextMenu
 
             var label = element.Q<Label>("item-label");
             var arrow = element.Q<Label>("item-arrow");
+            var shortcut = element.Q<Label>("item-shortcut");
             var icon = element.Q<VisualElement>("item-icon");
 
             element.style.minHeight = ItemHeight;
@@ -612,6 +629,8 @@ namespace mhze.HierarchyContextMenu
             element.style.backgroundColor = new Color(0, 0, 0, 0);
 
             var item = _currentItems[index];
+
+            shortcut.style.display = DisplayStyle.None;
 
             if (item is BackItem)
             {
@@ -647,6 +666,11 @@ namespace mhze.HierarchyContextMenu
                 label.text = specialAction.DisplayName;
                 label.style.color = specialAction.Enabled ? HierarchyContextMenuSettings.TextColor : HierarchyContextMenuSettings.DisabledTextColor;
                 arrow.style.display = DisplayStyle.None;
+                if (!string.IsNullOrEmpty(specialAction.ShortcutText))
+                {
+                    shortcut.text = specialAction.ShortcutText;
+                    shortcut.style.display = DisplayStyle.Flex;
+                }
                 ApplyIcon(icon, specialAction.DisplayName, specialAction.Enabled);
                 ApplySelectionStyle(element, index);
                 UnregisterHoverEvents(element);
@@ -671,6 +695,11 @@ namespace mhze.HierarchyContextMenu
                 label.text = node.Name;
                 label.style.color = HierarchyContextMenuSettings.TextColor;
                 arrow.style.display = node.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
+                if (!node.IsCategory && !string.IsNullOrEmpty(node.ShortcutText))
+                {
+                    shortcut.text = node.ShortcutText;
+                    shortcut.style.display = DisplayStyle.Flex;
+                }
                 ApplyMenuIcon(icon, node.Name, node.IsCategory);
 
                 ApplySelectionStyle(element, index);
@@ -681,6 +710,11 @@ namespace mhze.HierarchyContextMenu
             else if (item is HierarchyMenuItem menuItem)
             {
                 arrow.style.display = DisplayStyle.None;
+                if (!string.IsNullOrEmpty(menuItem.ShortcutText))
+                {
+                    shortcut.text = menuItem.ShortcutText;
+                    shortcut.style.display = DisplayStyle.Flex;
+                }
                 ApplyMenuIcon(icon, menuItem.DisplayName, false);
 
                 if (_isSearching && !string.IsNullOrEmpty(_lastSearchText))

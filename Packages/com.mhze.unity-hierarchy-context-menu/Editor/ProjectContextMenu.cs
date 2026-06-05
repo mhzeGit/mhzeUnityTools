@@ -57,6 +57,7 @@ namespace mhze.HierarchyContextMenu
 
             ProjectContextMenuWindow.ClickedOnItem = _mouseOverItem;
 
+            ProjectItemIndexer.Reset();
             ProjectItemIndexer.EnsureIndexed();
 
             int rootItemCount = 22;

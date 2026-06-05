@@ -70,7 +70,8 @@ namespace mhze.HierarchyContextMenu
                 _items.Add(new HierarchyMenuItem
                 {
                     MenuPath = path,
-                    DisplayName = displayName
+                    DisplayName = displayName,
+                    ShortcutText = ShortcutResolver.GetShortcut(path)
                 });
             }
 

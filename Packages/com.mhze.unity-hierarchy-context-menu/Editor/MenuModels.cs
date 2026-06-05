@@ -8,6 +8,7 @@ namespace mhze.HierarchyContextMenu
         public string Name;
         public string FullPath;
         public string MenuPath;
+        public string ShortcutText;
         public List<MenuNode> Children = new List<MenuNode>();
         public bool IsCategory => Children.Count > 0;
         public bool IsLeaf => MenuPath != null;
@@ -20,6 +21,7 @@ namespace mhze.HierarchyContextMenu
     class SpecialActionItem
     {
         public string DisplayName;
+        public string ShortcutText;
         public Action Action;
         public bool Enabled = true;
     }

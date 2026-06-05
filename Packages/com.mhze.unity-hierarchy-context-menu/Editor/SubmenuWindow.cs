@@ -150,6 +150,17 @@ namespace mhze.HierarchyContextMenu
             label.style.flexGrow = 1;
             container.Add(label);
 
+            var shortcut = new Label();
+            shortcut.name = "item-shortcut";
+            shortcut.style.fontSize = 12;
+            shortcut.style.color = HierarchyContextMenuSettings.DimColor;
+            shortcut.style.whiteSpace = WhiteSpace.NoWrap;
+            shortcut.style.flexShrink = 0;
+            shortcut.style.marginLeft = 12;
+            shortcut.style.unityTextAlign = TextAnchor.MiddleRight;
+            shortcut.style.display = DisplayStyle.None;
+            container.Add(shortcut);
+
             var arrow = new Label();
             arrow.name = "item-arrow";
             arrow.text = "\u25B8";
@@ -238,6 +249,7 @@ namespace mhze.HierarchyContextMenu
 
             var label = element.Q<Label>("item-label");
             var arrow = element.Q<Label>("item-arrow");
+            var shortcut = element.Q<Label>("item-shortcut");
             var icon = element.Q<VisualElement>("item-icon");
 
             if (index >= 0 && index < _category.Children.Count)
@@ -245,6 +257,12 @@ namespace mhze.HierarchyContextMenu
                 var child = _category.Children[index];
                 label.text = child.Name;
                 arrow.style.display = child.IsCategory ? DisplayStyle.Flex : DisplayStyle.None;
+                shortcut.style.display = DisplayStyle.None;
+                if (!child.IsCategory && !string.IsNullOrEmpty(child.ShortcutText))
+                {
+                    shortcut.text = child.ShortcutText;
+                    shortcut.style.display = DisplayStyle.Flex;
+                }
                 if (!HierarchyContextMenuSettings.ShowIcons)
                 {
                     icon.style.display = DisplayStyle.None;
