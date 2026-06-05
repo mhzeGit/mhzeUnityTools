@@ -918,13 +918,98 @@ namespace mhze.BatchRenamer
             int validCount = 0;
             int changedCount = 0;
 
+            var groups = new Dictionary<string, List<RenameItem>>();
+            var groupNames = new Dictionary<string, string>();
+            var rootItems = new List<RenameItem>();
+
             foreach (var item in _processor.Items)
             {
                 if (!item.IsValid && !showAll) continue;
                 if (item.IsValid) validCount++;
                 if (item.IsValid && item.OriginalName != item.NewName) changedCount++;
 
-                BuildPreviewRow(item);
+                string path = AssetDatabase.GetAssetPath(item.Target);
+                if (string.IsNullOrEmpty(path) || !path.Contains('/'))
+                {
+                    rootItems.Add(item);
+                    continue;
+                }
+
+                int lastSlash = path.LastIndexOf('/');
+                string parentPath = path.Substring(0, lastSlash);
+                string parentName = path.Substring(lastSlash + 1);
+
+                if (!groups.ContainsKey(parentPath))
+                {
+                    groups[parentPath] = new List<RenameItem>();
+                    groupNames[parentPath] = parentName;
+                }
+                groups[parentPath].Add(item);
+            }
+
+            bool firstItem = true;
+
+            foreach (var item in rootItems)
+            {
+                BuildPreviewRow(item, 0);
+                firstItem = false;
+            }
+
+            foreach (var kvp in groups.OrderBy(kvp => kvp.Key))
+            {
+                var parentPath = kvp.Key;
+                var items = kvp.Value;
+
+                if (!firstItem)
+                {
+                    var spacer = new VisualElement();
+                    spacer.style.height = 4;
+                    _previewContainer.Add(spacer);
+                }
+                firstItem = false;
+
+                var dirRow = new VisualElement();
+                dirRow.style.flexDirection = FlexDirection.Row;
+                dirRow.style.alignItems = Align.Center;
+                dirRow.style.paddingTop = 3;
+                dirRow.style.paddingBottom = 1;
+                dirRow.style.paddingLeft = 4;
+                dirRow.style.paddingRight = 4;
+                dirRow.style.minHeight = 22;
+                dirRow.style.borderBottomWidth = 1;
+                dirRow.style.borderBottomColor = new Color(0.15f, 0.15f, 0.15f);
+                dirRow.style.backgroundColor = new Color(0.14f, 0.14f, 0.14f);
+
+                var dirLeft = new VisualElement();
+                dirLeft.style.flexDirection = FlexDirection.Row;
+                dirLeft.style.alignItems = Align.Center;
+                dirLeft.style.flexGrow = 1;
+                dirLeft.style.flexBasis = 0;
+
+                var dirIcon = new VisualElement();
+                Texture2D folderIcon = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
+                dirIcon.style.backgroundImage = folderIcon != null ? new Background(folderIcon) : StyleKeyword.None;
+                dirIcon.style.width = 16;
+                dirIcon.style.height = 16;
+                dirIcon.style.marginRight = 6;
+                dirIcon.style.flexShrink = 0;
+                dirLeft.Add(dirIcon);
+
+                var dirLabel = new Label(groupNames[parentPath]);
+                dirLabel.style.fontSize = 12;
+                dirLabel.style.color = TextPrimary;
+                dirLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+                dirLabel.style.whiteSpace = WhiteSpace.Pre;
+                dirLabel.style.flexShrink = 1;
+                dirLeft.Add(dirLabel);
+
+                dirRow.Add(dirLeft);
+                _previewContainer.Add(dirRow);
+
+                foreach (var item in items)
+                {
+                    BuildPreviewRow(item, 1);
+                }
             }
 
             if (_previewHeader != null)
@@ -943,7 +1028,7 @@ namespace mhze.BatchRenamer
             }
         }
 
-        private void BuildPreviewRow(RenameItem item)
+        private void BuildPreviewRow(RenameItem item, int depth = 0)
         {
             var row = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
@@ -967,6 +1052,22 @@ namespace mhze.BatchRenamer
             leftColumn.style.flexGrow = 1;
             leftColumn.style.flexBasis = 0;
             leftColumn.style.overflow = Overflow.Hidden;
+
+            if (depth > 0)
+            {
+                var indent = new Label("");
+                indent.style.minWidth = depth * 14;
+                indent.style.flexShrink = 0;
+                leftColumn.Add(indent);
+
+                var treeLine = new Label("|_ ");
+                treeLine.style.fontSize = 12;
+                treeLine.style.color = TextDim;
+                treeLine.style.whiteSpace = WhiteSpace.Pre;
+                treeLine.style.flexShrink = 0;
+                treeLine.style.marginRight = 2;
+                leftColumn.Add(treeLine);
+            }
 
             var icon = new VisualElement();
             Texture2D thumb = AssetPreview.GetMiniThumbnail(item.Target);
