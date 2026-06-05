@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -1228,15 +1229,53 @@ namespace mhze.BatchRenamer
                 var sorted = new List<SearchExpression.MatchEntry>(matchedEntries);
                 sorted.Sort((a, b) => a.Index.CompareTo(b.Index));
 
-                int shift = 0;
-                foreach (var entry in sorted)
+                bool hasNumberToken = replaceText.IndexOf("{Number}", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                bool contiguous = sorted.Count > 1;
+                if (contiguous)
                 {
-                    if (entry.Index < 0 || string.IsNullOrEmpty(entry.Text)) continue;
-                    int start = entry.Index + (prefixText?.Length ?? 0) + shift;
-                    int repLen = replaceText.Length;
-                    int end = start + repLen;
+                    int next = sorted[0].Index + sorted[0].Text.Length;
+                    for (int i = 1; i < sorted.Count; i++)
+                    {
+                        if (sorted[i].Index != next) { contiguous = false; break; }
+                        next = sorted[i].Index + sorted[i].Text.Length;
+                    }
+                }
+
+                if (contiguous && hasNumberToken)
+                {
+                    string number = "";
+                    foreach (var e in sorted)
+                    {
+                        var nm = Regex.Match(e.Text, @"\d+");
+                        if (nm.Success) { number = nm.Value; break; }
+                    }
+                    string resolved = Regex.Replace(replaceText, @"\{number\}", number, RegexOptions.IgnoreCase);
+                    int spanStart = sorted[0].Index;
+                    int spanEnd = sorted[sorted.Count - 1].Index + sorted[sorted.Count - 1].Text.Length;
+                    int start = spanStart + (prefixText?.Length ?? 0);
+                    int end = start + resolved.Length;
                     changedRanges.Add((start, end));
-                    shift += repLen - entry.Text.Length;
+                }
+                else
+                {
+                    int shift = 0;
+                    foreach (var entry in sorted)
+                    {
+                        if (entry.Index < 0 || string.IsNullOrEmpty(entry.Text)) continue;
+                        int repLen = replaceText.Length;
+                        if (hasNumberToken)
+                        {
+                            var numberMatch = Regex.Match(entry.Text, @"\d+");
+                            string numberVal = numberMatch.Success ? numberMatch.Value : "";
+                            string resolved = Regex.Replace(replaceText, @"\{number\}", numberVal, RegexOptions.IgnoreCase);
+                            repLen = resolved.Length;
+                        }
+                        int start = entry.Index + (prefixText?.Length ?? 0) + shift;
+                        int end = start + repLen;
+                        changedRanges.Add((start, end));
+                        shift += repLen - entry.Text.Length;
+                    }
                 }
             }
 
