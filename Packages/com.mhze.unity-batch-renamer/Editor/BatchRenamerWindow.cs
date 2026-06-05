@@ -118,6 +118,14 @@ namespace mhze.BatchRenamer
             }
         }
 
+        private void OnSelectionChange()
+        {
+            if (_processor == null || _previewContainer == null) return;
+
+            _processor.CollectFromObjects(Selection.objects);
+            MarkPreviewDirty();
+        }
+
         private void AdjustWindowSize()
         {
             if (_leftColumn == null) return;

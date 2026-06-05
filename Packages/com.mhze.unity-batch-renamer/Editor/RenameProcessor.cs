@@ -214,21 +214,21 @@ namespace mhze.BatchRenamer
                     int condStart = i;
                     while (i < input.Length && input[i] != ':')
                         i++;
-                    string condition = input.Substring(condStart, i - condStart);
+                    string condition = input.Substring(condStart, i - condStart).Trim();
 
                     if (i < input.Length) i++;
 
                     int trueStart = i;
                     while (i < input.Length && input[i] != ':')
                         i++;
-                    string trueValue = input.Substring(trueStart, i - trueStart);
+                    string trueValue = input.Substring(trueStart, i - trueStart).Trim();
 
                     if (i < input.Length) i++;
 
                     int falseStart = i;
                     while (i < input.Length && input[i] != '?' && input[i] != '!')
                         i++;
-                    string falseValue = input.Substring(falseStart, i - falseStart);
+                    string falseValue = input.Substring(falseStart, i - falseStart).Trim();
 
                     bool condMet = originalName.IndexOf(condition, comparison) >= 0;
                     sb.Append(isNot ? (condMet ? falseValue : trueValue) : (condMet ? trueValue : falseValue));
