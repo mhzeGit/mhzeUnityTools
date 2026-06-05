@@ -23,7 +23,10 @@ namespace mhze.HierarchyContextMenu
             "Import Package/Custom Package...",
             "Export Package...",
             "Export As UPM Package",
+            "Export As Asset Package...",
             "Extract Materials",
+            "Extract Material",
+            "Extract Material SubAsset",
             "Find References In Scene",
             "Select Dependencies",
             "Select Previous",
@@ -65,6 +68,10 @@ namespace mhze.HierarchyContextMenu
                 var displayName = path.Substring("Assets/".Length);
 
                 if (ExcludedDisplayNames.Contains(displayName))
+                    continue;
+
+                var slashIdx = displayName.IndexOf('/');
+                if (slashIdx >= 0 && ExcludedDisplayNames.Contains(displayName.Substring(0, slashIdx)))
                     continue;
 
                 _items.Add(new HierarchyMenuItem

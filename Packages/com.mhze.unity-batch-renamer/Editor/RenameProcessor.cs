@@ -58,10 +58,15 @@ namespace mhze.BatchRenamer
 
         public void CollectFromObjects(Object[] objects)
         {
-            Items.Clear();
-
+            Debug.Log($"[BatchRenamer] CollectFromObjects called, objects count={(objects != null ? objects.Length : 0)}");
             if (objects == null || objects.Length == 0)
+            {
+                Debug.LogWarning($"[BatchRenamer] WARNING: CollectFromObjects received null or empty array - returning without clearing items");
                 return;
+            }
+
+            Items.Clear();
+            Debug.Log($"[BatchRenamer] CollectFromObjects: Items cleared, now will process {objects.Length} objects");
 
             bool hasSceneGameObjects = false;
             bool hasAssets = false;
@@ -82,6 +87,8 @@ namespace mhze.BatchRenamer
                 }
             }
 
+            Debug.Log($"[BatchRenamer] CollectFromObjects: hasAssets={hasAssets} hasScene={hasSceneGameObjects}");
+
             if (hasAssets || (!hasSceneGameObjects))
             {
                 CollectFromProjectSelection(objects);
@@ -90,6 +97,7 @@ namespace mhze.BatchRenamer
             {
                 CollectFromHierarchySelection(objects);
             }
+            Debug.Log($"[BatchRenamer] CollectFromObjects done, Items.Count={Items.Count}");
         }
 
         public void SetActiveCategories(HashSet<AssetCategory> categories)
@@ -99,52 +107,34 @@ namespace mhze.BatchRenamer
 
         private void CollectFromProjectSelection(Object[] objects)
         {
+            Debug.Log($"[BatchRenamer] CollectFromProjectSelection called with {objects.Length} objects");
             var visited = new HashSet<string>();
             foreach (var obj in objects)
             {
                 var path = AssetDatabase.GetAssetPath(obj);
-                if (string.IsNullOrEmpty(path)) continue;
-
-                if (AssetDatabase.IsValidFolder(path))
+                var objType = obj?.GetType().Name ?? "null";
+                Debug.Log($"[BatchRenamer]   CPPS obj type={objType} name='{obj?.name}' path='{path ?? "null"}'");
+                if (string.IsNullOrEmpty(path))
                 {
-                    CollectFromFolder(path, visited);
-                }
-                else
-                {
-                    if (visited.Add(path))
-                    {
-                        Items.Add(new RenameItem
-                        {
-                            Target = obj,
-                            OriginalName = obj.name
-                        });
-                    }
-                }
-            }
-        }
-
-        private void CollectFromFolder(string folderPath, HashSet<string> visited)
-        {
-            var guids = AssetDatabase.FindAssets("", new[] { folderPath });
-            foreach (var guid in guids)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-                if (AssetDatabase.IsValidFolder(path))
+                    Debug.LogWarning($"[BatchRenamer]   WARNING: path is null/empty for {objType} '{obj?.name}' - skipping");
                     continue;
+                }
 
                 if (visited.Add(path))
                 {
-                    var obj = AssetDatabase.LoadAssetAtPath<Object>(path);
-                    if (obj != null)
+                    Items.Add(new RenameItem
                     {
-                        Items.Add(new RenameItem
-                        {
-                            Target = obj,
-                            OriginalName = obj.name
-                        });
-                    }
+                        Target = obj,
+                        OriginalName = obj.name
+                    });
+                    Debug.Log($"[BatchRenamer]   ADDED item: '{obj.name}' path='{path}' Items.Count={Items.Count}");
+                }
+                else
+                {
+                    Debug.Log($"[BatchRenamer]   SKIPPED (duplicate): '{obj.name}' path='{path}'");
                 }
             }
+            Debug.Log($"[BatchRenamer] CollectFromProjectSelection done, Items.Count={Items.Count}");
         }
 
         private void CollectFromHierarchySelection(Object[] objects)

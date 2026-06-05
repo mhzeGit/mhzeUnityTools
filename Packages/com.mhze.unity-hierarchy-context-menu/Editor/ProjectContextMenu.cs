@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -60,7 +61,10 @@ namespace mhze.HierarchyContextMenu
             ProjectItemIndexer.Reset();
             ProjectItemIndexer.EnsureIndexed();
 
-            int rootItemCount = 22;
+            int rootItemCount = 28 + ProjectItemIndexer.Items
+                .Select(i => i.DisplayName.Split('/')[0])
+                .Distinct()
+                .Count(name => name != "Create");
             float desiredHeight = Mathf.Max(44f + (rootItemCount * 22f), 60f);
 
             ProjectContextMenuWindow.Show(_pendingScreenPos, desiredHeight);

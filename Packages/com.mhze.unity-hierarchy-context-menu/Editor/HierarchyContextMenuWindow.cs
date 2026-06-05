@@ -179,9 +179,9 @@ namespace mhze.HierarchyContextMenu
 
             var ctrl = Application.platform == RuntimePlatform.OSXEditor ? "Cmd" : "Ctrl";
 
-            items.Add(new SpecialActionItem { DisplayName = "Cut", ShortcutText = ctrl + "+X", Action = () => MenuActions.CutSelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Copy", ShortcutText = ctrl + "+C", Action = () => MenuActions.CopySelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Paste", ShortcutText = ctrl + "+V", Action = () => MenuActions.PasteAsChildOfClicked(this) });
+            items.Add(new SpecialActionItem { DisplayName = "Cut", MenuPath = "Edit/Cut", Action = () => MenuActions.CutSelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Copy", MenuPath = "Edit/Copy", Action = () => MenuActions.CopySelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Paste", MenuPath = "Edit/Paste", Action = () => MenuActions.PasteAsChildOfClicked(this) });
             items.Add(new SpecialSubmenuItem
             {
                 DisplayName = "Paste Special",
@@ -191,13 +191,13 @@ namespace mhze.HierarchyContextMenu
                     new SpecialActionItem { DisplayName = "Paste As Sibling", Action = () => MenuActions.PasteAsSibling(this) },
                 }
             });
-            items.Add(new SpecialActionItem { DisplayName = "Rename", ShortcutText = "F2", Action = () => MenuActions.RenameSelected(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Duplicate", ShortcutText = ctrl + "+D", Action = () => MenuActions.DuplicateSelection(this), Enabled = selectionValid });
-            items.Add(new SpecialActionItem { DisplayName = "Delete", ShortcutText = "Del", Action = () => MenuActions.DeleteSelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Rename", MenuPath = "Edit/Rename", Action = () => MenuActions.RenameSelected(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Duplicate", MenuPath = "Edit/Duplicate", Action = () => MenuActions.DuplicateSelection(this), Enabled = selectionValid });
+            items.Add(new SpecialActionItem { DisplayName = "Delete", MenuPath = "Edit/Delete", Action = () => MenuActions.DeleteSelection(this), Enabled = selectionValid });
 
             items.Add(new SeparatorItem());
 
-            items.Add(new SpecialActionItem { DisplayName = "Select All", ShortcutText = ctrl + "+A", Action = () => MenuActions.SelectAll(this) });
+            items.Add(new SpecialActionItem { DisplayName = "Select All", MenuPath = "Edit/Select All", Action = () => MenuActions.SelectAll(this) });
             items.Add(new SpecialActionItem { DisplayName = "Deselect All", Action = () => MenuActions.DeselectAll(this), Enabled = activeValid });
             items.Add(new SpecialActionItem { DisplayName = "Invert Selection", Action = () => MenuActions.InvertSelection(this), Enabled = selectionValid });
             items.Add(new SpecialActionItem { DisplayName = "Select Children", Action = () => MenuActions.SelectChildren(this), Enabled = selectionValid });
@@ -666,9 +666,12 @@ namespace mhze.HierarchyContextMenu
                 label.text = specialAction.DisplayName;
                 label.style.color = specialAction.Enabled ? HierarchyContextMenuSettings.TextColor : HierarchyContextMenuSettings.DisabledTextColor;
                 arrow.style.display = DisplayStyle.None;
-                if (!string.IsNullOrEmpty(specialAction.ShortcutText))
+                var shortcutText = specialAction.ShortcutText;
+                if (string.IsNullOrEmpty(shortcutText) && !string.IsNullOrEmpty(specialAction.MenuPath))
+                    shortcutText = ShortcutResolver.GetShortcut(specialAction.MenuPath);
+                if (!string.IsNullOrEmpty(shortcutText))
                 {
-                    shortcut.text = specialAction.ShortcutText;
+                    shortcut.text = shortcutText;
                     shortcut.style.display = DisplayStyle.Flex;
                 }
                 ApplyIcon(icon, specialAction.DisplayName, specialAction.Enabled);

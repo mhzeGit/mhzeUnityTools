@@ -53,6 +53,16 @@ namespace mhze.BatchRenamer
 
         public static void ShowWindow(Object[] selectedObjects)
         {
+            Debug.Log($"[BatchRenamer] ShowWindow called with {(selectedObjects != null ? selectedObjects.Length : 0)} objects");
+            if (selectedObjects != null)
+            {
+                for (int i = 0; i < selectedObjects.Length; i++)
+                {
+                    var obj = selectedObjects[i];
+                    var path = obj != null ? AssetDatabase.GetAssetPath(obj) : "NULL_OBJ";
+                    Debug.Log($"[BatchRenamer]   ShowWindow obj[{i}] type={obj?.GetType().Name ?? "null"} name='{obj?.name ?? "null"}' path='{path}'");
+                }
+            }
             var window = GetWindow<BatchRenamerWindow>(true, "Batch Rename");
             window._processor.CollectFromObjects(selectedObjects);
             if (window._previewContainer != null)
@@ -65,6 +75,7 @@ namespace mhze.BatchRenamer
                 window._previewDirty = true;
             }
             window.Show();
+            Debug.Log($"[BatchRenamer] ShowWindow done, _previewDirty={window._previewDirty}");
         }
 
         private void CreateGUI()
@@ -118,8 +129,10 @@ namespace mhze.BatchRenamer
                     AdjustWindowSize();
             }).StartingIn(50);
 
+            Debug.Log($"[BatchRenamer] CreateGUI: _previewDirty={_previewDirty}, Items.Count={_processor.Items.Count}");
             if (_previewDirty)
             {
+                Debug.Log($"[BatchRenamer] CreateGUI: calling RefreshPreview from _previewDirty, Items.Count={_processor.Items.Count}");
                 RefreshPreview();
                 _previewDirty = false;
             }
@@ -127,9 +140,11 @@ namespace mhze.BatchRenamer
 
         private void OnSelectionChange()
         {
+            var selObjs = Selection.objects;
+            Debug.Log($"[BatchRenamer] OnSelectionChange fired, Selection.objects count={selObjs?.Length}, _previewContainer={_previewContainer != null}");
             if (_processor == null || _previewContainer == null) return;
 
-            _processor.CollectFromObjects(Selection.objects);
+            _processor.CollectFromObjects(selObjs);
             MarkPreviewDirty();
         }
 
@@ -809,7 +824,9 @@ namespace mhze.BatchRenamer
             if (_currentPreset != null && _currentPreset.operations.Count > 0)
                 _processor.ApplyOperation(_currentPreset.operations[0]);
 
+            Debug.Log($"[BatchRenamer] Window.RefreshPreview BEFORE processor.RefreshPreview: Items.Count={_processor.Items.Count}");
             _processor.RefreshPreview();
+            Debug.Log($"[BatchRenamer] Window.RefreshPreview AFTER processor.RefreshPreview: Items.Count={_processor.Items.Count}");
 
             int matchCount = _processor.Items.Count(i => i.IsValid);
             Debug.Log($"[BatchRenamer] Search='{_processor.SearchPattern}' valid={matchCount}/{_processor.Items.Count}");

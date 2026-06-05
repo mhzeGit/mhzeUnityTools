@@ -22,6 +22,7 @@ namespace mhze.HierarchyContextMenu
     {
         public string DisplayName;
         public string ShortcutText;
+        public string MenuPath;
         public Action Action;
         public bool Enabled = true;
     }
