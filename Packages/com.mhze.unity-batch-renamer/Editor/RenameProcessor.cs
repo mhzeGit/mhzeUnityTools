@@ -556,7 +556,7 @@ namespace mhze.BatchRenamer
             if (obj is Texture || obj is Texture2D) return AssetCategory.Texture;
             if (obj is MonoScript || obj is TextAsset) return AssetCategory.Script;
             if (obj is AudioClip) return AssetCategory.Audio;
-            if (obj is AnimationClip) return AssetCategory.Animation;
+            if (obj is AnimationClip) return AssetCategory.AnimationClip;
             if (obj is SceneAsset) return AssetCategory.Scene;
 
             if (!string.IsNullOrEmpty(assetPath))
@@ -572,8 +572,9 @@ namespace mhze.BatchRenamer
                     case ".max":
                         return AssetCategory.Model;
                     case ".controller":
+                        return AssetCategory.AnimationController;
                     case ".anim":
-                        return AssetCategory.Animation;
+                        return AssetCategory.AnimationClip;
                     case ".cs":
                     case ".js":
                     case ".shader":
@@ -768,7 +769,8 @@ namespace mhze.BatchRenamer
         Model,
         Audio,
         Script,
-        Animation,
+        AnimationClip,
+        AnimationController,
         Folder,
         Scene,
         GameObject,
