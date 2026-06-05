@@ -63,18 +63,26 @@ namespace mhze.BatchRenamer
             if (objects == null || objects.Length == 0)
                 return;
 
-            bool hasGameObjects = false;
+            bool hasSceneGameObjects = false;
             bool hasAssets = false;
 
             foreach (var obj in objects)
             {
-                if (obj is GameObject)
-                    hasGameObjects = true;
+                if (obj is GameObject go)
+                {
+                    string path = AssetDatabase.GetAssetPath(go);
+                    if (string.IsNullOrEmpty(path))
+                        hasSceneGameObjects = true;
+                    else
+                        hasAssets = true;
+                }
                 else
+                {
                     hasAssets = true;
+                }
             }
 
-            if (hasAssets || (!hasGameObjects))
+            if (hasAssets || (!hasSceneGameObjects))
             {
                 CollectFromProjectSelection(objects);
             }
@@ -505,7 +513,18 @@ namespace mhze.BatchRenamer
             int errorCount = 0;
             bool hasHierarchyItems = false;
 
-            Undo.RecordObjects(Items.FindAll(i => i.Target is GameObject).ConvertAll(i => i.Target).ToArray(), "Batch Rename");
+            var sceneObjects = new List<Object>();
+            foreach (var item in Items)
+            {
+                if (item.Target is GameObject go)
+                {
+                    string path = AssetDatabase.GetAssetPath(go);
+                    if (string.IsNullOrEmpty(path))
+                        sceneObjects.Add(go);
+                }
+            }
+            if (sceneObjects.Count > 0)
+                Undo.RecordObjects(sceneObjects.ToArray(), "Batch Rename");
 
             for (int i = 0; i < Items.Count; i++)
             {
@@ -515,17 +534,19 @@ namespace mhze.BatchRenamer
 
                 try
                 {
-                    if (item.Target is GameObject go)
+                    string path = AssetDatabase.GetAssetPath(item.Target);
+
+                    if (string.IsNullOrEmpty(path))
                     {
-                        hasHierarchyItems = true;
-                        go.name = item.NewName;
-                        renamedCount++;
+                        if (item.Target is GameObject go)
+                        {
+                            hasHierarchyItems = true;
+                            go.name = item.NewName;
+                            renamedCount++;
+                        }
                     }
                     else
                     {
-                        string path = AssetDatabase.GetAssetPath(item.Target);
-                        if (string.IsNullOrEmpty(path)) continue;
-
                         string directory = Path.GetDirectoryName(path);
                         string extension = Path.GetExtension(path);
                         string newPath = Path.Combine(directory, item.NewName + extension);
