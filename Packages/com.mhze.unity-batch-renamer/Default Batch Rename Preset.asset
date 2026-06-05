@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Default Batch Rename Preset
   m_EditorClassIdentifier: mhze.BatchRenamer.Editor::mhze.BatchRenamer.BatchRenamePreset
   operations:
-  - name: 
+  - name: PrefabPrefix
     searchPattern: 
     replaceText: 
     prefix: ?!PF_:PF_
@@ -23,3 +23,53 @@ MonoBehaviour:
     numberFormat: 0
     caseSensitive: 0
     enabledCategories: 
+    enabledTextureSubCategories: 
+    enabledHierarchyCategories: 
+  - name: Normal Textures Suffix
+    searchPattern: Normal
+    replaceText: 
+    prefix: 
+    suffix: ?!_N:_N
+    textCase: 0
+    preserveNumbers: 0
+    numberFormat: 0
+    caseSensitive: 0
+    enabledCategories: 03000000
+    enabledTextureSubCategories: 01000000
+    enabledHierarchyCategories: 
+  - name: Textures Prefix
+    searchPattern: 
+    replaceText: ?!T_:T_
+    prefix: 
+    suffix: 
+    textCase: 0
+    preserveNumbers: 0
+    numberFormat: 0
+    caseSensitive: 0
+    enabledCategories: 03000000
+    enabledTextureSubCategories: 
+    enabledHierarchyCategories: 
+  - name: Base Color Texture Suffix
+    searchPattern: Base Color||BaseColor
+    replaceText: 
+    prefix: 
+    suffix: ?!_BC:_BC
+    textCase: 0
+    preserveNumbers: 0
+    numberFormat: 0
+    caseSensitive: 0
+    enabledCategories: 03000000
+    enabledTextureSubCategories: 00000000
+    enabledHierarchyCategories: 
+  - name: Base Color Texture Suffix
+    searchPattern: ' - '
+    replaceText: 
+    prefix: 
+    suffix: ?!_BC:_BC
+    textCase: 0
+    preserveNumbers: 0
+    numberFormat: 0
+    caseSensitive: 0
+    enabledCategories: 03000000
+    enabledTextureSubCategories: 00000000
+    enabledHierarchyCategories: 
