@@ -1192,7 +1192,44 @@ namespace mhze.BatchRenamer
                 summary.style.color = TextSecondary;
                 summary.style.whiteSpace = WhiteSpace.NoWrap;
                 summary.style.textOverflow = TextOverflow.Ellipsis;
+                summary.style.flexGrow = 1;
                 row.Add(summary);
+
+                int opIndex = idx - 1;
+                var removeBtn = new Button(() =>
+                {
+                    _currentPreset.operations.RemoveAt(opIndex);
+                    if (_currentPreset.operations.Count == 0)
+                        _presetField.value = null;
+                    else
+                    {
+                        RefreshOperationsListUI();
+                        MarkPreviewDirty();
+                    }
+                });
+                removeBtn.text = "X";
+                removeBtn.style.fontSize = 11;
+                removeBtn.style.unityFontStyleAndWeight = FontStyle.Bold;
+                removeBtn.style.color = new Color(1f, 0.3f, 0.3f);
+                removeBtn.style.backgroundColor = new Color(0.3f, 0.05f, 0.05f, 0.5f);
+                removeBtn.style.borderTopWidth = 1;
+                removeBtn.style.borderLeftWidth = 1;
+                removeBtn.style.borderRightWidth = 1;
+                removeBtn.style.borderBottomWidth = 1;
+                removeBtn.style.borderTopColor = new Color(0.5f, 0.1f, 0.1f);
+                removeBtn.style.borderLeftColor = new Color(0.5f, 0.1f, 0.1f);
+                removeBtn.style.borderRightColor = new Color(0.5f, 0.1f, 0.1f);
+                removeBtn.style.borderBottomColor = new Color(0.5f, 0.1f, 0.1f);
+                removeBtn.style.width = 20;
+                removeBtn.style.height = 20;
+                removeBtn.style.paddingLeft = 0;
+                removeBtn.style.paddingRight = 0;
+                removeBtn.style.paddingTop = 0;
+                removeBtn.style.paddingBottom = 0;
+                removeBtn.style.marginLeft = 4;
+                removeBtn.style.flexShrink = 0;
+                removeBtn.tooltip = "Remove operation";
+                row.Add(removeBtn);
 
                 _operationsListSection.Add(row);
                 idx++;

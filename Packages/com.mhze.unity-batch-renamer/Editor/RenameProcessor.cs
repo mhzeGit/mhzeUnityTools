@@ -129,6 +129,9 @@ namespace mhze.BatchRenamer
             foreach (var guid in guids)
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (AssetDatabase.IsValidFolder(path))
+                    continue;
+
                 if (visited.Add(path))
                 {
                     var obj = AssetDatabase.LoadAssetAtPath<Object>(path);

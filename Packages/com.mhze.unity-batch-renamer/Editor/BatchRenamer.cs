@@ -28,6 +28,12 @@ namespace mhze.BatchRenamer
         static void OpenFromProject()
         {
             var objects = Selection.objects;
+            if (objects == null || objects.Length == 0)
+            {
+                var active = Selection.activeObject;
+                if (active != null)
+                    objects = new Object[] { active };
+            }
             BatchRenamerWindow.ShowWindow(objects);
         }
 
@@ -35,19 +41,13 @@ namespace mhze.BatchRenamer
         static void OpenFromHierarchy()
         {
             var objects = Selection.objects;
+            if (objects == null || objects.Length == 0)
+            {
+                var active = Selection.activeGameObject;
+                if (active != null)
+                    objects = new Object[] { active };
+            }
             BatchRenamerWindow.ShowWindow(objects);
-        }
-
-        [MenuItem("Assets/Batch Rename", true)]
-        static bool ValidateOpenFromProject()
-        {
-            return Selection.objects != null && Selection.objects.Length > 0;
-        }
-
-        [MenuItem("GameObject/Batch Rename", true)]
-        static bool ValidateOpenFromHierarchy()
-        {
-            return Selection.gameObjects != null && Selection.gameObjects.Length > 0;
         }
 
         [MenuItem("Edit/Rename _F2")]
@@ -107,7 +107,7 @@ namespace mhze.BatchRenamer
         [MenuItem("Edit/Rename _F2", true)]
         private static bool ValidateOnF2Rename()
         {
-            return Selection.objects != null && Selection.objects.Length > 0;
+            return Selection.activeObject != null;
         }
     }
 }
