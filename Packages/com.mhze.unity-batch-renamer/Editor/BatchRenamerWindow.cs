@@ -653,6 +653,30 @@ namespace mhze.BatchRenamer
 
             section.Add(headerRow);
 
+            var columnHeaderRow = new VisualElement();
+            columnHeaderRow.style.flexDirection = FlexDirection.Row;
+            columnHeaderRow.style.marginBottom = 4;
+            columnHeaderRow.style.paddingLeft = 12;
+            columnHeaderRow.style.paddingRight = 12;
+
+            var beforeHeader = new Label("Before");
+            beforeHeader.style.fontSize = 11;
+            beforeHeader.style.color = TextSecondary;
+            beforeHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
+            beforeHeader.style.flexGrow = 1;
+            beforeHeader.style.flexBasis = 0;
+            columnHeaderRow.Add(beforeHeader);
+
+            var afterHeader = new Label("After");
+            afterHeader.style.fontSize = 11;
+            afterHeader.style.color = TextSecondary;
+            afterHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
+            afterHeader.style.flexGrow = 1;
+            afterHeader.style.flexBasis = 0;
+            columnHeaderRow.Add(afterHeader);
+
+            section.Add(columnHeaderRow);
+
             _previewScrollView = new ScrollView(ScrollViewMode.Vertical);
             _previewScrollView.style.flexGrow = 1;
             _previewScrollView.style.backgroundColor = PreviewBg;
@@ -937,6 +961,13 @@ namespace mhze.BatchRenamer
                 row.style.opacity = 0.4f;
             }
 
+            var leftColumn = new VisualElement();
+            leftColumn.style.flexDirection = FlexDirection.Row;
+            leftColumn.style.alignItems = Align.Center;
+            leftColumn.style.flexGrow = 1;
+            leftColumn.style.flexBasis = 0;
+            leftColumn.style.overflow = Overflow.Hidden;
+
             var icon = new VisualElement();
             Texture2D thumb = AssetPreview.GetMiniThumbnail(item.Target);
             if (thumb == null)
@@ -950,24 +981,33 @@ namespace mhze.BatchRenamer
             icon.style.height = 16;
             icon.style.marginRight = 6;
             icon.style.flexShrink = 0;
-            row.Add(icon);
+            leftColumn.Add(icon);
 
             var oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedTexts, item.IsValid, _processor.CaseSensitive);
-            oldContainer.style.marginRight = 8;
             oldContainer.style.flexShrink = 1;
-            row.Add(oldContainer);
+            leftColumn.Add(oldContainer);
+
+            row.Add(leftColumn);
 
             var arrow = new Label("\u2192");
             arrow.style.fontSize = 13;
             arrow.style.color = TextSecondary;
-            arrow.style.marginRight = 8;
+            arrow.style.marginLeft = 6;
+            arrow.style.marginRight = 6;
             arrow.style.flexShrink = 0;
             row.Add(arrow);
 
+            var rightColumn = new VisualElement();
+            rightColumn.style.flexDirection = FlexDirection.Row;
+            rightColumn.style.alignItems = Align.Center;
+            rightColumn.style.flexGrow = 1;
+            rightColumn.style.flexBasis = 0;
+            rightColumn.style.overflow = Overflow.Hidden;
+
             var newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName);
-            newNameContainer.style.flexGrow = 1;
-            newNameContainer.style.flexShrink = 1;
-            row.Add(newNameContainer);
+            rightColumn.Add(newNameContainer);
+
+            row.Add(rightColumn);
 
             _previewContainer.Add(row);
         }
