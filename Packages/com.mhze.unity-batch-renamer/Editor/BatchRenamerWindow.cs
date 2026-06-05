@@ -805,6 +805,10 @@ namespace mhze.BatchRenamer
             _processor.NumberFormat = _numberFormatField != null ? (NumberFormatPreset)_numberFormatField.value : NumberFormatPreset.UnderscoreN;
 
             _processor.SetActiveCategories(_filterSelectedCategories);
+
+            if (_currentPreset != null && _currentPreset.operations.Count > 0)
+                _processor.ApplyOperation(_currentPreset.operations[0]);
+
             _processor.RefreshPreview();
 
             int matchCount = _processor.Items.Count(i => i.IsValid);
@@ -1092,8 +1096,6 @@ namespace mhze.BatchRenamer
             {
                 var preset = evt.newValue as BatchRenamePreset;
                 _currentPreset = preset;
-                if (preset != null && preset.operations.Count > 0)
-                    ApplyOperationToUI(preset.operations[0]);
                 RefreshOperationsListUI();
                 MarkPreviewDirty();
             });
