@@ -195,10 +195,61 @@ namespace mhze.BatchRenamer
             }
         }
 
+        private string EvaluateConditions(string input, string originalName)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input ?? "";
+
+            var comparison = CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            var sb = new System.Text.StringBuilder();
+            int i = 0;
+
+            while (i < input.Length)
+            {
+                if (input[i] == '?' || input[i] == '!')
+                {
+                    bool isNot = input[i] == '!';
+                    i++;
+
+                    int condStart = i;
+                    while (i < input.Length && input[i] != ':')
+                        i++;
+                    string condition = input.Substring(condStart, i - condStart);
+
+                    if (i < input.Length) i++;
+
+                    int trueStart = i;
+                    while (i < input.Length && input[i] != ':')
+                        i++;
+                    string trueValue = input.Substring(trueStart, i - trueStart);
+
+                    if (i < input.Length) i++;
+
+                    int falseStart = i;
+                    while (i < input.Length && input[i] != '?' && input[i] != '!')
+                        i++;
+                    string falseValue = input.Substring(falseStart, i - falseStart);
+
+                    bool condMet = originalName.IndexOf(condition, comparison) >= 0;
+                    sb.Append(isNot ? (condMet ? falseValue : trueValue) : (condMet ? trueValue : falseValue));
+                }
+                else
+                {
+                    sb.Append(input[i]);
+                    i++;
+                }
+            }
+
+            return sb.ToString();
+        }
+
         private string ComputeNewName(string originalName, List<SearchExpression.MatchEntry> matchedEntries)
         {
             string result = originalName;
             string preservedNumber = null;
+            string resolvedReplaceText = EvaluateConditions(ReplaceText, originalName);
+            string resolvedPrefix = EvaluateConditions(Prefix, originalName);
+            string resolvedSuffix = EvaluateConditions(Suffix, originalName);
 
             if (PreserveNumbers)
             {
@@ -210,9 +261,10 @@ namespace mhze.BatchRenamer
                 }
             }
 
-            if (matchedEntries != null && matchedEntries.Count > 0)
+            var realEntries = matchedEntries?.FindAll(e => e.Index >= 0 && e.Text.Length > 0);
+            if (realEntries != null && realEntries.Count > 0)
             {
-                var sorted = new List<SearchExpression.MatchEntry>(matchedEntries);
+                var sorted = new List<SearchExpression.MatchEntry>(realEntries);
                 sorted.Sort((a, b) => a.Index.CompareTo(b.Index));
 
                 bool contiguous = true;
@@ -225,7 +277,7 @@ namespace mhze.BatchRenamer
                         next = sorted[i].Index + sorted[i].Text.Length;
                 }
 
-                bool hasNumberToken = ReplaceText.IndexOf("{Number}", StringComparison.OrdinalIgnoreCase) >= 0;
+                bool hasNumberToken = resolvedReplaceText.IndexOf("{Number}", StringComparison.OrdinalIgnoreCase) >= 0;
 
                 if (contiguous && hasNumberToken && sorted.Count > 1)
                 {
@@ -235,7 +287,7 @@ namespace mhze.BatchRenamer
                         var nm = Regex.Match(e.Text, @"\d+");
                         if (nm.Success) { number = nm.Value; break; }
                     }
-                    var resolved = Regex.Replace(ReplaceText, @"\{number\}", number, RegexOptions.IgnoreCase);
+                    var resolved = Regex.Replace(resolvedReplaceText, @"\{number\}", number, RegexOptions.IgnoreCase);
                     int spanStart = sorted[0].Index;
                     int spanEnd = sorted[sorted.Count - 1].Index + sorted[sorted.Count - 1].Text.Length;
                     result = result.Substring(0, spanStart) + resolved + result.Substring(spanEnd);
@@ -245,7 +297,7 @@ namespace mhze.BatchRenamer
                     sorted.Sort((a, b) => b.Index.CompareTo(a.Index));
                     foreach (var entry in sorted)
                     {
-                        string replacement = ReplaceText;
+                        string replacement = resolvedReplaceText;
                         if (hasNumberToken)
                         {
                             var numberMatch = Regex.Match(entry.Text, @"\d+");
@@ -257,11 +309,11 @@ namespace mhze.BatchRenamer
                 }
             }
 
-            if (!string.IsNullOrEmpty(Prefix))
-                result = Prefix + result;
+            if (!string.IsNullOrEmpty(resolvedPrefix))
+                result = resolvedPrefix + result;
 
-            if (!string.IsNullOrEmpty(Suffix))
-                result = result + Suffix;
+            if (!string.IsNullOrEmpty(resolvedSuffix))
+                result = result + resolvedSuffix;
 
             result = ApplyTextCase(result);
 
@@ -620,6 +672,26 @@ namespace mhze.BatchRenamer
             public string Describe() => $"And({_left.Describe()}, {_right.Describe()})";
         }
 
+        public class NotNode : INode
+        {
+            private readonly INode _inner;
+
+            public NotNode(INode inner)
+            {
+                _inner = inner;
+            }
+
+            public List<MatchEntry> Match(string name)
+            {
+                var innerResult = _inner.Match(name);
+                if (innerResult.Count > 0)
+                    return new List<MatchEntry>();
+                return new List<MatchEntry> { new MatchEntry { Text = "", Index = -1 } };
+            }
+
+            public string Describe() => $"Not({_inner.Describe()})";
+        }
+
         private readonly INode _root;
 
         public SearchExpression(INode root)
@@ -785,6 +857,15 @@ namespace mhze.BatchRenamer
 
             var text = tokens[pos];
             pos++;
+
+            if (text.StartsWith("!"))
+            {
+                var innerText = text.Substring(1);
+                if (innerText.Length > 0)
+                    return new NotNode(new Literal(innerText, comparison));
+                return new Literal(text, comparison);
+            }
+
             return new Literal(text, comparison);
         }
 

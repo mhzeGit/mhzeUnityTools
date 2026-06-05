@@ -122,10 +122,18 @@ namespace mhze.BatchRenamer
         {
             if (_leftColumn == null) return;
 
-            float controlsHeight = 0;
+            float controlsExtent = 0;
             foreach (var child in _leftColumn.Children())
             {
-                controlsHeight += child.layout.height;
+                float childBottom = child.layout.y + child.layout.height;
+                float childMarginBottom = child.resolvedStyle.marginBottom;
+                controlsExtent = Mathf.Max(controlsExtent, childBottom + childMarginBottom);
+            }
+
+            if (controlsExtent <= 0)
+            {
+                rootVisualElement.schedule.Execute(AdjustWindowSize).StartingIn(100);
+                return;
             }
 
             float headerHeight = 50;
@@ -133,7 +141,7 @@ namespace mhze.BatchRenamer
             float minPreviewHeight = 180;
             float actionsHeight = 36;
 
-            float requiredHeight = Mathf.Ceil(rootPadding + headerHeight + controlsHeight + minPreviewHeight + actionsHeight);
+            float requiredHeight = Mathf.Ceil(rootPadding + headerHeight + controlsExtent + minPreviewHeight + actionsHeight);
 
             float leftWidth = _leftColumn.resolvedStyle.width;
             if (leftWidth <= 0) leftWidth = 320;
@@ -143,6 +151,12 @@ namespace mhze.BatchRenamer
             float requiredWidth = Mathf.Ceil(leftWidth + gap + rightMinWidth + hPadding);
 
             minSize = new Vector2(requiredWidth, requiredHeight);
+            maxSize = new Vector2(Mathf.Max(2000, requiredWidth), Mathf.Max(2000, requiredHeight));
+
+            var pos = position;
+            pos.width = Mathf.Max(pos.width, requiredWidth);
+            pos.height = Mathf.Max(pos.height, requiredHeight);
+            position = pos;
         }
 
         private void BuildHeader()
@@ -190,7 +204,7 @@ namespace mhze.BatchRenamer
             csRow.Add(_caseSensitiveToggle);
             section.Add(csRow);
 
-            var help = new Label("&& (AND)  || (OR)  [] (group)  {Number} (digits)");
+            var help = new Label("&& (AND)  || (OR)  [] (group)  {Number} (digits)  ! (NOT)");
             help.style.fontSize = 11;
             help.style.color = TextDim;
             help.style.marginLeft = 70;
@@ -198,6 +212,15 @@ namespace mhze.BatchRenamer
             help.style.marginBottom = 2;
             help.style.whiteSpace = WhiteSpace.NoWrap;
             section.Add(help);
+
+            var condHelp = new Label("?word:val or ?word:true:false in Prefix/Suffix/Replace");
+            condHelp.style.fontSize = 11;
+            condHelp.style.color = TextDim;
+            condHelp.style.marginLeft = 70;
+            condHelp.style.marginTop = 0;
+            condHelp.style.marginBottom = 4;
+            condHelp.style.whiteSpace = WhiteSpace.NoWrap;
+            section.Add(condHelp);
 
             parent.Add(section);
         }
