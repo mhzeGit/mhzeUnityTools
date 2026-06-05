@@ -120,15 +120,18 @@ namespace mhze.BatchRenamer
                     continue;
                 }
 
-                if (visited.Add(path))
+                if (AssetDatabase.IsValidFolder(path))
                 {
-                    bool isFolder = AssetDatabase.IsValidFolder(path);
+                    CollectFromFolder(path, visited);
+                }
+                else if (visited.Add(path))
+                {
                     Items.Add(new RenameItem
                     {
                         Target = obj,
                         OriginalName = obj.name
                     });
-                    Debug.Log($"[BatchRenamer]   ADDED item: '{obj.name}' path='{path}' isFolder={isFolder} Items.Count={Items.Count}");
+                    Debug.Log($"[BatchRenamer]   ADDED item: '{obj.name}' path='{path}' Items.Count={Items.Count}");
                 }
                 else
                 {
@@ -136,6 +139,30 @@ namespace mhze.BatchRenamer
                 }
             }
             Debug.Log($"[BatchRenamer] CollectFromProjectSelection done, Items.Count={Items.Count}");
+        }
+
+        private void CollectFromFolder(string folderPath, HashSet<string> visited)
+        {
+            Debug.Log($"[BatchRenamer]   CollectFromFolder: '{folderPath}'");
+            var guids = AssetDatabase.FindAssets("", new[] { folderPath });
+            Debug.Log($"[BatchRenamer]   FindAssets found {guids.Length} assets in '{folderPath}'");
+            foreach (var guid in guids)
+            {
+                var assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (visited.Add(assetPath))
+                {
+                    var asset = AssetDatabase.LoadMainAssetAtPath(assetPath);
+                    if (asset != null)
+                    {
+                        Items.Add(new RenameItem
+                        {
+                            Target = asset,
+                            OriginalName = asset.name
+                        });
+                        Debug.Log($"[BatchRenamer]   ADDED item from folder: '{asset.name}' path='{assetPath}' Items.Count={Items.Count}");
+                    }
+                }
+            }
         }
 
         private void CollectFromHierarchySelection(Object[] objects)
