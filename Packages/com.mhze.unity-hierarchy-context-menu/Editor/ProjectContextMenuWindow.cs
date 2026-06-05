@@ -201,7 +201,7 @@ namespace mhze.HierarchyContextMenu
             items.Add(new SeparatorItem());
 
             // Refresh + Reimport
-            items.Add(new SpecialActionItem { DisplayName = "Refresh", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Refresh") });
+            items.Add(new SpecialActionItem { DisplayName = "Refresh", ShortcutText = ctrl + "+R", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Refresh") });
 
             // Reimport
             items.Add(new SpecialActionItem { DisplayName = "Reimport", Action = () => ProjectContextMenuActions.ExecuteMenuItem(this, "Assets/Reimport"), Enabled = true });
