@@ -1,3 +1,4 @@
+using System.IO;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -6,6 +7,23 @@ namespace mhze.BatchRenamer
 {
     static class BatchRenamer
     {
+        [MenuItem("Assets/Create/Batch Rename Preset", false, 200)]
+        static void CreatePreset()
+        {
+            var preset = ScriptableObject.CreateInstance<BatchRenamePreset>();
+            string path = AssetDatabase.GetAssetPath(Selection.activeObject);
+            if (string.IsNullOrEmpty(path))
+                path = "Assets";
+            else if (!AssetDatabase.IsValidFolder(path))
+                path = Path.GetDirectoryName(path);
+
+            string assetPath = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(path, "New Batch Rename Preset.asset"));
+            AssetDatabase.CreateAsset(preset, assetPath);
+            AssetDatabase.SaveAssets();
+            EditorUtility.FocusProjectWindow();
+            Selection.activeObject = preset;
+        }
+
         [MenuItem("Assets/Batch Rename", false, 20)]
         static void OpenFromProject()
         {

@@ -211,6 +211,12 @@ namespace mhze.BatchRenamer
                     bool isNot = input[i] == '!';
                     i++;
 
+                    if (!isNot && i < input.Length && input[i] == '!')
+                    {
+                        isNot = true;
+                        i++;
+                    }
+
                     int condStart = i;
                     while (i < input.Length && input[i] != ':')
                         i++;
@@ -478,9 +484,26 @@ namespace mhze.BatchRenamer
 
         public void ApplyRenames()
         {
-            bool hasHierarchyItems = false;
+            var (renamedCount, errorCount, hasHierarchyItems) = RenameCore();
+
+            if (hasHierarchyItems)
+                EditorApplication.DirtyHierarchyWindowSorting();
+
+            AssetDatabase.Refresh();
+            EditorApplication.delayCall += () =>
+            {
+                EditorUtility.DisplayDialog("Batch Rename Complete",
+                    $"Successfully renamed {renamedCount} item(s).\n" +
+                    (errorCount > 0 ? $"{errorCount} error(s) occurred.\nCheck Console for details." : ""),
+                    "OK");
+            };
+        }
+
+        private (int renamedCount, int errorCount, bool hasHierarchyItems) RenameCore()
+        {
             int renamedCount = 0;
             int errorCount = 0;
+            bool hasHierarchyItems = false;
 
             Undo.RecordObjects(Items.FindAll(i => i.Target is GameObject).ConvertAll(i => i.Target).ToArray(), "Batch Rename");
 
@@ -528,17 +551,65 @@ namespace mhze.BatchRenamer
                 }
             }
 
-            if (hasHierarchyItems)
+            return (renamedCount, errorCount, hasHierarchyItems);
+        }
+
+        public void ApplyOperation(BatchRenameOperation op)
+        {
+            SearchPattern = op.searchPattern;
+            ReplaceText = op.replaceText;
+            Prefix = op.prefix;
+            Suffix = op.suffix;
+            TextCase = op.textCase;
+            PreserveNumbers = op.preserveNumbers;
+            NumberFormat = op.numberFormat;
+            CaseSensitive = op.caseSensitive;
+            EnabledCategories = new HashSet<AssetCategory>(op.enabledCategories);
+        }
+
+        public void RunOperations(List<BatchRenameOperation> operations)
+        {
+            if (operations == null || operations.Count == 0)
             {
-                EditorApplication.DirtyHierarchyWindowSorting();
+                ApplyRenames();
+                return;
             }
 
+            int totalRenamed = 0;
+            int totalErrors = 0;
+            bool hasHierarchyItems = false;
+
+            foreach (var op in operations)
+            {
+                ApplyOperation(op);
+                RefreshPreview();
+
+                var (renamed, errors, hierarchy) = RenameCore();
+                totalRenamed += renamed;
+                totalErrors += errors;
+                if (hierarchy) hasHierarchyItems = true;
+
+                foreach (var item in Items)
+                {
+                    if (item.IsValid && item.NewName != item.OriginalName)
+                    {
+                        item.OriginalName = item.NewName;
+                    }
+                }
+            }
+
+            if (hasHierarchyItems)
+                EditorApplication.DirtyHierarchyWindowSorting();
+
             AssetDatabase.Refresh();
+
+            var savedTotalRenamed = totalRenamed;
+            var savedTotalErrors = totalErrors;
             EditorApplication.delayCall += () =>
             {
                 EditorUtility.DisplayDialog("Batch Rename Complete",
-                    $"Successfully renamed {renamedCount} item(s).\n" +
-                    (errorCount > 0 ? $"{errorCount} error(s) occurred.\nCheck Console for details." : ""),
+                    $"Successfully renamed {savedTotalRenamed} item(s).\n" +
+                    (savedTotalErrors > 0 ? $"{savedTotalErrors} error(s) occurred.\nCheck Console for details." : ""),
                     "OK");
             };
         }

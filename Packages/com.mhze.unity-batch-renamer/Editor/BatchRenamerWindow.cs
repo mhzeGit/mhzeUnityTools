@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEditor.UIElements;
 using Object = UnityEngine.Object;
 
 namespace mhze.BatchRenamer
@@ -42,6 +43,10 @@ namespace mhze.BatchRenamer
         private readonly HashSet<AssetCategory> _filterSelectedCategories = new HashSet<AssetCategory>();
         private VisualElement _leftColumn;
         private VisualElement _filterDropdownButton;
+
+        private BatchRenamePreset _currentPreset;
+        private VisualElement _operationsListSection;
+        private ObjectField _presetField;
         private Label _filterSummaryLabel;
         private VisualElement _filterPopup;
         private bool _filterPopupOpen;
@@ -96,6 +101,7 @@ namespace mhze.BatchRenamer
             BuildSearchReplaceSection(leftColumn);
             BuildFilterSection(leftColumn);
             BuildModifySection(leftColumn);
+            BuildPresetSection(leftColumn);
             BuildNumberSection(leftColumn);
             BuildHelpSection(leftColumn);
 
@@ -1037,18 +1043,176 @@ namespace mhze.BatchRenamer
 
         private void OnRenameClicked()
         {
-            int validCount = _processor.Items.Count(i => i.IsValid);
-            if (validCount == 0) return;
+            if (_currentPreset != null && _currentPreset.operations.Count > 0)
+            {
+                int validCount = _processor.Items.Count(i => i.IsValid);
+                if (validCount == 0) return;
 
-            bool proceed = EditorUtility.DisplayDialog(
+                string opDesc = $"{_currentPreset.operations.Count} operation(s)";
+                bool proceed = EditorUtility.DisplayDialog(
+                    "Confirm Batch Rename",
+                    $"Are you sure you want to rename {validCount} item(s) using {opDesc}?\nThis action can be undone (Ctrl+Z).",
+                    "Rename", "Cancel");
+
+                if (!proceed) return;
+
+                _processor.RunOperations(_currentPreset.operations);
+                Close();
+                return;
+            }
+
+            int singleValidCount = _processor.Items.Count(i => i.IsValid);
+            if (singleValidCount == 0) return;
+
+            bool singleProceed = EditorUtility.DisplayDialog(
                 "Confirm Batch Rename",
-                $"Are you sure you want to rename {validCount} item(s)?\nThis action can be undone (Ctrl+Z).",
+                $"Are you sure you want to rename {singleValidCount} item(s)?\nThis action can be undone (Ctrl+Z).",
                 "Rename", "Cancel");
 
-            if (!proceed) return;
+            if (!singleProceed) return;
 
             _processor.ApplyRenames();
             Close();
+        }
+
+        private void BuildPresetSection(VisualElement parent)
+        {
+            var section = CreateSection();
+            CreateSectionHeader(section, "Preset");
+
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Center;
+            row.style.marginBottom = 4;
+
+            _presetField = new ObjectField();
+            _presetField.objectType = typeof(BatchRenamePreset);
+            _presetField.style.flexGrow = 1;
+            _presetField.RegisterValueChangedCallback(evt =>
+            {
+                var preset = evt.newValue as BatchRenamePreset;
+                _currentPreset = preset;
+                if (preset != null && preset.operations.Count > 0)
+                    ApplyOperationToUI(preset.operations[0]);
+                RefreshOperationsListUI();
+                MarkPreviewDirty();
+            });
+
+            var objFieldLabel = _presetField.Q<Label>();
+            if (objFieldLabel != null)
+            {
+                objFieldLabel.style.minWidth = 0;
+                objFieldLabel.style.display = DisplayStyle.None;
+            }
+
+            var objInput = _presetField.Q(className: ObjectField.inputUssClassName);
+            if (objInput != null)
+            {
+                objInput.style.fontSize = 12;
+                objInput.style.backgroundColor = BgInput;
+                objInput.style.borderTopWidth = 1;
+                objInput.style.borderLeftWidth = 1;
+                objInput.style.borderRightWidth = 1;
+                objInput.style.borderBottomWidth = 1;
+                objInput.style.borderTopColor = BorderColor;
+                objInput.style.borderLeftColor = BorderColor;
+                objInput.style.borderRightColor = BorderColor;
+                objInput.style.borderBottomColor = BorderColor;
+                objInput.style.paddingLeft = 8;
+                objInput.style.paddingRight = 8;
+                objInput.style.paddingTop = 4;
+                objInput.style.paddingBottom = 4;
+            }
+            row.Add(_presetField);
+
+            section.Add(row);
+
+            _operationsListSection = new VisualElement();
+            _operationsListSection.style.display = DisplayStyle.None;
+            _operationsListSection.style.marginTop = 4;
+            section.Add(_operationsListSection);
+
+            parent.Add(section);
+        }
+
+        private void ApplyOperationToUI(BatchRenameOperation op)
+        {
+            if (_searchField != null) _searchField.SetValueWithoutNotify(op.searchPattern);
+            if (_replaceField != null) _replaceField.SetValueWithoutNotify(op.replaceText);
+            if (_prefixField != null) _prefixField.SetValueWithoutNotify(op.prefix);
+            if (_suffixField != null) _suffixField.SetValueWithoutNotify(op.suffix);
+            if (_caseField != null) _caseField.SetValueWithoutNotify(op.textCase);
+            if (_preserveNumbersToggle != null) _preserveNumbersToggle.SetValueWithoutNotify(op.preserveNumbers);
+            if (_numberFormatField != null) _numberFormatField.SetValueWithoutNotify(op.numberFormat);
+            if (_caseSensitiveToggle != null) _caseSensitiveToggle.SetValueWithoutNotify(op.caseSensitive);
+
+            _filterSelectedCategories.Clear();
+            foreach (var cat in op.enabledCategories)
+                _filterSelectedCategories.Add(cat);
+            UpdateFilterSummary();
+        }
+
+        private void RefreshOperationsListUI()
+        {
+            _operationsListSection.Clear();
+
+            if (_currentPreset == null || _currentPreset.operations.Count == 0)
+            {
+                _operationsListSection.style.display = DisplayStyle.None;
+                return;
+            }
+
+            _operationsListSection.style.display = DisplayStyle.Flex;
+
+            int idx = 1;
+            foreach (var op in _currentPreset.operations)
+            {
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.Center;
+                row.style.marginBottom = 2;
+                row.style.paddingLeft = 4;
+                row.style.paddingRight = 4;
+                row.style.paddingTop = 2;
+                row.style.paddingBottom = 2;
+                row.style.minHeight = 20;
+                row.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
+
+                var numLabel = new Label($"#{idx}");
+                numLabel.style.fontSize = 11;
+                numLabel.style.color = TextDim;
+                numLabel.style.minWidth = 22;
+                numLabel.style.marginRight = 4;
+                row.Add(numLabel);
+
+                var summary = new Label(GetOperationSummary(op));
+                summary.style.fontSize = 11;
+                summary.style.color = TextSecondary;
+                summary.style.whiteSpace = WhiteSpace.NoWrap;
+                summary.style.textOverflow = TextOverflow.Ellipsis;
+                row.Add(summary);
+
+                _operationsListSection.Add(row);
+                idx++;
+            }
+        }
+
+        private static string GetOperationSummary(BatchRenameOperation op)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(op.searchPattern))
+                parts.Add($"\"{op.searchPattern}\"");
+            if (!string.IsNullOrEmpty(op.replaceText))
+                parts.Add($"\u2192\"{op.replaceText}\"");
+            if (!string.IsNullOrEmpty(op.prefix))
+                parts.Add($"Pref:\"{op.prefix}\"");
+            if (!string.IsNullOrEmpty(op.suffix))
+                parts.Add($"Suf:\"{op.suffix}\"");
+            if (op.textCase != TextCaseMode.None)
+                parts.Add($"Case:{op.textCase}");
+            if (op.preserveNumbers)
+                parts.Add("Num");
+            return parts.Count > 0 ? string.Join(" ", parts) : "(no changes)";
         }
     }
 }
