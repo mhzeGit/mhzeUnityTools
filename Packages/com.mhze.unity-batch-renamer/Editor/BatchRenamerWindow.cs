@@ -140,9 +140,10 @@ namespace mhze.BatchRenamer
 
         private void OnSelectionChange()
         {
-            var selObjs = Selection.objects;
-            Debug.Log($"[BatchRenamer] OnSelectionChange fired, Selection.objects count={selObjs?.Length}, _previewContainer={_previewContainer != null}");
             if (_processor == null || _previewContainer == null) return;
+
+            var selObjs = BatchRenamer.GetSelectedProjectAssets();
+            Debug.Log($"[BatchRenamer] OnSelectionChange fired, assetGUIDs based objects count={selObjs?.Length}, _previewContainer={_previewContainer != null}");
 
             _processor.CollectFromObjects(selObjs);
             MarkPreviewDirty();
@@ -889,8 +890,14 @@ namespace mhze.BatchRenamer
             }
 
             var icon = new VisualElement();
-            var tex = AssetPreview.GetMiniThumbnail(item.Target);
-            icon.style.backgroundImage = tex != null ? new Background(tex) : StyleKeyword.None;
+            Texture2D thumb = AssetPreview.GetMiniThumbnail(item.Target);
+            if (thumb == null)
+            {
+                string assetPath = AssetDatabase.GetAssetPath(item.Target);
+                if (!string.IsNullOrEmpty(assetPath) && AssetDatabase.IsValidFolder(assetPath))
+                    thumb = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
+            }
+            icon.style.backgroundImage = thumb != null ? new Background(thumb) : StyleKeyword.None;
             icon.style.width = 16;
             icon.style.height = 16;
             icon.style.marginRight = 6;

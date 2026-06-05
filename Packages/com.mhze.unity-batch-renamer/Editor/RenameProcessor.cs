@@ -122,12 +122,13 @@ namespace mhze.BatchRenamer
 
                 if (visited.Add(path))
                 {
+                    bool isFolder = AssetDatabase.IsValidFolder(path);
                     Items.Add(new RenameItem
                     {
                         Target = obj,
                         OriginalName = obj.name
                     });
-                    Debug.Log($"[BatchRenamer]   ADDED item: '{obj.name}' path='{path}' Items.Count={Items.Count}");
+                    Debug.Log($"[BatchRenamer]   ADDED item: '{obj.name}' path='{path}' isFolder={isFolder} Items.Count={Items.Count}");
                 }
                 else
                 {
@@ -540,11 +541,18 @@ namespace mhze.BatchRenamer
                     }
                     else
                     {
-                        string directory = Path.GetDirectoryName(path);
-                        string extension = Path.GetExtension(path);
-                        string newPath = Path.Combine(directory, item.NewName + extension);
+                        bool isFolder = AssetDatabase.IsValidFolder(path);
+                        string newPath;
+                        if (isFolder)
+                        {
+                            newPath = Path.Combine(Path.GetDirectoryName(path), item.NewName).Replace('\\', '/');
+                        }
+                        else
+                        {
+                            newPath = Path.Combine(Path.GetDirectoryName(path), item.NewName + Path.GetExtension(path)).Replace('\\', '/');
+                        }
 
-                        if (path == newPath) continue;
+                        if (string.Equals(path, newPath, StringComparison.Ordinal)) continue;
 
                         string error = AssetDatabase.RenameAsset(path, item.NewName);
                         if (string.IsNullOrEmpty(error))

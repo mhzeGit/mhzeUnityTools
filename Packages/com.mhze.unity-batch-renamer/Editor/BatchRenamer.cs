@@ -2,6 +2,7 @@ using System.IO;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace mhze.BatchRenamer
 {
@@ -27,6 +28,24 @@ namespace mhze.BatchRenamer
         [MenuItem("Assets/Batch Rename", false, 20)]
         static void OpenFromProject()
         {
+            var objects = GetSelectedProjectAssets();
+            BatchRenamerWindow.ShowWindow(objects);
+        }
+
+        internal static Object[] GetSelectedProjectAssets()
+        {
+            var guids = Selection.assetGUIDs;
+            if (guids != null && guids.Length > 0)
+            {
+                var objs = new Object[guids.Length];
+                for (int i = 0; i < guids.Length; i++)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    objs[i] = AssetDatabase.LoadMainAssetAtPath(path);
+                }
+                return objs;
+            }
+
             var objects = Selection.objects;
             if (objects == null || objects.Length == 0)
             {
@@ -34,7 +53,7 @@ namespace mhze.BatchRenamer
                 if (active != null)
                     objects = new Object[] { active };
             }
-            BatchRenamerWindow.ShowWindow(objects);
+            return objects;
         }
 
         [MenuItem("GameObject/Batch Rename", false, 20)]
@@ -53,7 +72,7 @@ namespace mhze.BatchRenamer
         [MenuItem("Edit/Rename _F2")]
         private static void OnF2Rename()
         {
-            var objects = Selection.objects;
+            var objects = GetSelectedProjectAssets();
             if (objects != null && objects.Length > 1)
             {
                 BatchRenamerWindow.ShowWindow(objects);
