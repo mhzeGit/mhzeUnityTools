@@ -863,7 +863,7 @@ namespace mhze.BatchRenamer
                 var label = new Label(name);
                 label.style.fontSize = 12;
                 label.style.color = baseColor;
-                label.style.whiteSpace = WhiteSpace.NoWrap;
+                label.style.whiteSpace = WhiteSpace.Pre;
                 container.Add(label);
                 return container;
             }
@@ -890,14 +890,14 @@ namespace mhze.BatchRenamer
                     var before = new Label(name.Substring(pos, start - pos));
                     before.style.fontSize = 12;
                     before.style.color = baseColor;
-                    before.style.whiteSpace = WhiteSpace.NoWrap;
+                    before.style.whiteSpace = WhiteSpace.Pre;
                     before.style.flexShrink = 0;
                     container.Add(before);
                 }
                 var match = new Label(name.Substring(start, end - start));
                 match.style.fontSize = 12;
                 match.style.color = MatchHighlight;
-                match.style.whiteSpace = WhiteSpace.NoWrap;
+                match.style.whiteSpace = WhiteSpace.Pre;
                 match.style.unityFontStyleAndWeight = FontStyle.Bold;
                 match.style.flexShrink = 0;
                 container.Add(match);
@@ -909,7 +909,7 @@ namespace mhze.BatchRenamer
                 var remaining = new Label(name.Substring(pos));
                 remaining.style.fontSize = 12;
                 remaining.style.color = baseColor;
-                remaining.style.whiteSpace = WhiteSpace.NoWrap;
+                remaining.style.whiteSpace = WhiteSpace.Pre;
                 remaining.style.flexShrink = 0;
                 container.Add(remaining);
             }
@@ -929,7 +929,7 @@ namespace mhze.BatchRenamer
                 var label = new Label(newName);
                 label.style.fontSize = 12;
                 label.style.color = TextPrimary;
-                label.style.whiteSpace = WhiteSpace.NoWrap;
+                label.style.whiteSpace = WhiteSpace.Pre;
                 container.Add(label);
                 return container;
             }
@@ -941,7 +941,7 @@ namespace mhze.BatchRenamer
                 var pLabel = new Label(prefix);
                 pLabel.style.fontSize = 12;
                 pLabel.style.color = TextPrimary;
-                pLabel.style.whiteSpace = WhiteSpace.NoWrap;
+                pLabel.style.whiteSpace = WhiteSpace.Pre;
                 pLabel.style.flexShrink = 0;
                 container.Add(pLabel);
             }
@@ -951,7 +951,7 @@ namespace mhze.BatchRenamer
                 var mLabel = new Label(middle);
                 mLabel.style.fontSize = 12;
                 mLabel.style.color = GreenHighlight;
-                mLabel.style.whiteSpace = WhiteSpace.NoWrap;
+                mLabel.style.whiteSpace = WhiteSpace.Pre;
                 mLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
                 mLabel.style.flexShrink = 0;
                 container.Add(mLabel);
@@ -962,7 +962,7 @@ namespace mhze.BatchRenamer
                 var sLabel = new Label(suffix);
                 sLabel.style.fontSize = 12;
                 sLabel.style.color = TextPrimary;
-                sLabel.style.whiteSpace = WhiteSpace.NoWrap;
+                sLabel.style.whiteSpace = WhiteSpace.Pre;
                 sLabel.style.flexShrink = 0;
                 container.Add(sLabel);
             }

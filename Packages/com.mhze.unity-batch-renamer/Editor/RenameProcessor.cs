@@ -159,7 +159,7 @@ namespace mhze.BatchRenamer
             bool patternChanged = SearchPattern != _lastSearchPattern || CaseSensitive != _lastCaseSensitive;
             if (patternChanged)
             {
-                _cachedExpression = !string.IsNullOrWhiteSpace(SearchPattern)
+                _cachedExpression = !string.IsNullOrEmpty(SearchPattern)
                     ? SearchExpression.Parse(SearchPattern, CaseSensitive)
                     : null;
                 _lastSearchPattern = SearchPattern;
@@ -714,7 +714,7 @@ namespace mhze.BatchRenamer
         {
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
-            if (string.IsNullOrWhiteSpace(input))
+            if (string.IsNullOrEmpty(input))
                 return new SearchExpression(new Literal("", comparison));
 
             var tokens = Tokenize(input);
@@ -729,12 +729,6 @@ namespace mhze.BatchRenamer
             int i = 0;
             while (i < input.Length)
             {
-                if (char.IsWhiteSpace(input[i]))
-                {
-                    i++;
-                    continue;
-                }
-
                 if (input[i] == '{')
                 {
                     int close = i + 1;
@@ -757,9 +751,8 @@ namespace mhze.BatchRenamer
                         fallback += input[i];
                         i++;
                     }
-                    var trimmed = fallback.Trim();
-                    if (trimmed.Length > 0)
-                        tokens.Add(trimmed);
+                    if (fallback.Length > 0)
+                        tokens.Add(fallback);
                     continue;
                 }
 
@@ -792,9 +785,8 @@ namespace mhze.BatchRenamer
                     lit += input[i];
                     i++;
                 }
-                var trimmedLit = lit.Trim();
-                if (trimmedLit.Length > 0)
-                    tokens.Add(trimmedLit);
+                if (lit.Length > 0)
+                    tokens.Add(lit);
             }
             return tokens;
         }
