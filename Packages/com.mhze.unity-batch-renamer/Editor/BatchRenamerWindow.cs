@@ -460,12 +460,12 @@ namespace mhze.BatchRenamer
 
         private void RegisterClickAwayHandler()
         {
-            rootVisualElement.RegisterCallback<MouseDownEvent>(OnRootMouseDown, TrickleDown.TrickleDown);
+            rootVisualElement.RegisterCallback<MouseDownEvent>(OnRootMouseDown);
         }
 
         private void OnRootMouseDown(MouseDownEvent evt)
         {
-            rootVisualElement.UnregisterCallback<MouseDownEvent>(OnRootMouseDown, TrickleDown.TrickleDown);
+            rootVisualElement.UnregisterCallback<MouseDownEvent>(OnRootMouseDown);
 
             var target = evt.target as VisualElement;
             if (target != null && _filterPopup != null)
@@ -482,7 +482,7 @@ namespace mhze.BatchRenamer
         private void CloseFilterPopup()
         {
             _filterPopupOpen = false;
-            rootVisualElement.UnregisterCallback<MouseDownEvent>(OnRootMouseDown, TrickleDown.TrickleDown);
+            rootVisualElement.UnregisterCallback<MouseDownEvent>(OnRootMouseDown);
 
             if (_filterPopup != null && _filterPopup.parent != null)
                 _filterPopup.parent.Remove(_filterPopup);
