@@ -276,7 +276,7 @@ namespace mhze.BatchRenamer
             }
         }
 
-        private string EvaluateConditions(string input, string originalName)
+        internal string EvaluateConditions(string input, string originalName)
         {
             if (string.IsNullOrEmpty(input))
                 return input ?? "";

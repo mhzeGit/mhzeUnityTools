@@ -22,7 +22,7 @@ MonoBehaviour:
     preserveNumbers: 0
     numberFormat: 0
     caseSensitive: 0
-    enabledCategories: 
+    enabledCategories: 01000000
     enabledTextureSubCategories: 
     enabledHierarchyCategories: 
   - name: Normal Textures Suffix

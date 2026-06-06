@@ -1316,9 +1316,6 @@ namespace mhze.BatchRenamer
             _processor.SetActiveCategories(_filterSelectedCategories);
             _processor.EnabledTextureSubCategories = _filterTextureSubCategories;
 
-            if (_currentPreset != null && _currentPreset.operations.Count > 0)
-                _processor.ApplyOperation(_currentPreset.operations[0]);
-
             Debug.Log($"[BatchRenamer] Window.RefreshPreview BEFORE processor.RefreshPreview: Items.Count={_processor.Items.Count}");
             _processor.RefreshPreview();
             Debug.Log($"[BatchRenamer] Window.RefreshPreview AFTER processor.RefreshPreview: Items.Count={_processor.Items.Count}");
@@ -1546,7 +1543,9 @@ namespace mhze.BatchRenamer
             rightColumn.style.flexBasis = 0;
             rightColumn.style.overflow = Overflow.Hidden;
 
-            var newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, _processor.Prefix, _processor.Suffix, _processor.ReplaceText);
+            string resolvedPrefix = _processor.EvaluateConditions(_processor.Prefix, item.OriginalName);
+            string resolvedSuffix = _processor.EvaluateConditions(_processor.Suffix, item.OriginalName);
+            var newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, resolvedPrefix, resolvedSuffix, _processor.ReplaceText);
             rightColumn.Add(newNameContainer);
 
             row.Add(rightColumn);
@@ -1849,6 +1848,8 @@ namespace mhze.BatchRenamer
             {
                 var preset = evt.newValue as BatchRenamePreset;
                 _currentPreset = preset;
+                if (_currentPreset != null && _currentPreset.operations.Count > 0)
+                    ApplyOperationToUI(_currentPreset.operations[0]);
                 RefreshOperationsListUI();
                 MarkPreviewDirty();
             });
