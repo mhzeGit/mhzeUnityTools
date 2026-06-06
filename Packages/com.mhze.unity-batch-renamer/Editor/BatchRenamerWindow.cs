@@ -1849,7 +1849,14 @@ namespace mhze.BatchRenamer
                 var preset = evt.newValue as BatchRenamePreset;
                 _currentPreset = preset;
                 if (_currentPreset != null && _currentPreset.operations.Count > 0)
+                {
+                    _processor.PreviewOperations = _currentPreset.operations;
                     ApplyOperationToUI(_currentPreset.operations[0]);
+                }
+                else
+                {
+                    _processor.PreviewOperations = null;
+                }
                 RefreshOperationsListUI();
                 MarkPreviewDirty();
             });

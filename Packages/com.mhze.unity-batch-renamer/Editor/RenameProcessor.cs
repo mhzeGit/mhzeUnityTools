@@ -70,6 +70,7 @@ namespace mhze.BatchRenamer
         public HashSet<TextureSubCategory> EnabledTextureSubCategories = new HashSet<TextureSubCategory>();
         public bool IsHierarchyMode { get; set; }
         public HashSet<HierarchyCategory> EnabledHierarchyCategories = new HashSet<HierarchyCategory>();
+        public List<BatchRenameOperation> PreviewOperations { get; set; }
 
         public List<RenameItem> Items = new List<RenameItem>();
         private SearchExpression _cachedExpression;
@@ -273,6 +274,71 @@ namespace mhze.BatchRenamer
 
                 if (_cachedExpression != null && patternChanged && Items.Count <= 5)
                     Debug.Log($"[BatchRenamer]  item='{item.OriginalName}' match={matchesSearch} valid={item.IsValid} matched='{(matchedEntries != null ? string.Join(",", matchedEntries.ConvertAll(e => e.Text)) : "null")}' new='{item.NewName}'");
+            }
+
+            if (PreviewOperations != null && PreviewOperations.Count > 1)
+            {
+                string savedSearchPattern = SearchPattern;
+                string savedReplaceText = ReplaceText;
+                string savedPrefix = Prefix;
+                string savedSuffix = Suffix;
+                TextCaseMode savedTextCase = TextCase;
+                bool savedPreserveNumbers = PreserveNumbers;
+                NumberFormatPreset savedNumberFormat = NumberFormat;
+                bool savedCaseSensitive = CaseSensitive;
+
+                foreach (var item in Items)
+                {
+                    if (!item.IsValid) continue;
+
+                    string name = item.OriginalName;
+                    bool first = true;
+                    foreach (var op in PreviewOperations)
+                    {
+                        if (first)
+                        {
+                            first = false;
+                            SearchPattern = savedSearchPattern;
+                            ReplaceText = savedReplaceText;
+                            Prefix = savedPrefix;
+                            Suffix = savedSuffix;
+                            TextCase = savedTextCase;
+                            PreserveNumbers = savedPreserveNumbers;
+                            NumberFormat = savedNumberFormat;
+                            CaseSensitive = savedCaseSensitive;
+                        }
+                        else
+                        {
+                            SearchPattern = op.searchPattern;
+                            ReplaceText = op.replaceText;
+                            Prefix = op.prefix;
+                            Suffix = op.suffix;
+                            TextCase = op.textCase;
+                            PreserveNumbers = op.preserveNumbers;
+                            NumberFormat = op.numberFormat;
+                            CaseSensitive = op.caseSensitive;
+                        }
+
+                        var expression = !string.IsNullOrEmpty(SearchPattern)
+                            ? SearchExpression.Parse(SearchPattern, CaseSensitive)
+                            : null;
+                        var entries = expression?.Match(name);
+                        bool matches = expression == null || (entries != null && entries.Count > 0);
+
+                        if (matches)
+                            name = ComputeNewName(name, entries);
+                    }
+                    item.NewName = name;
+                }
+
+                SearchPattern = savedSearchPattern;
+                ReplaceText = savedReplaceText;
+                Prefix = savedPrefix;
+                Suffix = savedSuffix;
+                TextCase = savedTextCase;
+                PreserveNumbers = savedPreserveNumbers;
+                NumberFormat = savedNumberFormat;
+                CaseSensitive = savedCaseSensitive;
             }
         }
 
