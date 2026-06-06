@@ -557,7 +557,11 @@ namespace mhze.BatchRenamer
                 if (!string.IsNullOrEmpty(path) && AssetDatabase.IsValidFolder(path))
                     return AssetCategory.Folder;
 
-                if (PrefabUtility.IsPartOfAnyPrefab(go) || PrefabUtility.GetPrefabAssetType(go) != PrefabAssetType.NotAPrefab)
+                PrefabAssetType prefabType = PrefabUtility.GetPrefabAssetType(go);
+                if (prefabType == PrefabAssetType.Model)
+                    return AssetCategory.Model;
+
+                if (PrefabUtility.IsPartOfAnyPrefab(go) || prefabType != PrefabAssetType.NotAPrefab)
                     return AssetCategory.Prefab;
 
                 return AssetCategory.GameObject;
