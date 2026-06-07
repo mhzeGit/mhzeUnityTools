@@ -65,6 +65,7 @@ namespace mhze.BatchRenamer
         public TextCaseMode TextCase = TextCaseMode.None;
         public bool PreserveNumbers;
         public NumberFormatPreset NumberFormat = NumberFormatPreset.UnderscoreN;
+        public int StartIndex = 1;
         public bool CaseSensitive = false;
         public HashSet<AssetCategory> EnabledCategories = new HashSet<AssetCategory>();
         public HashSet<TextureSubCategory> EnabledTextureSubCategories = new HashSet<TextureSubCategory>();
@@ -295,8 +296,9 @@ namespace mhze.BatchRenamer
             if (hasPresetOps)
             {
                 Debug.Log($"[BatchRenamer] Preset chain: {snapshot.Length} operation(s)");
-                foreach (var item in Items)
+                for (int idx = 0; idx < Items.Count; idx++)
                 {
+                    var item = Items[idx];
                     string name = item.OriginalName;
                     for (int opIdx = 0; opIdx < snapshot.Length; opIdx++)
                     {
@@ -342,7 +344,7 @@ namespace mhze.BatchRenamer
 
                         Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} entries={(entries != null ? entries.Count : 0)}");
 
-                        name = ComputeNewName(name, entries);
+                        name = ComputeNewName(name, entries, idx);
 
                         Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} nameAfter='{name}'");
                     }
@@ -376,7 +378,7 @@ namespace mhze.BatchRenamer
                             ? SearchExpression.Parse(SearchPattern, CaseSensitive)
                             : null;
                         var uiEntries = uiExpression?.Match(name);
-                        name = ComputeNewName(name, uiEntries);
+                        name = ComputeNewName(name, uiEntries, idx);
                     }
 
                     item.NewName = name;
@@ -396,10 +398,11 @@ namespace mhze.BatchRenamer
             }
             else
             {
-                foreach (var item in Items)
+                for (int idx = 0; idx < Items.Count; idx++)
                 {
+                    var item = Items[idx];
                     if (item.IsValid)
-                        item.NewName = ComputeNewName(item.OriginalName, item.MatchedTexts);
+                        item.NewName = ComputeNewName(item.OriginalName, item.MatchedTexts, idx);
                     else
                         item.NewName = item.OriginalName;
                 }
@@ -478,13 +481,18 @@ namespace mhze.BatchRenamer
             return sb.ToString();
         }
 
-        private string ComputeNewName(string originalName, List<SearchExpression.MatchEntry> matchedEntries)
+        private string ComputeNewName(string originalName, List<SearchExpression.MatchEntry> matchedEntries, int itemIndex = 0)
         {
             string result = originalName;
             string preservedNumber = null;
             string resolvedReplaceText = EvaluateConditions(ReplaceText, originalName);
             string resolvedPrefix = EvaluateConditions(Prefix, originalName);
             string resolvedSuffix = EvaluateConditions(Suffix, originalName);
+
+            string indexStr = (StartIndex + itemIndex).ToString();
+            resolvedReplaceText = resolvedReplaceText.Replace("{Index}", indexStr).Replace("{index}", indexStr);
+            resolvedPrefix = resolvedPrefix.Replace("{Index}", indexStr).Replace("{index}", indexStr);
+            resolvedSuffix = resolvedSuffix.Replace("{Index}", indexStr).Replace("{index}", indexStr);
 
             if (PreserveNumbers)
             {
@@ -896,6 +904,7 @@ namespace mhze.BatchRenamer
             PreserveNumbers = op.preserveNumbers;
             NumberFormat = op.numberFormat;
             CaseSensitive = op.caseSensitive;
+            StartIndex = op.startIndex;
             EnabledCategories = new HashSet<AssetCategory>(op.enabledCategories);
             EnabledTextureSubCategories = new HashSet<TextureSubCategory>(op.enabledTextureSubCategories);
             EnabledHierarchyCategories = new HashSet<HierarchyCategory>(op.enabledHierarchyCategories);
@@ -917,6 +926,7 @@ namespace mhze.BatchRenamer
             bool uiPreserveNumbers = PreserveNumbers;
             NumberFormatPreset uiNumberFormat = NumberFormat;
             bool uiCaseSensitive = CaseSensitive;
+            int uiStartIndex = StartIndex;
             var uiCategories = new HashSet<AssetCategory>(EnabledCategories);
             var uiTextureSubCategories = new HashSet<TextureSubCategory>(EnabledTextureSubCategories);
             var uiHierarchyCategories = new HashSet<HierarchyCategory>(EnabledHierarchyCategories);
@@ -955,6 +965,7 @@ namespace mhze.BatchRenamer
             PreserveNumbers = uiPreserveNumbers;
             NumberFormat = uiNumberFormat;
             CaseSensitive = uiCaseSensitive;
+            StartIndex = uiStartIndex;
             EnabledCategories = uiCategories;
             EnabledTextureSubCategories = uiTextureSubCategories;
             EnabledHierarchyCategories = uiHierarchyCategories;

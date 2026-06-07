@@ -20,6 +20,7 @@ namespace mhze.BatchRenamer
         private EnumField _caseField;
         private Toggle _preserveNumbersToggle;
         private EnumField _numberFormatField;
+        private IntegerField _startIndexField;
         private VisualElement _previewContainer;
         private ScrollView _previewScrollView;
         private Label _previewHeader;
@@ -979,6 +980,14 @@ namespace mhze.BatchRenamer
             StyleField(_numberFormatField);
             section.Add(_numberFormatField);
 
+            _startIndexField = new IntegerField("Start Index");
+            _startIndexField.value = 1;
+            _startIndexField.style.marginTop = 4;
+            _startIndexField.style.marginBottom = 4;
+            _startIndexField.RegisterValueChangedCallback(_ => MarkPreviewDirty());
+            StyleField(_startIndexField);
+            section.Add(_startIndexField);
+
             parent.Add(section);
         }
 
@@ -1006,6 +1015,7 @@ namespace mhze.BatchRenamer
                 ("!", "NOT \u2014 excludes matches containing the term"),
                 ("[]", "Group \u2014 precedence grouping for complex expressions"),
                 ("{Number}", "Digits \u2014 inserts/preserves digit sequences"),
+                ("{Index}", "Sequential number \u2014 1, 2, 3\u2026 (configurable start)"),
                 ("?", "Condition \u2014 ternary: ?term:ifTrue:ifFalse"),
             };
 
@@ -1312,6 +1322,7 @@ namespace mhze.BatchRenamer
             _processor.TextCase = _caseField != null ? (TextCaseMode)_caseField.value : TextCaseMode.None;
             _processor.PreserveNumbers = _preserveNumbersToggle?.value ?? false;
             _processor.NumberFormat = _numberFormatField != null ? (NumberFormatPreset)_numberFormatField.value : NumberFormatPreset.UnderscoreN;
+            _processor.StartIndex = _startIndexField?.value ?? 1;
 
             _processor.EnabledHierarchyCategories = _hierarchySelectedCategories;
             _processor.SetActiveCategories(_filterSelectedCategories);
@@ -1553,9 +1564,12 @@ namespace mhze.BatchRenamer
             }
             else
             {
-                string resolvedPrefix = _processor.EvaluateConditions(_processor.Prefix, item.OriginalName);
-                string resolvedSuffix = _processor.EvaluateConditions(_processor.Suffix, item.OriginalName);
-                newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, resolvedPrefix, resolvedSuffix, _processor.ReplaceText);
+                int itemIdx = _processor.Items.IndexOf(item);
+                string indexStr = (_processor.StartIndex + itemIdx).ToString();
+                string resolvedReplaceText = _processor.ReplaceText.Replace("{Index}", indexStr).Replace("{index}", indexStr);
+                string resolvedPrefix = _processor.EvaluateConditions(_processor.Prefix, item.OriginalName).Replace("{Index}", indexStr).Replace("{index}", indexStr);
+                string resolvedSuffix = _processor.EvaluateConditions(_processor.Suffix, item.OriginalName).Replace("{Index}", indexStr).Replace("{index}", indexStr);
+                newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, resolvedPrefix, resolvedSuffix, resolvedReplaceText);
             }
             rightColumn.Add(newNameContainer);
 
@@ -2027,6 +2041,7 @@ namespace mhze.BatchRenamer
             if (_preserveNumbersToggle != null) _preserveNumbersToggle.SetValueWithoutNotify(op.preserveNumbers);
             if (_numberFormatField != null) _numberFormatField.SetValueWithoutNotify(op.numberFormat);
             if (_caseSensitiveToggle != null) _caseSensitiveToggle.SetValueWithoutNotify(op.caseSensitive);
+            if (_startIndexField != null) _startIndexField.SetValueWithoutNotify(op.startIndex);
 
             _filterSelectedCategories.Clear();
             foreach (var cat in op.enabledCategories)

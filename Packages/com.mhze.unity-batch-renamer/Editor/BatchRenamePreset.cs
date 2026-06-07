@@ -17,6 +17,7 @@ namespace mhze.BatchRenamer
         public bool preserveNumbers;
         public NumberFormatPreset numberFormat = NumberFormatPreset.UnderscoreN;
         public bool caseSensitive;
+        public int startIndex = 1;
         public List<AssetCategory> enabledCategories = new List<AssetCategory>();
         public List<TextureSubCategory> enabledTextureSubCategories = new List<TextureSubCategory>();
         public List<HierarchyCategory> enabledHierarchyCategories = new List<HierarchyCategory>();
