@@ -1615,9 +1615,9 @@ namespace mhze.BatchRenamer
                 if (start < pos) continue;
                 if (start > pos)
                     richText.Append(name.Substring(pos, start - pos));
-                richText.Append("<b><color=#").Append(highlightHex).Append('>')
+                richText.Append("<color=#").Append(highlightHex).Append("><b>")
                     .Append(name.Substring(start, end - start))
-                    .Append("</color></b>");
+                    .Append("</b></color>");
                 pos = end;
             }
 
@@ -1678,9 +1678,9 @@ namespace mhze.BatchRenamer
                 if (clampedStart > pos)
                     richText.Append(newName.Substring(pos, clampedStart - pos));
 
-                richText.Append("<b><color=#").Append(highlightHex).Append('>')
+                richText.Append("<color=#").Append(highlightHex).Append("><b>")
                     .Append(newName.Substring(clampedStart, clampedEnd - clampedStart))
-                    .Append("</color></b>");
+                    .Append("</b></color>");
 
                 pos = clampedEnd;
             }
@@ -1742,9 +1742,9 @@ namespace mhze.BatchRenamer
                 if (clampedStart > pos)
                     richText.Append(oldName.Substring(pos, clampedStart - pos));
 
-                richText.Append("<b><color=#").Append(removedHex).Append('>')
+                richText.Append("<color=#").Append(removedHex).Append("><b>")
                     .Append(oldName.Substring(clampedStart, clampedEnd - clampedStart))
-                    .Append("</color></b>");
+                    .Append("</b></color>");
 
                 pos = clampedEnd;
             }
