@@ -1543,9 +1543,19 @@ namespace mhze.BatchRenamer
             rightColumn.style.flexBasis = 0;
             rightColumn.style.overflow = Overflow.Hidden;
 
-            string resolvedPrefix = _processor.EvaluateConditions(_processor.Prefix, item.OriginalName);
-            string resolvedSuffix = _processor.EvaluateConditions(_processor.Suffix, item.OriginalName);
-            var newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, resolvedPrefix, resolvedSuffix, _processor.ReplaceText);
+            bool hasActivePreset = _processor.PreviewOperations != null && _processor.PreviewOperations.Count > 0;
+            VisualElement newNameContainer;
+            if (hasActivePreset)
+            {
+                var ranges = ComputeSimpleDiffRanges(item.OriginalName, item.NewName);
+                newNameContainer = RenderDiffDisplay(item.NewName, ranges);
+            }
+            else
+            {
+                string resolvedPrefix = _processor.EvaluateConditions(_processor.Prefix, item.OriginalName);
+                string resolvedSuffix = _processor.EvaluateConditions(_processor.Suffix, item.OriginalName);
+                newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, resolvedPrefix, resolvedSuffix, _processor.ReplaceText);
+            }
             rightColumn.Add(newNameContainer);
 
             row.Add(rightColumn);
@@ -1639,6 +1649,115 @@ namespace mhze.BatchRenamer
             return container;
         }
 
+        private static VisualElement RenderDiffDisplay(string newName, List<(int start, int end)> changedRanges)
+        {
+            var container = new VisualElement();
+            container.style.flexDirection = FlexDirection.Row;
+            container.style.flexWrap = Wrap.NoWrap;
+            container.style.overflow = Overflow.Hidden;
+
+            var sorted = new List<(int start, int end)>(changedRanges);
+            sorted.Sort((a, b) => a.start.CompareTo(b.start));
+
+            var merged = new List<(int start, int end)>();
+            foreach (var range in sorted)
+            {
+                if (range.start >= newName.Length) continue;
+                if (merged.Count > 0 && range.start <= merged[merged.Count - 1].end)
+                {
+                    merged[merged.Count - 1] = (merged[merged.Count - 1].start, Math.Max(merged[merged.Count - 1].end, range.end));
+                }
+                else
+                {
+                    merged.Add(range);
+                }
+            }
+
+            int pos = 0;
+            foreach (var (start, end) in merged)
+            {
+                int clampedStart = Math.Max(start, pos);
+                int clampedEnd = Math.Max(clampedStart, Math.Min(end, newName.Length));
+                if (clampedEnd <= clampedStart) continue;
+
+                if (clampedStart > pos)
+                {
+                    var before = new Label(newName.Substring(pos, clampedStart - pos));
+                    before.style.fontSize = 12;
+                    before.style.color = TextPrimary;
+                    before.style.whiteSpace = WhiteSpace.Pre;
+                    before.style.flexShrink = 0;
+                    before.style.paddingLeft = 0;
+                    before.style.paddingRight = 0;
+                    before.style.marginLeft = 0;
+                    before.style.marginRight = 0;
+                    before.style.borderLeftWidth = 0;
+                    before.style.borderRightWidth = 0;
+                    container.Add(before);
+                }
+
+                var changed = new Label(newName.Substring(clampedStart, clampedEnd - clampedStart));
+                changed.style.fontSize = 12;
+                changed.style.color = GreenHighlight;
+                changed.style.whiteSpace = WhiteSpace.Pre;
+                changed.style.unityFontStyleAndWeight = FontStyle.Bold;
+                changed.style.flexShrink = 0;
+                changed.style.paddingLeft = 0;
+                changed.style.paddingRight = 0;
+                changed.style.marginLeft = 0;
+                changed.style.marginRight = 0;
+                changed.style.borderLeftWidth = 0;
+                changed.style.borderRightWidth = 0;
+                container.Add(changed);
+
+                pos = clampedEnd;
+            }
+
+            if (pos < newName.Length)
+            {
+                var after = new Label(newName.Substring(pos));
+                after.style.fontSize = 12;
+                after.style.color = TextPrimary;
+                after.style.whiteSpace = WhiteSpace.Pre;
+                after.style.flexShrink = 0;
+                after.style.paddingLeft = 0;
+                after.style.paddingRight = 0;
+                after.style.marginLeft = 0;
+                after.style.marginRight = 0;
+                after.style.borderLeftWidth = 0;
+                after.style.borderRightWidth = 0;
+                container.Add(after);
+            }
+
+            return container;
+        }
+
+        private static List<(int start, int end)> ComputeSimpleDiffRanges(string oldName, string newName)
+        {
+            var ranges = new List<(int start, int end)>();
+
+            if (oldName == newName)
+                return ranges;
+
+            int prefixLen = 0;
+            int minLen = Math.Min(oldName.Length, newName.Length);
+            while (prefixLen < minLen && oldName[prefixLen] == newName[prefixLen])
+                prefixLen++;
+
+            int oldSuffix = oldName.Length - 1;
+            int newSuffix = newName.Length - 1;
+            while (oldSuffix >= prefixLen && newSuffix >= prefixLen && oldName[oldSuffix] == newName[newSuffix])
+            {
+                oldSuffix--;
+                newSuffix--;
+            }
+
+            if (prefixLen <= newSuffix)
+                ranges.Add((prefixLen, newSuffix + 1));
+
+            return ranges;
+        }
+
         private static VisualElement BuildDiffDisplay(string oldName, string newName, List<SearchExpression.MatchEntry> matchedEntries, string prefixText, string suffixText, string replaceText)
         {
             var container = new VisualElement();
@@ -1723,78 +1842,7 @@ namespace mhze.BatchRenamer
                 changedRanges.Add((newName.Length - suffixText.Length, newName.Length));
             }
 
-            changedRanges.Sort((a, b) => a.start.CompareTo(b.start));
-            var merged = new List<(int start, int end)>();
-            foreach (var range in changedRanges)
-            {
-                if (range.start >= newName.Length) continue;
-                if (merged.Count > 0 && range.start <= merged[merged.Count - 1].end)
-                {
-                    merged[merged.Count - 1] = (merged[merged.Count - 1].start, Math.Max(merged[merged.Count - 1].end, range.end));
-                }
-                else
-                {
-                    merged.Add(range);
-                }
-            }
-
-            int pos = 0;
-            foreach (var (start, end) in merged)
-            {
-                int clampedStart = Math.Max(start, pos);
-                int clampedEnd = Math.Max(clampedStart, Math.Min(end, newName.Length));
-                if (clampedEnd <= clampedStart) continue;
-
-                if (clampedStart > pos)
-                {
-                    var before = new Label(newName.Substring(pos, clampedStart - pos));
-                    before.style.fontSize = 12;
-                    before.style.color = TextPrimary;
-                    before.style.whiteSpace = WhiteSpace.Pre;
-                    before.style.flexShrink = 0;
-                    before.style.paddingLeft = 0;
-                    before.style.paddingRight = 0;
-                    before.style.marginLeft = 0;
-                    before.style.marginRight = 0;
-                    before.style.borderLeftWidth = 0;
-                    before.style.borderRightWidth = 0;
-                    container.Add(before);
-                }
-
-                var changed = new Label(newName.Substring(clampedStart, clampedEnd - clampedStart));
-                changed.style.fontSize = 12;
-                changed.style.color = GreenHighlight;
-                changed.style.whiteSpace = WhiteSpace.Pre;
-                changed.style.unityFontStyleAndWeight = FontStyle.Bold;
-                changed.style.flexShrink = 0;
-                changed.style.paddingLeft = 0;
-                changed.style.paddingRight = 0;
-                changed.style.marginLeft = 0;
-                changed.style.marginRight = 0;
-                changed.style.borderLeftWidth = 0;
-                changed.style.borderRightWidth = 0;
-                container.Add(changed);
-
-                pos = clampedEnd;
-            }
-
-            if (pos < newName.Length)
-            {
-                var after = new Label(newName.Substring(pos));
-                after.style.fontSize = 12;
-                after.style.color = TextPrimary;
-                after.style.whiteSpace = WhiteSpace.Pre;
-                after.style.flexShrink = 0;
-                after.style.paddingLeft = 0;
-                after.style.paddingRight = 0;
-                after.style.marginLeft = 0;
-                after.style.marginRight = 0;
-                after.style.borderLeftWidth = 0;
-                after.style.borderRightWidth = 0;
-                container.Add(after);
-            }
-
-            return container;
+            return RenderDiffDisplay(newName, changedRanges);
         }
 
         private void OnRenameClicked()
@@ -1851,7 +1899,6 @@ namespace mhze.BatchRenamer
                 if (_currentPreset != null && _currentPreset.operations.Count > 0)
                 {
                     _processor.PreviewOperations = _currentPreset.operations;
-                    ApplyOperationToUI(_currentPreset.operations[0]);
                 }
                 else
                 {
@@ -1936,92 +1983,63 @@ namespace mhze.BatchRenamer
 
             _operationsListSection.style.display = DisplayStyle.Flex;
 
-            int idx = 1;
-            foreach (var op in _currentPreset.operations)
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Center;
+            row.style.marginBottom = 2;
+            row.style.paddingLeft = 4;
+            row.style.paddingRight = 4;
+            row.style.paddingTop = 2;
+            row.style.paddingBottom = 2;
+            row.style.minHeight = 20;
+            row.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
+
+            var icon = new Label("\u26F0");
+            icon.style.fontSize = 11;
+            icon.style.color = TextDim;
+            icon.style.minWidth = 22;
+            icon.style.marginRight = 4;
+            icon.style.unityTextAlign = TextAnchor.MiddleCenter;
+            row.Add(icon);
+
+            int opCount = _currentPreset.operations.Count;
+            var summary = new Label($"{opCount} operation(s)");
+            summary.style.fontSize = 11;
+            summary.style.color = TextSecondary;
+            summary.style.whiteSpace = WhiteSpace.NoWrap;
+            summary.style.textOverflow = TextOverflow.Ellipsis;
+            summary.style.flexGrow = 1;
+            row.Add(summary);
+
+            var removeBtn = new Button(() =>
             {
-                var row = new VisualElement();
-                row.style.flexDirection = FlexDirection.Row;
-                row.style.alignItems = Align.Center;
-                row.style.marginBottom = 2;
-                row.style.paddingLeft = 4;
-                row.style.paddingRight = 4;
-                row.style.paddingTop = 2;
-                row.style.paddingBottom = 2;
-                row.style.minHeight = 20;
-                row.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
+                _presetField.value = null;
+            });
+            removeBtn.text = "X";
+            removeBtn.style.fontSize = 11;
+            removeBtn.style.unityFontStyleAndWeight = FontStyle.Bold;
+            removeBtn.style.color = new Color(1f, 0.3f, 0.3f);
+            removeBtn.style.backgroundColor = new Color(0.3f, 0.05f, 0.05f, 0.5f);
+            removeBtn.style.borderTopWidth = 1;
+            removeBtn.style.borderLeftWidth = 1;
+            removeBtn.style.borderRightWidth = 1;
+            removeBtn.style.borderBottomWidth = 1;
+            removeBtn.style.borderTopColor = new Color(0.5f, 0.1f, 0.1f);
+            removeBtn.style.borderLeftColor = new Color(0.5f, 0.1f, 0.1f);
+            removeBtn.style.borderRightColor = new Color(0.5f, 0.1f, 0.1f);
+            removeBtn.style.borderBottomColor = new Color(0.5f, 0.1f, 0.1f);
+            removeBtn.style.width = 20;
+            removeBtn.style.height = 20;
+            removeBtn.style.paddingLeft = 0;
+            removeBtn.style.paddingRight = 0;
+            removeBtn.style.paddingTop = 0;
+            removeBtn.style.paddingBottom = 0;
+            removeBtn.style.marginLeft = 4;
+            removeBtn.style.flexShrink = 0;
+            removeBtn.tooltip = "Remove preset";
+            row.Add(removeBtn);
 
-                var numLabel = new Label($"#{idx}");
-                numLabel.style.fontSize = 11;
-                numLabel.style.color = TextDim;
-                numLabel.style.minWidth = 22;
-                numLabel.style.marginRight = 4;
-                row.Add(numLabel);
-
-                var summary = new Label(GetOperationSummary(op));
-                summary.style.fontSize = 11;
-                summary.style.color = TextSecondary;
-                summary.style.whiteSpace = WhiteSpace.NoWrap;
-                summary.style.textOverflow = TextOverflow.Ellipsis;
-                summary.style.flexGrow = 1;
-                row.Add(summary);
-
-                int opIndex = idx - 1;
-                var removeBtn = new Button(() =>
-                {
-                    _currentPreset.operations.RemoveAt(opIndex);
-                    if (_currentPreset.operations.Count == 0)
-                        _presetField.value = null;
-                    else
-                    {
-                        RefreshOperationsListUI();
-                        MarkPreviewDirty();
-                    }
-                });
-                removeBtn.text = "X";
-                removeBtn.style.fontSize = 11;
-                removeBtn.style.unityFontStyleAndWeight = FontStyle.Bold;
-                removeBtn.style.color = new Color(1f, 0.3f, 0.3f);
-                removeBtn.style.backgroundColor = new Color(0.3f, 0.05f, 0.05f, 0.5f);
-                removeBtn.style.borderTopWidth = 1;
-                removeBtn.style.borderLeftWidth = 1;
-                removeBtn.style.borderRightWidth = 1;
-                removeBtn.style.borderBottomWidth = 1;
-                removeBtn.style.borderTopColor = new Color(0.5f, 0.1f, 0.1f);
-                removeBtn.style.borderLeftColor = new Color(0.5f, 0.1f, 0.1f);
-                removeBtn.style.borderRightColor = new Color(0.5f, 0.1f, 0.1f);
-                removeBtn.style.borderBottomColor = new Color(0.5f, 0.1f, 0.1f);
-                removeBtn.style.width = 20;
-                removeBtn.style.height = 20;
-                removeBtn.style.paddingLeft = 0;
-                removeBtn.style.paddingRight = 0;
-                removeBtn.style.paddingTop = 0;
-                removeBtn.style.paddingBottom = 0;
-                removeBtn.style.marginLeft = 4;
-                removeBtn.style.flexShrink = 0;
-                removeBtn.tooltip = "Remove operation";
-                row.Add(removeBtn);
-
-                _operationsListSection.Add(row);
-                idx++;
-            }
-        }
-
-        private static string GetOperationSummary(BatchRenameOperation op)
-        {
-            var parts = new List<string>();
-            if (!string.IsNullOrEmpty(op.searchPattern))
-                parts.Add($"\"{op.searchPattern}\"");
-            if (!string.IsNullOrEmpty(op.replaceText))
-                parts.Add($"\u2192\"{op.replaceText}\"");
-            if (!string.IsNullOrEmpty(op.prefix))
-                parts.Add($"Pref:\"{op.prefix}\"");
-            if (!string.IsNullOrEmpty(op.suffix))
-                parts.Add($"Suf:\"{op.suffix}\"");
-            if (op.textCase != TextCaseMode.None)
-                parts.Add($"Case:{op.textCase}");
-            if (op.preserveNumbers)
-                parts.Add("Num");
-            return parts.Count > 0 ? string.Join(" ", parts) : "(no changes)";
+            _operationsListSection.Add(row);
         }
     }
 }

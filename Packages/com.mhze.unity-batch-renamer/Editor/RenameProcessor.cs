@@ -217,6 +217,26 @@ namespace mhze.BatchRenamer
         {
             if (Items.Count == 0) return;
 
+            var snapshot = PreviewOperations?.ToArray();
+            bool hasPresetOps = snapshot != null && snapshot.Length > 0;
+
+            string savedSearchPattern = SearchPattern;
+            string savedReplaceText = ReplaceText;
+            string savedPrefix = Prefix;
+            string savedSuffix = Suffix;
+            TextCaseMode savedTextCase = TextCase;
+            bool savedPreserveNumbers = PreserveNumbers;
+            NumberFormatPreset savedNumberFormat = NumberFormat;
+            bool savedCaseSensitive = CaseSensitive;
+            var savedCategories = new HashSet<AssetCategory>(EnabledCategories);
+            var savedTextureSubCategories = new HashSet<TextureSubCategory>(EnabledTextureSubCategories);
+            var savedHierarchyCategories = new HashSet<HierarchyCategory>(EnabledHierarchyCategories);
+
+            if (hasPresetOps)
+            {
+                ApplyOperation(snapshot[0]);
+            }
+
             bool patternChanged = SearchPattern != _lastSearchPattern || CaseSensitive != _lastCaseSensitive;
             if (patternChanged)
             {
@@ -235,111 +255,129 @@ namespace mhze.BatchRenamer
                 if (_cachedExpression != null)
                     matchedEntries = _cachedExpression.Match(item.OriginalName);
                 bool matchesSearch = _cachedExpression == null || matchedEntries.Count > 0;
-                bool matchesFilter;
-                if (IsHierarchyMode)
+
+                item.MatchedTexts = matchedEntries;
+
+                if (hasPresetOps)
                 {
-                    matchesFilter = MatchesHierarchyFilter(item);
+                    item.IsValid = true;
                 }
                 else
                 {
-                    bool hasActiveFilters = EnabledCategories.Count > 0;
-                    if (!hasActiveFilters)
+                    bool matchesFilter;
+                    if (IsHierarchyMode)
                     {
-                        matchesFilter = true;
+                        matchesFilter = MatchesHierarchyFilter(item);
                     }
                     else
                     {
-                        var cat = ClassifyObject(item.Target);
-                        matchesFilter = EnabledCategories.Contains(cat);
-
-                        if (matchesFilter && cat == AssetCategory.Texture && EnabledTextureSubCategories.Count > 0)
+                        bool hasActiveFilters = EnabledCategories.Count > 0;
+                        if (!hasActiveFilters)
                         {
-                            var subCat = ClassifyTexture(item.Target);
-                            matchesFilter = EnabledTextureSubCategories.Contains(subCat);
-                        }
-                    }
-                }
-
-                item.IsValid = matchesSearch && matchesFilter;
-                item.MatchedTexts = matchesSearch ? matchedEntries : null;
-
-                if (matchesSearch)
-                {
-                    item.NewName = ComputeNewName(item.OriginalName, matchedEntries);
-                }
-                else
-                {
-                    item.NewName = item.OriginalName;
-                }
-
-                if (_cachedExpression != null && patternChanged && Items.Count <= 5)
-                    Debug.Log($"[BatchRenamer]  item='{item.OriginalName}' match={matchesSearch} valid={item.IsValid} matched='{(matchedEntries != null ? string.Join(",", matchedEntries.ConvertAll(e => e.Text)) : "null")}' new='{item.NewName}'");
-            }
-
-            if (PreviewOperations != null && PreviewOperations.Count > 1)
-            {
-                string savedSearchPattern = SearchPattern;
-                string savedReplaceText = ReplaceText;
-                string savedPrefix = Prefix;
-                string savedSuffix = Suffix;
-                TextCaseMode savedTextCase = TextCase;
-                bool savedPreserveNumbers = PreserveNumbers;
-                NumberFormatPreset savedNumberFormat = NumberFormat;
-                bool savedCaseSensitive = CaseSensitive;
-
-                foreach (var item in Items)
-                {
-                    if (!item.IsValid) continue;
-
-                    string name = item.OriginalName;
-                    bool first = true;
-                    foreach (var op in PreviewOperations)
-                    {
-                        if (first)
-                        {
-                            first = false;
-                            SearchPattern = savedSearchPattern;
-                            ReplaceText = savedReplaceText;
-                            Prefix = savedPrefix;
-                            Suffix = savedSuffix;
-                            TextCase = savedTextCase;
-                            PreserveNumbers = savedPreserveNumbers;
-                            NumberFormat = savedNumberFormat;
-                            CaseSensitive = savedCaseSensitive;
+                            matchesFilter = true;
                         }
                         else
                         {
-                            SearchPattern = op.searchPattern;
-                            ReplaceText = op.replaceText;
-                            Prefix = op.prefix;
-                            Suffix = op.suffix;
-                            TextCase = op.textCase;
-                            PreserveNumbers = op.preserveNumbers;
-                            NumberFormat = op.numberFormat;
-                            CaseSensitive = op.caseSensitive;
+                            var cat = ClassifyObject(item.Target);
+                            matchesFilter = EnabledCategories.Contains(cat);
+
+                            if (matchesFilter && cat == AssetCategory.Texture && EnabledTextureSubCategories.Count > 0)
+                            {
+                                var subCat = ClassifyTexture(item.Target);
+                                matchesFilter = EnabledTextureSubCategories.Contains(subCat);
+                            }
+                        }
+                    }
+                    item.IsValid = matchesSearch && matchesFilter;
+                }
+            }
+
+            if (hasPresetOps)
+            {
+                Debug.Log($"[BatchRenamer] Preset chain: {snapshot.Length} operation(s)");
+                foreach (var item in Items)
+                {
+                    string name = item.OriginalName;
+                    for (int opIdx = 0; opIdx < snapshot.Length; opIdx++)
+                    {
+                        var op = snapshot[opIdx];
+                        Debug.Log($"[BatchRenamer]   Chain item='{item.OriginalName}' op#{opIdx + 1} search='{op.searchPattern}' replace='{op.replaceText}' prefix='{op.prefix}' suffix='{op.suffix}' nameBefore='{name}'");
+
+                        ApplyOperation(op);
+
+                        bool passesFilter;
+                        if (IsHierarchyMode)
+                        {
+                            passesFilter = MatchesHierarchyFilter(item);
+                        }
+                        else
+                        {
+                            bool hasActiveFilters = EnabledCategories.Count > 0;
+                            if (!hasActiveFilters)
+                            {
+                                passesFilter = true;
+                            }
+                            else
+                            {
+                                var cat = ClassifyObject(item.Target);
+                                passesFilter = EnabledCategories.Contains(cat);
+
+                                if (passesFilter && cat == AssetCategory.Texture && EnabledTextureSubCategories.Count > 0)
+                                {
+                                    passesFilter = EnabledTextureSubCategories.Contains(ClassifyTexture(item.Target));
+                                }
+                            }
+                        }
+
+                        if (!passesFilter)
+                        {
+                            Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} filtered out");
+                            continue;
                         }
 
                         var expression = !string.IsNullOrEmpty(SearchPattern)
                             ? SearchExpression.Parse(SearchPattern, CaseSensitive)
                             : null;
                         var entries = expression?.Match(name);
-                        bool matches = expression == null || (entries != null && entries.Count > 0);
 
-                        if (matches)
-                            name = ComputeNewName(name, entries);
+                        Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} entries={(entries != null ? entries.Count : 0)}");
+
+                        name = ComputeNewName(name, entries);
+
+                        Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} nameAfter='{name}'");
                     }
                     item.NewName = name;
+                    Debug.Log($"[BatchRenamer]   Chain final newName='{item.NewName}'");
                 }
-
-                SearchPattern = savedSearchPattern;
-                ReplaceText = savedReplaceText;
-                Prefix = savedPrefix;
-                Suffix = savedSuffix;
-                TextCase = savedTextCase;
-                PreserveNumbers = savedPreserveNumbers;
-                NumberFormat = savedNumberFormat;
-                CaseSensitive = savedCaseSensitive;
             }
+            else
+            {
+                foreach (var item in Items)
+                {
+                    if (item.IsValid)
+                        item.NewName = ComputeNewName(item.OriginalName, item.MatchedTexts);
+                    else
+                        item.NewName = item.OriginalName;
+                }
+            }
+
+            SearchPattern = savedSearchPattern;
+            ReplaceText = savedReplaceText;
+            Prefix = savedPrefix;
+            Suffix = savedSuffix;
+            TextCase = savedTextCase;
+            PreserveNumbers = savedPreserveNumbers;
+            NumberFormat = savedNumberFormat;
+            CaseSensitive = savedCaseSensitive;
+            EnabledCategories = savedCategories;
+            EnabledTextureSubCategories = savedTextureSubCategories;
+            EnabledHierarchyCategories = savedHierarchyCategories;
+
+            _cachedExpression = !string.IsNullOrEmpty(SearchPattern)
+                ? SearchExpression.Parse(SearchPattern, CaseSensitive)
+                : null;
+            _lastSearchPattern = SearchPattern;
+            _lastCaseSensitive = CaseSensitive;
         }
 
         internal string EvaluateConditions(string input, string originalName)
@@ -827,6 +865,9 @@ namespace mhze.BatchRenamer
                 return;
             }
 
+            var savedPreviewOperations = PreviewOperations;
+            PreviewOperations = null;
+
             int totalRenamed = 0;
             int totalErrors = 0;
             bool hasHierarchyItems = false;
@@ -849,6 +890,8 @@ namespace mhze.BatchRenamer
                     }
                 }
             }
+
+            PreviewOperations = savedPreviewOperations;
 
             if (hasHierarchyItems)
                 EditorApplication.DirtyHierarchyWindowSorting();
