@@ -1810,54 +1810,86 @@ namespace mhze.BatchRenamer
 
         private static List<(int start, int end)> ComputeSimpleDiffRanges(string oldName, string newName)
         {
-            if (oldName == newName)
-                return new List<(int start, int end)>();
-
-            int oLen = oldName.Length;
-            int nLen = newName.Length;
-            int[,] lcs = new int[oLen + 1, nLen + 1];
-
-            for (int i = 1; i <= oLen; i++)
-            {
-                for (int j = 1; j <= nLen; j++)
-                {
-                    lcs[i, j] = oldName[i - 1] == newName[j - 1]
-                        ? lcs[i - 1, j - 1] + 1
-                        : Math.Max(lcs[i - 1, j], lcs[i, j - 1]);
-                }
-            }
-
             var ranges = new List<(int start, int end)>();
-            int oi = oLen, ni = nLen;
-            int rangeEnd = -1;
-            while (oi > 0 || ni > 0)
-            {
-                if (oi > 0 && ni > 0 && oldName[oi - 1] == newName[ni - 1])
-                {
-                    if (rangeEnd >= 0)
-                    {
-                        ranges.Add((ni, rangeEnd));
-                        rangeEnd = -1;
-                    }
-                    oi--;
-                    ni--;
-                }
-                else if (ni > 0 && (oi == 0 || lcs[oi, ni - 1] >= lcs[oi - 1, ni]))
-                {
-                    if (rangeEnd < 0)
-                        rangeEnd = ni;
-                    ni--;
-                }
-                else
-                {
-                    oi--;
-                }
-            }
-            if (rangeEnd >= 0)
-                ranges.Add((0, rangeEnd));
-
+            ComputeDiffRecursive(oldName, 0, oldName.Length, newName, 0, newName.Length, ranges);
             ranges.Sort((a, b) => a.start.CompareTo(b.start));
             return ranges;
+        }
+
+        private static void ComputeDiffRecursive(
+            string oldName, int oldStart, int oldEnd,
+            string newName, int newStart, int newEnd,
+            List<(int start, int end)> ranges)
+        {
+            int oLen = oldEnd - oldStart;
+            int nLen = newEnd - newStart;
+
+            if (oLen == 0 && nLen == 0) return;
+
+            if (oLen == 0)
+            {
+                ranges.Add((newStart, newEnd));
+                return;
+            }
+
+            if (nLen == 0) return;
+
+            int prefixLen = 0;
+            int maxPrefix = Math.Min(oLen, nLen);
+            while (prefixLen < maxPrefix && oldName[oldStart + prefixLen] == newName[newStart + prefixLen])
+                prefixLen++;
+
+            int suffixLen = 0;
+            int maxSuffix = Math.Min(oLen - prefixLen, nLen - prefixLen);
+            while (suffixLen < maxSuffix && oldName[oldEnd - 1 - suffixLen] == newName[newEnd - 1 - suffixLen])
+                suffixLen++;
+
+            int oMidStart = oldStart + prefixLen;
+            int oMidEnd = oldEnd - suffixLen;
+            int nMidStart = newStart + prefixLen;
+            int nMidEnd = newEnd - suffixLen;
+
+            if (oMidStart >= oMidEnd && nMidStart >= nMidEnd) return;
+
+            if (oMidStart >= oMidEnd)
+            {
+                ranges.Add((nMidStart, nMidEnd));
+                return;
+            }
+
+            if (nMidStart >= nMidEnd) return;
+
+            int bestOldRel = -1, bestNewRel = -1, bestLen = 0;
+            for (int i = 0; i < oMidEnd - oMidStart; i++)
+            {
+                for (int j = 0; j < nMidEnd - nMidStart; j++)
+                {
+                    int k = 0;
+                    while (i + k < oMidEnd - oMidStart && j + k < nMidEnd - nMidStart &&
+                           oldName[oMidStart + i + k] == newName[nMidStart + j + k])
+                        k++;
+                    if (k > bestLen)
+                    {
+                        bestLen = k;
+                        bestOldRel = i;
+                        bestNewRel = j;
+                    }
+                }
+            }
+
+            if (bestLen < 2)
+            {
+                ranges.Add((nMidStart, nMidEnd));
+                return;
+            }
+
+            ComputeDiffRecursive(oldName, oMidStart, oMidStart + bestOldRel,
+                                 newName, nMidStart, nMidStart + bestNewRel,
+                                 ranges);
+
+            ComputeDiffRecursive(oldName, oMidStart + bestOldRel + bestLen, oMidEnd,
+                                 newName, nMidStart + bestNewRel + bestLen, nMidEnd,
+                                 ranges);
         }
 
         private static VisualElement BuildDiffDisplay(string oldName, string newName, List<SearchExpression.MatchEntry> matchedEntries, string prefixText, string suffixText, string replaceText)
