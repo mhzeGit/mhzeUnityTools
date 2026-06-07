@@ -346,6 +346,39 @@ namespace mhze.BatchRenamer
 
                         Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} nameAfter='{name}'");
                     }
+
+                    SearchPattern = savedSearchPattern;
+                    ReplaceText = savedReplaceText;
+                    Prefix = savedPrefix;
+                    Suffix = savedSuffix;
+                    TextCase = savedTextCase;
+                    PreserveNumbers = savedPreserveNumbers;
+                    NumberFormat = savedNumberFormat;
+                    CaseSensitive = savedCaseSensitive;
+                    EnabledCategories = savedCategories;
+                    EnabledTextureSubCategories = savedTextureSubCategories;
+                    EnabledHierarchyCategories = savedHierarchyCategories;
+
+                    bool uiPassesFilter;
+                    if (IsHierarchyMode)
+                    {
+                        uiPassesFilter = MatchesHierarchyFilter(item);
+                    }
+                    else
+                    {
+                        bool hasActiveFilters = EnabledCategories.Count > 0;
+                        uiPassesFilter = !hasActiveFilters || EnabledCategories.Contains(ClassifyObject(item.Target));
+                    }
+
+                    if (uiPassesFilter)
+                    {
+                        var uiExpression = !string.IsNullOrEmpty(SearchPattern)
+                            ? SearchExpression.Parse(SearchPattern, CaseSensitive)
+                            : null;
+                        var uiEntries = uiExpression?.Match(name);
+                        name = ComputeNewName(name, uiEntries);
+                    }
+
                     item.NewName = name;
                     Debug.Log($"[BatchRenamer]   Chain final newName='{item.NewName}'");
                 }
@@ -865,6 +898,18 @@ namespace mhze.BatchRenamer
                 return;
             }
 
+            string uiSearchPattern = SearchPattern;
+            string uiReplaceText = ReplaceText;
+            string uiPrefix = Prefix;
+            string uiSuffix = Suffix;
+            TextCaseMode uiTextCase = TextCase;
+            bool uiPreserveNumbers = PreserveNumbers;
+            NumberFormatPreset uiNumberFormat = NumberFormat;
+            bool uiCaseSensitive = CaseSensitive;
+            var uiCategories = new HashSet<AssetCategory>(EnabledCategories);
+            var uiTextureSubCategories = new HashSet<TextureSubCategory>(EnabledTextureSubCategories);
+            var uiHierarchyCategories = new HashSet<HierarchyCategory>(EnabledHierarchyCategories);
+
             var savedPreviewOperations = PreviewOperations;
             PreviewOperations = null;
 
@@ -890,6 +935,24 @@ namespace mhze.BatchRenamer
                     }
                 }
             }
+
+            SearchPattern = uiSearchPattern;
+            ReplaceText = uiReplaceText;
+            Prefix = uiPrefix;
+            Suffix = uiSuffix;
+            TextCase = uiTextCase;
+            PreserveNumbers = uiPreserveNumbers;
+            NumberFormat = uiNumberFormat;
+            CaseSensitive = uiCaseSensitive;
+            EnabledCategories = uiCategories;
+            EnabledTextureSubCategories = uiTextureSubCategories;
+            EnabledHierarchyCategories = uiHierarchyCategories;
+
+            RefreshPreview();
+            var (uiRenamed, uiErrors, uiHierarchy) = RenameCore();
+            totalRenamed += uiRenamed;
+            totalErrors += uiErrors;
+            if (uiHierarchy) hasHierarchyItems = true;
 
             PreviewOperations = savedPreviewOperations;
 
