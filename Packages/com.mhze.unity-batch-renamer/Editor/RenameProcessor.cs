@@ -380,6 +380,17 @@ namespace mhze.BatchRenamer
                     }
 
                     item.NewName = name;
+
+                    if (!string.IsNullOrEmpty(SearchPattern))
+                    {
+                        var uiMatchedExpression = SearchExpression.Parse(SearchPattern, CaseSensitive);
+                        item.MatchedTexts = uiMatchedExpression.Match(item.OriginalName);
+                    }
+                    else
+                    {
+                        item.MatchedTexts = null;
+                    }
+
                     Debug.Log($"[BatchRenamer]   Chain final newName='{item.NewName}'");
                 }
             }

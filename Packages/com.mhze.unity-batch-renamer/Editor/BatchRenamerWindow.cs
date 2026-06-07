@@ -1523,18 +1523,7 @@ namespace mhze.BatchRenamer
             icon.style.flexShrink = 0;
             leftColumn.Add(icon);
 
-            bool hasActivePreset = _processor.PreviewOperations != null && _processor.PreviewOperations.Count > 0;
-
-            VisualElement oldContainer;
-            if (hasActivePreset)
-            {
-                var oldRanges = ComputeSimpleDiffRanges(item.NewName, item.OriginalName);
-                oldContainer = BuildOldDiffDisplay(item.OriginalName, oldRanges);
-            }
-            else
-            {
-                oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedTexts, item.IsValid, _processor.CaseSensitive);
-            }
+            var oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedTexts, item.IsValid, _processor.CaseSensitive);
             oldContainer.style.flexShrink = 1;
             leftColumn.Add(oldContainer);
 
@@ -1555,6 +1544,7 @@ namespace mhze.BatchRenamer
             rightColumn.style.flexBasis = 0;
             rightColumn.style.overflow = Overflow.Hidden;
 
+            bool hasActivePreset = _processor.PreviewOperations != null && _processor.PreviewOperations.Count > 0;
             VisualElement newNameContainer;
             if (hasActivePreset)
             {
@@ -1705,75 +1695,65 @@ namespace mhze.BatchRenamer
             return container;
         }
 
-        private static VisualElement BuildOldDiffDisplay(string oldName, List<(int start, int end)> changedRanges)
-        {
-            var container = new VisualElement();
-            container.style.flexDirection = FlexDirection.Row;
-            container.style.flexWrap = Wrap.NoWrap;
-            container.style.overflow = Overflow.Hidden;
-
-            var sorted = new List<(int start, int end)>(changedRanges);
-            sorted.Sort((a, b) => a.start.CompareTo(b.start));
-
-            var merged = new List<(int start, int end)>();
-            foreach (var range in sorted)
-            {
-                if (range.start >= oldName.Length) continue;
-                if (merged.Count > 0 && range.start <= merged[merged.Count - 1].end)
-                {
-                    merged[merged.Count - 1] = (merged[merged.Count - 1].start, Math.Max(merged[merged.Count - 1].end, range.end));
-                }
-                else
-                {
-                    merged.Add(range);
-                }
-            }
-
-            var richText = new System.Text.StringBuilder();
-            var removedHex = ColorUtility.ToHtmlStringRGB(RemovedHighlight);
-
-            int pos = 0;
-            foreach (var (start, end) in merged)
-            {
-                int clampedStart = Math.Max(start, pos);
-                int clampedEnd = Math.Max(clampedStart, Math.Min(end, oldName.Length));
-                if (clampedEnd <= clampedStart) continue;
-
-                if (clampedStart > pos)
-                    richText.Append(oldName.Substring(pos, clampedStart - pos));
-
-                richText.Append("<color=#").Append(removedHex).Append("><b>")
-                    .Append(oldName.Substring(clampedStart, clampedEnd - clampedStart))
-                    .Append("</b></color>");
-
-                pos = clampedEnd;
-            }
-
-            if (pos < oldName.Length)
-                richText.Append(oldName.Substring(pos));
-
-            var resultLabel = new Label(richText.ToString());
-            resultLabel.style.fontSize = 12;
-            resultLabel.style.color = TextSecondary;
-            resultLabel.style.whiteSpace = WhiteSpace.Pre;
-            resultLabel.style.flexShrink = 0;
-            resultLabel.style.paddingLeft = 0;
-            resultLabel.style.paddingRight = 0;
-            resultLabel.style.marginLeft = 0;
-            resultLabel.style.marginRight = 0;
-            resultLabel.style.borderLeftWidth = 0;
-            resultLabel.style.borderRightWidth = 0;
-            resultLabel.enableRichText = true;
-            container.Add(resultLabel);
-
-            return container;
-        }
-
         private static List<(int start, int end)> ComputeSimpleDiffRanges(string oldName, string newName)
         {
             var ranges = new List<(int start, int end)>();
             ComputeDiffRecursive(oldName, 0, oldName.Length, newName, 0, newName.Length, ranges);
             ranges.Sort((a, b) => a.start.CompareTo(b.start));
+
+            if (ranges.Count == 0)
+            {
+                if (oldName != newName)
+                {
+                    int rangeStart = -1;
+                    for (int i = 0; i < newName.Length; i++)
+                    {
+                        if (i >= oldName.Length || oldName[i] != newName[i])
+                        {
+                            if (rangeStart < 0) rangeStart = i;
+                        }
+                        else if (rangeStart >= 0)
+                        {
+                            ranges.Add((rangeStart, i));
+                            rangeStart = -1;
+                        }
+                    }
+                    if (rangeStart >= 0)
+                        ranges.Add((rangeStart, newName.Length));
+                }
+                return ranges;
+            }
+
+            int pos = 0;
+            for (int ri = 0; ri < ranges.Count; ri++)
+            {
+                var (start, end) = ranges[ri];
+                for (int i = pos; i < start; i++)
+                {
+                    if (i >= oldName.Length || oldName[i] != newName[i])
+                    {
+                        ranges[ri] = (i, end);
+                        break;
+                    }
+                }
+                pos = end;
+            }
+
+            if (pos < newName.Length)
+            {
+                for (int i = pos; i < newName.Length; i++)
+                {
+                    if (i >= oldName.Length || oldName[i] != newName[i])
+                    {
+                        if (ranges.Count > 0 && ranges[ranges.Count - 1].end == i)
+                            ranges[ranges.Count - 1] = (ranges[ranges.Count - 1].start, newName.Length);
+                        else
+                            ranges.Add((i, newName.Length));
+                        break;
+                    }
+                }
+            }
+
             return ranges;
         }
 
