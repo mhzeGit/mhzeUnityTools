@@ -1,6 +1,7 @@
 using System.IO;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.ShortcutManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -129,7 +130,8 @@ namespace mhze.BatchRenamer
             return Selection.activeObject != null;
         }
 
-        [MenuItem("Edit/Batch Rename %F2")]
+        [MenuItem("Edit/Batch Rename", false, 21)]
+        [Shortcut("Edit/Batch Rename", KeyCode.F2, ShortcutModifiers.Action)]
         private static void OnBatchRenameShortcut()
         {
             var objects = GetSelectedProjectAssets();
@@ -137,7 +139,7 @@ namespace mhze.BatchRenamer
                 BatchRenamerWindow.ShowWindow(objects);
         }
 
-        [MenuItem("Edit/Batch Rename %F2", true)]
+        [MenuItem("Edit/Batch Rename", true, 21)]
         private static bool ValidateOnBatchRenameShortcut()
         {
             return Selection.objects != null && Selection.objects.Length > 1;
