@@ -39,6 +39,7 @@ namespace mhze.BatchRenamer
         private static readonly Color TextDim = new Color(0.4f, 0.4f, 0.4f);
         private static readonly Color AccentBlue = new Color(0.22f, 0.42f, 0.75f);
         private static readonly Color GreenHighlight = new Color(0.4f, 0.9f, 0.4f);
+        private static readonly Color RemovedHighlight = new Color(0.85f, 0.45f, 0.1f);
         private static readonly Color MatchHighlight = new Color(0.9f, 0.7f, 0.1f);
         private static readonly Color PreviewBg = new Color(0.1f, 0.1f, 0.1f);
 
@@ -1522,7 +1523,18 @@ namespace mhze.BatchRenamer
             icon.style.flexShrink = 0;
             leftColumn.Add(icon);
 
-            var oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedTexts, item.IsValid, _processor.CaseSensitive);
+            bool hasActivePreset = _processor.PreviewOperations != null && _processor.PreviewOperations.Count > 0;
+
+            VisualElement oldContainer;
+            if (hasActivePreset)
+            {
+                var oldRanges = ComputeSimpleDiffRanges(item.NewName, item.OriginalName);
+                oldContainer = BuildOldDiffDisplay(item.OriginalName, oldRanges);
+            }
+            else
+            {
+                oldContainer = BuildOldNameHighlight(item.OriginalName, item.MatchedTexts, item.IsValid, _processor.CaseSensitive);
+            }
             oldContainer.style.flexShrink = 1;
             leftColumn.Add(oldContainer);
 
@@ -1543,7 +1555,6 @@ namespace mhze.BatchRenamer
             rightColumn.style.flexBasis = 0;
             rightColumn.style.overflow = Overflow.Hidden;
 
-            bool hasActivePreset = _processor.PreviewOperations != null && _processor.PreviewOperations.Count > 0;
             VisualElement newNameContainer;
             if (hasActivePreset)
             {
@@ -1726,6 +1737,71 @@ namespace mhze.BatchRenamer
                 after.style.marginRight = 0;
                 after.style.borderLeftWidth = 0;
                 after.style.borderRightWidth = 0;
+                container.Add(after);
+            }
+
+            return container;
+        }
+
+        private static VisualElement BuildOldDiffDisplay(string oldName, List<(int start, int end)> changedRanges)
+        {
+            var container = new VisualElement();
+            container.style.flexDirection = FlexDirection.Row;
+            container.style.flexWrap = Wrap.NoWrap;
+            container.style.overflow = Overflow.Hidden;
+
+            var sorted = new List<(int start, int end)>(changedRanges);
+            sorted.Sort((a, b) => a.start.CompareTo(b.start));
+
+            var merged = new List<(int start, int end)>();
+            foreach (var range in sorted)
+            {
+                if (range.start >= oldName.Length) continue;
+                if (merged.Count > 0 && range.start <= merged[merged.Count - 1].end)
+                {
+                    merged[merged.Count - 1] = (merged[merged.Count - 1].start, Math.Max(merged[merged.Count - 1].end, range.end));
+                }
+                else
+                {
+                    merged.Add(range);
+                }
+            }
+
+            int pos = 0;
+            foreach (var (start, end) in merged)
+            {
+                int clampedStart = Math.Max(start, pos);
+                int clampedEnd = Math.Max(clampedStart, Math.Min(end, oldName.Length));
+                if (clampedEnd <= clampedStart) continue;
+
+                if (clampedStart > pos)
+                {
+                    var before = new Label(oldName.Substring(pos, clampedStart - pos));
+                    before.style.fontSize = 12;
+                    before.style.color = TextSecondary;
+                    before.style.whiteSpace = WhiteSpace.Pre;
+                    before.style.flexShrink = 0;
+                    container.Add(before);
+                }
+
+                var changed = new Label(oldName.Substring(clampedStart, clampedEnd - clampedStart));
+                changed.style.fontSize = 12;
+                changed.style.color = RemovedHighlight;
+                changed.style.whiteSpace = WhiteSpace.Pre;
+                changed.style.unityFontStyleAndWeight = FontStyle.Bold;
+                changed.style.flexShrink = 0;
+                container.Add(changed);
+
+                pos = clampedEnd;
+            }
+
+            if (pos < oldName.Length)
+            {
+                var after = new Label(oldName.Substring(pos));
+                after.style.fontSize = 12;
+                after.style.color = TextSecondary;
+                after.style.whiteSpace = WhiteSpace.Pre;
+                after.style.flexShrink = 0;
                 container.Add(after);
             }
 
