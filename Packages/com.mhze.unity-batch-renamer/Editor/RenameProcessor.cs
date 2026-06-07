@@ -288,7 +288,7 @@ namespace mhze.BatchRenamer
                             }
                         }
                     }
-                    item.IsValid = matchesSearch && matchesFilter;
+                    item.IsValid = matchesFilter;
                 }
             }
 

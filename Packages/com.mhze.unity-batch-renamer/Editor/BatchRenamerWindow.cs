@@ -1458,11 +1458,11 @@ namespace mhze.BatchRenamer
 
             if (_renameButton != null)
             {
-                bool hasValid = validCount > 0;
-                _renameButton.text = hasValid
-                    ? $"Rename Selected ({validCount})"
+                bool canRename = changedCount > 0;
+                _renameButton.text = canRename
+                    ? $"Rename Selected ({changedCount})"
                     : "Rename Selected";
-                _renameButton.SetEnabled(hasValid);
+                _renameButton.SetEnabled(canRename);
             }
         }
 
@@ -1847,15 +1847,15 @@ namespace mhze.BatchRenamer
 
         private void OnRenameClicked()
         {
+            int changedCount = _processor.Items.Count(i => i.NewName != i.OriginalName);
+            if (changedCount == 0) return;
+
             if (_currentPreset != null && _currentPreset.operations.Count > 0)
             {
-                int validCount = _processor.Items.Count(i => i.IsValid);
-                if (validCount == 0) return;
-
                 string opDesc = $"{_currentPreset.operations.Count} operation(s)";
                 bool proceed = EditorUtility.DisplayDialog(
                     "Confirm Batch Rename",
-                    $"Are you sure you want to rename {validCount} item(s) using {opDesc}?\nThis action can be undone (Ctrl+Z).",
+                    $"Are you sure you want to rename {changedCount} item(s) using {opDesc}?\nThis action can be undone (Ctrl+Z).",
                     "Rename", "Cancel");
 
                 if (!proceed) return;
@@ -1865,12 +1865,9 @@ namespace mhze.BatchRenamer
                 return;
             }
 
-            int singleValidCount = _processor.Items.Count(i => i.IsValid);
-            if (singleValidCount == 0) return;
-
             bool singleProceed = EditorUtility.DisplayDialog(
                 "Confirm Batch Rename",
-                $"Are you sure you want to rename {singleValidCount} item(s)?\nThis action can be undone (Ctrl+Z).",
+                $"Are you sure you want to rename {changedCount} item(s)?\nThis action can be undone (Ctrl+Z).",
                 "Rename", "Cancel");
 
             if (!singleProceed) return;
