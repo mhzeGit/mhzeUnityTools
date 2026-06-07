@@ -1606,56 +1606,37 @@ namespace mhze.BatchRenamer
                 return cmp != 0 ? cmp : b.end.CompareTo(a.end);
             });
 
+            var richText = new System.Text.StringBuilder();
+            var highlightHex = ColorUtility.ToHtmlStringRGB(MatchHighlight);
+
             int pos = 0;
             foreach (var (start, end) in intervals)
             {
                 if (start < pos) continue;
                 if (start > pos)
-                {
-                    var before = new Label(name.Substring(pos, start - pos));
-                    before.style.fontSize = 12;
-                    before.style.color = baseColor;
-                    before.style.whiteSpace = WhiteSpace.Pre;
-                    before.style.flexShrink = 0;
-                    before.style.paddingLeft = 0;
-                    before.style.paddingRight = 0;
-                    before.style.marginLeft = 0;
-                    before.style.marginRight = 0;
-                    before.style.borderLeftWidth = 0;
-                    before.style.borderRightWidth = 0;
-                    container.Add(before);
-                }
-                var match = new Label(name.Substring(start, end - start));
-                match.style.fontSize = 12;
-                match.style.color = MatchHighlight;
-                match.style.whiteSpace = WhiteSpace.Pre;
-                match.style.unityFontStyleAndWeight = FontStyle.Bold;
-                match.style.flexShrink = 0;
-                match.style.paddingLeft = 0;
-                match.style.paddingRight = 0;
-                match.style.marginLeft = 0;
-                match.style.marginRight = 0;
-                match.style.borderLeftWidth = 0;
-                match.style.borderRightWidth = 0;
-                container.Add(match);
+                    richText.Append(name.Substring(pos, start - pos));
+                richText.Append("<b><color=#").Append(highlightHex).Append('>')
+                    .Append(name.Substring(start, end - start))
+                    .Append("</color></b>");
                 pos = end;
             }
 
             if (pos < name.Length)
-            {
-                var remaining = new Label(name.Substring(pos));
-                remaining.style.fontSize = 12;
-                remaining.style.color = baseColor;
-                remaining.style.whiteSpace = WhiteSpace.Pre;
-                remaining.style.flexShrink = 0;
-                remaining.style.paddingLeft = 0;
-                remaining.style.paddingRight = 0;
-                remaining.style.marginLeft = 0;
-                remaining.style.marginRight = 0;
-                remaining.style.borderLeftWidth = 0;
-                remaining.style.borderRightWidth = 0;
-                container.Add(remaining);
-            }
+                richText.Append(name.Substring(pos));
+
+            var resultLabel = new Label(richText.ToString());
+            resultLabel.style.fontSize = 12;
+            resultLabel.style.color = baseColor;
+            resultLabel.style.whiteSpace = WhiteSpace.Pre;
+            resultLabel.style.flexShrink = 0;
+            resultLabel.style.paddingLeft = 0;
+            resultLabel.style.paddingRight = 0;
+            resultLabel.style.marginLeft = 0;
+            resultLabel.style.marginRight = 0;
+            resultLabel.style.borderLeftWidth = 0;
+            resultLabel.style.borderRightWidth = 0;
+            resultLabel.enableRichText = true;
+            container.Add(resultLabel);
 
             return container;
         }
@@ -1767,6 +1748,9 @@ namespace mhze.BatchRenamer
                 }
             }
 
+            var richText = new System.Text.StringBuilder();
+            var removedHex = ColorUtility.ToHtmlStringRGB(RemovedHighlight);
+
             int pos = 0;
             foreach (var (start, end) in merged)
             {
@@ -1775,35 +1759,31 @@ namespace mhze.BatchRenamer
                 if (clampedEnd <= clampedStart) continue;
 
                 if (clampedStart > pos)
-                {
-                    var before = new Label(oldName.Substring(pos, clampedStart - pos));
-                    before.style.fontSize = 12;
-                    before.style.color = TextSecondary;
-                    before.style.whiteSpace = WhiteSpace.Pre;
-                    before.style.flexShrink = 0;
-                    container.Add(before);
-                }
+                    richText.Append(oldName.Substring(pos, clampedStart - pos));
 
-                var changed = new Label(oldName.Substring(clampedStart, clampedEnd - clampedStart));
-                changed.style.fontSize = 12;
-                changed.style.color = RemovedHighlight;
-                changed.style.whiteSpace = WhiteSpace.Pre;
-                changed.style.unityFontStyleAndWeight = FontStyle.Bold;
-                changed.style.flexShrink = 0;
-                container.Add(changed);
+                richText.Append("<b><color=#").Append(removedHex).Append('>')
+                    .Append(oldName.Substring(clampedStart, clampedEnd - clampedStart))
+                    .Append("</color></b>");
 
                 pos = clampedEnd;
             }
 
             if (pos < oldName.Length)
-            {
-                var after = new Label(oldName.Substring(pos));
-                after.style.fontSize = 12;
-                after.style.color = TextSecondary;
-                after.style.whiteSpace = WhiteSpace.Pre;
-                after.style.flexShrink = 0;
-                container.Add(after);
-            }
+                richText.Append(oldName.Substring(pos));
+
+            var resultLabel = new Label(richText.ToString());
+            resultLabel.style.fontSize = 12;
+            resultLabel.style.color = TextSecondary;
+            resultLabel.style.whiteSpace = WhiteSpace.Pre;
+            resultLabel.style.flexShrink = 0;
+            resultLabel.style.paddingLeft = 0;
+            resultLabel.style.paddingRight = 0;
+            resultLabel.style.marginLeft = 0;
+            resultLabel.style.marginRight = 0;
+            resultLabel.style.borderLeftWidth = 0;
+            resultLabel.style.borderRightWidth = 0;
+            resultLabel.enableRichText = true;
+            container.Add(resultLabel);
 
             return container;
         }
