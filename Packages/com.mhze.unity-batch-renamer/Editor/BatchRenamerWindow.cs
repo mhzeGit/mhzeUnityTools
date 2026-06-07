@@ -1734,27 +1734,53 @@ namespace mhze.BatchRenamer
 
         private static List<(int start, int end)> ComputeSimpleDiffRanges(string oldName, string newName)
         {
-            var ranges = new List<(int start, int end)>();
-
             if (oldName == newName)
-                return ranges;
+                return new List<(int start, int end)>();
 
-            int prefixLen = 0;
-            int minLen = Math.Min(oldName.Length, newName.Length);
-            while (prefixLen < minLen && oldName[prefixLen] == newName[prefixLen])
-                prefixLen++;
+            int oLen = oldName.Length;
+            int nLen = newName.Length;
+            int[,] lcs = new int[oLen + 1, nLen + 1];
 
-            int oldSuffix = oldName.Length - 1;
-            int newSuffix = newName.Length - 1;
-            while (oldSuffix >= prefixLen && newSuffix >= prefixLen && oldName[oldSuffix] == newName[newSuffix])
+            for (int i = 1; i <= oLen; i++)
             {
-                oldSuffix--;
-                newSuffix--;
+                for (int j = 1; j <= nLen; j++)
+                {
+                    lcs[i, j] = oldName[i - 1] == newName[j - 1]
+                        ? lcs[i - 1, j - 1] + 1
+                        : Math.Max(lcs[i - 1, j], lcs[i, j - 1]);
+                }
             }
 
-            if (prefixLen <= newSuffix)
-                ranges.Add((prefixLen, newSuffix + 1));
+            var ranges = new List<(int start, int end)>();
+            int oi = oLen, ni = nLen;
+            int rangeEnd = -1;
+            while (oi > 0 || ni > 0)
+            {
+                if (oi > 0 && ni > 0 && oldName[oi - 1] == newName[ni - 1])
+                {
+                    if (rangeEnd >= 0)
+                    {
+                        ranges.Add((ni, rangeEnd));
+                        rangeEnd = -1;
+                    }
+                    oi--;
+                    ni--;
+                }
+                else if (ni > 0 && (oi == 0 || lcs[oi, ni - 1] >= lcs[oi - 1, ni]))
+                {
+                    if (rangeEnd < 0)
+                        rangeEnd = ni;
+                    ni--;
+                }
+                else
+                {
+                    oi--;
+                }
+            }
+            if (rangeEnd >= 0)
+                ranges.Add((0, rangeEnd));
 
+            ranges.Sort((a, b) => a.start.CompareTo(b.start));
             return ranges;
         }
 
