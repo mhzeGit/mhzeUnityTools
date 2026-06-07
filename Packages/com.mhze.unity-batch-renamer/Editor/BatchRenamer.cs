@@ -128,5 +128,19 @@ namespace mhze.BatchRenamer
         {
             return Selection.activeObject != null;
         }
+
+        [MenuItem("Edit/Batch Rename %F2")]
+        private static void OnBatchRenameShortcut()
+        {
+            var objects = GetSelectedProjectAssets();
+            if (objects != null && objects.Length > 0)
+                BatchRenamerWindow.ShowWindow(objects);
+        }
+
+        [MenuItem("Edit/Batch Rename %F2", true)]
+        private static bool ValidateOnBatchRenameShortcut()
+        {
+            return Selection.objects != null && Selection.objects.Length > 1;
+        }
     }
 }
