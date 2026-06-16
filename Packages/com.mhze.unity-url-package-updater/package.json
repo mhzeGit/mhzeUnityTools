@@ -1,0 +1,11 @@
+{
+  "name": "com.mhze.unity-url-package-updater",
+  "version": "1.0.0",
+  "displayName": "URL Package Updater",
+  "description": "One-click update for Git and Local Tarball packages in the Unity Package Manager.",
+  "unity": "6000.0",
+  "author": {
+    "name": "mhze",
+    "email": "mhze.uk@gmail.com"
+  }
+}

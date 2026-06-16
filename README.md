@@ -44,6 +44,11 @@ https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-missi
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-batch-renamer
 ```
 
+**Unity URL Package Updater**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-url-package-updater
+```
+
 **Unity Object Snap Tool**
 ```
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.objectsnaptool

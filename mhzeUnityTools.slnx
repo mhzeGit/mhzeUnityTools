@@ -4,6 +4,7 @@
   <Project Path="Unity.ObjectSnapTool.Editor.csproj" />
   <Project Path="mhze.EditorNavigator.Editor.csproj" />
   <Project Path="mhze.MissingScriptInspector.Editor.csproj" />
+  <Project Path="mhze.UrlPackageUpdater.Editor.csproj" />
   <Project Path="mhze.FastPlayButton.Editor.csproj" />
   <Project Path="mhze.BatchRenamer.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
