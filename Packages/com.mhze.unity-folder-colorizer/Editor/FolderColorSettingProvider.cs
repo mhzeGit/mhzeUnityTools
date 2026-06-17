@@ -9,7 +9,7 @@ using UnityEngine;
 using ColorUtility = UnityEngine.ColorUtility;
 using Object = UnityEngine.Object;
 
-#pragma warning disable CS0618
+#pragma warning disable CS0618, CS0619
 
 namespace UnityFolderColorSettings.Editor
 {
@@ -496,4 +496,4 @@ namespace UnityFolderColorSettings.Editor
         }
     }
 }
-#pragma warning restore CS0618
+#pragma warning restore CS0619, CS0618

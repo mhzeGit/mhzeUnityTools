@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEditor.ShortcutManagement;
 using System.Collections.Generic;
 
-#pragma warning disable CS0618
+#pragma warning disable CS0618, CS0619
 
 namespace HierarchyNavigator
 {
@@ -305,4 +305,4 @@ namespace HierarchyNavigator
         #endregion
     }
 }
-#pragma warning restore CS0618
+#pragma warning restore CS0619, CS0618

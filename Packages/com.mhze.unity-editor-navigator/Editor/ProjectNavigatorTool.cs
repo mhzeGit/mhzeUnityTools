@@ -3,6 +3,8 @@ using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
 
+#pragma warning disable CS0618, CS0619
+
 namespace HierarchyNavigator
 {
     [InitializeOnLoad]
@@ -419,3 +421,4 @@ namespace HierarchyNavigator
         }
     }
 }
+#pragma warning restore CS0619, CS0618
