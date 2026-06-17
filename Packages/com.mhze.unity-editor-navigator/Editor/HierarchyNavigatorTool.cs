@@ -14,10 +14,18 @@ namespace HierarchyNavigator
         
         static HierarchyNavigatorTool()
         {
+#if UNITY_6000_0_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyWindowItemGUI;
+#else
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyWindowItemGUI;
+#endif
         }
         
+#if UNITY_6000_0_OR_NEWER
+        private static void OnHierarchyWindowItemGUI(EntityId entityId, Rect selectionRect)
+#else
         private static void OnHierarchyWindowItemGUI(int instanceID, Rect selectionRect)
+#endif
         {
             Event e = Event.current;
 

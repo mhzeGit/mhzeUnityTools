@@ -9,11 +9,29 @@ namespace mhze.HierarchyContextMenu
     {
         static HierarchyContextMenu()
         {
-#pragma warning disable CS0618
+#if UNITY_6000_0_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyItemGUI;
+#else
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyItemGUI;
-#pragma warning restore CS0618
+#endif
         }
 
+#if UNITY_6000_0_OR_NEWER
+        private static void OnHierarchyItemGUI(EntityId entityId, Rect selectionRect)
+        {
+            if (!HierarchyContextMenuSettings.Enabled)
+                return;
+
+            if (Event.current.type != EventType.ContextClick)
+                return;
+
+            Event.current.Use();
+
+            if (HierarchyContextMenuWindow.IsOpen)
+                return;
+
+            var clickedObject = EditorUtility.EntityIdToObject(entityId);
+#else
         private static void OnHierarchyItemGUI(int instanceID, Rect selectionRect)
         {
             if (!HierarchyContextMenuSettings.Enabled)
@@ -27,9 +45,8 @@ namespace mhze.HierarchyContextMenu
             if (HierarchyContextMenuWindow.IsOpen)
                 return;
 
-#pragma warning disable CS0618
             var clickedObject = EditorUtility.InstanceIDToObject(instanceID);
-#pragma warning restore CS0618
+#endif
             GameObject clickedGo = clickedObject as GameObject;
             if (clickedGo != null)
                 Selection.activeObject = clickedGo;

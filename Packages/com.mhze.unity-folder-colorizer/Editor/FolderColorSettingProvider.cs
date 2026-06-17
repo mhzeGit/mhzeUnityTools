@@ -238,7 +238,11 @@ namespace UnityFolderColorSettings.Editor
             OpenedFolderTexture = EditorGUIUtility.FindTexture("d_FolderOpened Icon");
             EmptyFolderTexture = EditorGUIUtility.FindTexture("d_FolderEmpty Icon");
 
+#if UNITY_6000_0_OR_NEWER
+            EditorApplication.projectWindowItemByEntityIdOnGUI += DrawFolderIcon;
+#else
             EditorApplication.projectWindowItemInstanceOnGUI += DrawFolderIcon;
+#endif
             EditorApplication.update += UpdateProjectBrowser;
         }
 
@@ -257,11 +261,19 @@ namespace UnityFolderColorSettings.Editor
             ProjectWindowUtil.UpdateBrowserFields();
         }
 
+#if UNITY_6000_0_OR_NEWER
+        public static void DrawFolderIcon(EntityId entityId, Rect rect)
+        {
+            if (!UseCustomFolderColor) return;
+
+            var path = AssetDatabase.GetAssetPath(entityId);
+#else
         public static void DrawFolderIcon(int instanceid, Rect rect)
         {
             if (!UseCustomFolderColor) return;
 
             var path = AssetDatabase.GetAssetPath(instanceid);
+#endif
 
             if (string.IsNullOrEmpty(path) ||
                 Event.current.type != EventType.Repaint ||
@@ -412,8 +424,13 @@ namespace UnityFolderColorSettings.Editor
     {
         private static Type ProjectBrowserType;
         private static EditorWindow ProjectBrowser;
+#if UNITY_6000_0_OR_NEWER
+        private static TreeViewState<int> CurrentAssetTreeViewState;
+        private static TreeViewState<int> CurrentFolderTreeViewState;
+#else
         private static TreeViewState CurrentAssetTreeViewState;
         private static TreeViewState CurrentFolderTreeViewState;
+#endif
         private static int CurrentProjectBrowserMode;
         private static FieldInfo AssetTreeStateField;
         private static FieldInfo FolderTreeStateField;
@@ -436,8 +453,13 @@ namespace UnityFolderColorSettings.Editor
 
             if (state != null)
             {
+#if UNITY_6000_0_OR_NEWER
+                var entityId = AssetDatabase.LoadAssetAtPath<Object>(path).GetEntityId();
+                return state.expandedIDs.Contains(entityId.GetHashCode());
+#else
                 var instanceID = AssetDatabase.LoadAssetAtPath<Object>(path).GetInstanceID();
                 return state.expandedIDs.Contains(instanceID);
+#endif
             }
 
             return false;
@@ -458,8 +480,13 @@ namespace UnityFolderColorSettings.Editor
                     }
                 }
 
+#if UNITY_6000_0_OR_NEWER
+                CurrentAssetTreeViewState = AssetTreeStateField.GetValue(ProjectBrowser) as TreeViewState<int>;
+                CurrentFolderTreeViewState = FolderTreeStateField.GetValue(ProjectBrowser) as TreeViewState<int>;
+#else
                 CurrentAssetTreeViewState = AssetTreeStateField.GetValue(ProjectBrowser) as TreeViewState;
                 CurrentFolderTreeViewState = FolderTreeStateField.GetValue(ProjectBrowser) as TreeViewState;
+#endif
                 CurrentProjectBrowserMode = (int)ProjectBroswerMode.GetValue(ProjectBrowser);
             }
             catch

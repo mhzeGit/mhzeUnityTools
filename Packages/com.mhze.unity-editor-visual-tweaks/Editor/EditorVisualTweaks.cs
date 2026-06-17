@@ -87,19 +87,36 @@ namespace EditorVisualTweaks
             _hierarchyLines = EditorPrefs.GetBool(PREF_HIERARCHY_LINES, false);
             _projectLines = EditorPrefs.GetBool(PREF_PROJECT_LINES, false);
 
+#if UNITY_6000_0_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= OnHierarchyWindowItemGUI;
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyWindowItemGUI;
+
+            EditorApplication.projectWindowItemByEntityIdOnGUI -= OnProjectWindowItemGUI;
+            EditorApplication.projectWindowItemByEntityIdOnGUI += OnProjectWindowItemGUI;
+#else
             EditorApplication.hierarchyWindowItemOnGUI -= OnHierarchyWindowItemGUI;
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyWindowItemGUI;
 
             EditorApplication.projectWindowItemOnGUI -= OnProjectWindowItemGUI;
             EditorApplication.projectWindowItemOnGUI += OnProjectWindowItemGUI;
+#endif
         }
 
+#if UNITY_6000_0_OR_NEWER
+        private static void OnHierarchyWindowItemGUI(EntityId entityId, Rect selectionRect)
+        {
+            if (!_hierarchyZebra && !_hierarchyLines)
+                return;
+
+            GameObject obj = EditorUtility.EntityIdToObject(entityId) as GameObject;
+#else
         private static void OnHierarchyWindowItemGUI(int instanceID, Rect selectionRect)
         {
             if (!_hierarchyZebra && !_hierarchyLines)
                 return;
 
             GameObject obj = EditorUtility.InstanceIDToObject(instanceID) as GameObject;
+#endif
 
             if (_hierarchyZebra)
             {
@@ -117,6 +134,24 @@ namespace EditorVisualTweaks
 
         
 
+#if UNITY_6000_0_OR_NEWER
+        private static void OnProjectWindowItemGUI(EntityId entityId, Rect selectionRect)
+        {
+            if (!_projectZebra && !_projectLines)
+                return;
+
+            if (selectionRect.height > 20f)
+                return;
+
+            if (_projectZebra)
+            {
+                DrawZebraStripe(selectionRect);
+            }
+
+            if (_projectLines)
+            {
+                string path = AssetDatabase.GetAssetPath(entityId);
+#else
         private static void OnProjectWindowItemGUI(string guid, Rect selectionRect)
         {
             if (!_projectZebra && !_projectLines)
@@ -133,6 +168,7 @@ namespace EditorVisualTweaks
             if (_projectLines)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
+#endif
                 if (!string.IsNullOrEmpty(path) && AssetDatabase.IsValidFolder(path))
                 {
                     int depth = GetProjectDepth(path);
