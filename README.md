@@ -53,3 +53,8 @@ https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-url-p
 ```
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.objectsnaptool
 ```
+
+**Unity Editor Custom Commands**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-custom-commands
+```

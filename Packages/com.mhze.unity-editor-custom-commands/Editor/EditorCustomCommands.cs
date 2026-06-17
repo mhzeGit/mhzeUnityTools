@@ -2,11 +2,11 @@ using UnityEditor;
 using UnityEditor.ShortcutManagement;
 using UnityEngine;
 
-namespace mhze.ShortcutCommander
+namespace mhze.EditorCustomCommands
 {
-    static class ShortcutActions
+    static class EditorCustomCommands
     {
-        [Shortcut("Shortcut Commander/Add Component", KeyCode.C, ShortcutModifiers.Action | ShortcutModifiers.Shift)]
+        [Shortcut("Editor Custom Commands/Add Component", KeyCode.C, ShortcutModifiers.Action | ShortcutModifiers.Shift)]
         private static void AddComponentShortcut()
         {
             if (Selection.gameObjects.Length == 0)

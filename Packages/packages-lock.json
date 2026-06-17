@@ -6,6 +6,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.mhze.unity-editor-custom-commands": {
+      "version": "file:com.mhze.unity-editor-custom-commands",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.mhze.unity-editor-navigator": {
       "version": "file:com.mhze.unity-editor-navigator",
       "depth": 0,
@@ -44,12 +50,6 @@
     },
     "com.mhze.unity-missing-script-inspector": {
       "version": "file:com.mhze.unity-missing-script-inspector",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.mhze.unity-shortcut-commander": {
-      "version": "file:com.mhze.unity-shortcut-commander",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}

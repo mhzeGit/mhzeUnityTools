@@ -5,7 +5,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-namespace mhze.ShortcutCommander
+namespace mhze.EditorCustomCommands
 {
     static class AddComponentWindow
     {
@@ -43,8 +43,7 @@ namespace mhze.ShortcutCommander
                     }
                     catch (ReflectionTypeLoadException) { continue; }
 
-                    if (windowType == null)
-                        continue;
+                    if (windowType == null) continue;
 
                     var method = windowType
                         .GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
@@ -113,9 +112,7 @@ namespace mhze.ShortcutCommander
             }
 
             if (Event.current.type == EventType.Repaint && GUI.GetNameOfFocusedControl() != "SearchField")
-            {
                 GUI.FocusControl("SearchField");
-            }
 
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
@@ -123,7 +120,6 @@ namespace mhze.ShortcutCommander
             {
                 var type = _filteredTypes[i];
                 var rect = GUILayoutUtility.GetRect(Width, ItemHeight);
-
                 var isSelected = i == _selectedIndex;
                 var content = EditorGUIUtility.ObjectContent(null, type);
 
@@ -152,9 +148,7 @@ namespace mhze.ShortcutCommander
             }
 
             if (_filteredTypes.Count == 0)
-            {
                 EditorGUILayout.LabelField("No components found", EditorStyles.centeredGreyMiniLabel);
-            }
 
             EditorGUILayout.EndScrollView();
             HandleKeyboard();

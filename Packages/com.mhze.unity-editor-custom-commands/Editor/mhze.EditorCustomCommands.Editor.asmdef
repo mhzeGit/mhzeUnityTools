@@ -1,6 +1,6 @@
 {
-  "name": "mhze.ShortcutCommander.Editor",
-  "rootNamespace": "mhze.ShortcutCommander",
+  "name": "mhze.EditorCustomCommands.Editor",
+  "rootNamespace": "mhze.EditorCustomCommands",
   "references": [],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
