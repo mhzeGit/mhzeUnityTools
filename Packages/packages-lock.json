@@ -48,6 +48,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.mhze.unity-shortcut-commander": {
+      "version": "file:com.mhze.unity-shortcut-commander",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.mhze.unity-url-package-updater": {
       "version": "file:com.mhze.unity-url-package-updater",
       "depth": 0,

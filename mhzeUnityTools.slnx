@@ -1,5 +1,6 @@
 ﻿<Solution>
   <Project Path="mhze.HierarchyContextMenu.Editor.csproj" />
+  <Project Path="mhze.ShortcutCommander.Editor.csproj" />
   <Project Path="mhze.GitIntegration.Editor.csproj" />
   <Project Path="Unity.ObjectSnapTool.Editor.csproj" />
   <Project Path="mhze.EditorNavigator.Editor.csproj" />
