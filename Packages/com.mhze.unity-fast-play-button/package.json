@@ -6,7 +6,8 @@
   "unity": "6000.0",
   "author": {
     "name": "MHZE",
-    "email": "mhze.uk@gmail.com"
+    "email": "mhze.uk@gmail.com",
+    "url": "https://github.com/mhzeGit/"
   },
   "dependencies": {},
   "_fingerprint": "0c65dd77ab9f0eaad22ec8ed4ba1f4f50252818e"

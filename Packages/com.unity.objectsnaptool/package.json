@@ -15,7 +15,8 @@
   ],
   "author": {
     "name": "MHZE",
-    "email": "mhze.uk@gmail.com"
+    "email": "mhze.uk@gmail.com",
+    "url": "https://github.com/mhzeGit/"
   },
   "category": "Editor Extensions",
   "dependencies": {},
