@@ -54,6 +54,11 @@ https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-url-p
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.objectsnaptool
 ```
 
+**Unity Quick Texture Tools**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.quick-texture-tools
+```
+
 **Unity Editor Custom Commands**
 ```
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-custom-commands

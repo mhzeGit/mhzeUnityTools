@@ -159,6 +159,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.unity.quick-texture-tools": {
+      "version": "file:com.unity.quick-texture-tools",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.render-pipelines.core": {
       "version": "17.4.0",
       "depth": 1,

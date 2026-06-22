@@ -9,5 +9,6 @@
   <Project Path="mhze.BatchRenamer.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="mhze.EditorCustomCommands.Editor.csproj" />
+  <Project Path="Unity.QuickTextureTools.Editor.csproj" />
   <Project Path="mhze.FolderColorizer.Editor.csproj" />
 </Solution>
