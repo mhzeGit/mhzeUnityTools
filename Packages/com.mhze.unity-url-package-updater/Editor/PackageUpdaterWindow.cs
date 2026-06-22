@@ -22,10 +22,10 @@ namespace mhze.UrlPackageUpdater
         private Vector2 _scrollPos;
         private string _status = "";
         private bool _busy;
-        private int _updateIndex;
-        private List<string> _queue = new();
         private ListRequest _listReq;
-        private AddRequest _addReq;
+        private AddAndRemoveRequest _addRemoveReq;
+        private int _completedCount;
+        private int _totalCount;
 
         private void OnEnable() => Refresh();
 
@@ -111,8 +111,8 @@ namespace mhze.UrlPackageUpdater
                     StartUpdate();
             }
 
-            if (_busy && _queue.Count > 0)
-                EditorGUILayout.LabelField($"({_updateIndex}/{_queue.Count})", EditorStyles.miniLabel);
+            if (_busy)
+                EditorGUILayout.LabelField($"({_completedCount}/{_totalCount})", EditorStyles.miniLabel);
 
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.Space();
@@ -120,47 +120,43 @@ namespace mhze.UrlPackageUpdater
 
         private void StartUpdate()
         {
-            _queue = _packages.Where(p => _selected.Contains(p.packageId))
-                .Select(p => p.packageId).ToList();
-            if (_queue.Count == 0) return;
+            var toUpdate = _packages.Where(p => _selected.Contains(p.packageId)).ToList();
+            if (toUpdate.Count == 0) return;
+
             _busy = true;
-            _updateIndex = 0;
-            _status = $"Updating {_queue.Count} package(s)...";
-            ProcessNext();
-        }
+            _totalCount = toUpdate.Count;
+            _completedCount = 0;
+            _status = $"Updating {_totalCount} package(s)...";
 
-        private void ProcessNext()
-        {
-            if (_updateIndex >= _queue.Count)
-            {
-                _busy = false;
-                _status = "Update complete.";
-                Repaint();
-                Refresh();
-                return;
-            }
+            var toAdd = toUpdate.Select(p => p.packageId).ToArray();
+            var toRemove = toUpdate.Select(p => p.name).ToArray();
 
-            var id = _queue[_updateIndex];
-            _status = $"Updating: {id}";
-            _updateIndex++;
-            _addReq = Client.Add(id);
-            EditorApplication.update += PollAdd;
+            var param = new AddAndRemoveParameters(toAdd, toRemove);
+            _addRemoveReq = Client.AddAndRemove(param);
+            EditorApplication.update += PollAddRemove;
             Repaint();
         }
 
-        private void PollAdd()
+        private void PollAddRemove()
         {
-            if (!_addReq.IsCompleted) return;
-            EditorApplication.update -= PollAdd;
-            if (_addReq.Status != StatusCode.Success)
-                Debug.LogWarning($"[PackageUpdater] Failed: {_addReq.Error?.message}");
-            ProcessNext();
+            if (!_addRemoveReq.IsCompleted) return;
+            EditorApplication.update -= PollAddRemove;
+
+            _completedCount = _totalCount;
+
+            if (_addRemoveReq.Status != StatusCode.Success)
+                Debug.LogWarning($"[PackageUpdater] Failed: {_addRemoveReq.Error?.message}");
+
+            _busy = false;
+            _status = "Update complete. Re-listing...";
+            Repaint();
+            Refresh();
         }
 
         private void OnDestroy()
         {
             EditorApplication.update -= PollList;
-            EditorApplication.update -= PollAdd;
+            EditorApplication.update -= PollAddRemove;
         }
     }
 }
