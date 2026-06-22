@@ -6,7 +6,7 @@ namespace GitIntegration
     public static class GitContextMenu
     {
         private const string MENU_PATH = "Assets/Git/View History %h";
-        private const string MENU_DIFF  = "Assets/Git/View Working Diff %#d";
+        private const string MENU_DIFF  = "Assets/Git/View Working Diff #d";
 
 
         [MenuItem(MENU_PATH, false, 1000)]
