@@ -131,8 +131,7 @@ namespace mhze.UrlPackageUpdater
             var toAdd = toUpdate.Select(p => p.packageId).ToArray();
             var toRemove = toUpdate.Select(p => p.name).ToArray();
 
-            var param = new AddAndRemoveParameters(toAdd, toRemove);
-            _addRemoveReq = Client.AddAndRemove(param);
+            _addRemoveReq = Client.AddAndRemove(toAdd, toRemove);
             EditorApplication.update += PollAddRemove;
             Repaint();
         }
