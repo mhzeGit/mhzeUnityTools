@@ -14,7 +14,7 @@ Unity Git Integration brings core Git workflows into the Unity editor: commit hi
 - Commit detail panel with changed files and inline diff.
 - Asset context menu actions:
 	- `Assets/Git/View History` (Ctrl + H)
-	- `Assets/Git/View Working Diff` (Shift + D)
+	- `Assets/Git/View Working Diff` (Ctrl + Shift + D)
 - Main window shortcut: `Tools/Git Integration` (Ctrl + Alt + G).
 - Setup/config tools for user identity, remotes, `.gitignore`, and LFS.
 
