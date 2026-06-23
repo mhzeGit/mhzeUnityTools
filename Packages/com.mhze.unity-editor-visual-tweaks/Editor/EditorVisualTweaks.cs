@@ -82,8 +82,8 @@ namespace EditorVisualTweaks
 
         static EditorVisualTweaks()
         {
-            _hierarchyZebra = EditorPrefs.GetBool(PREF_HIERARCHY_ZEBRA, false);
-            _projectZebra = EditorPrefs.GetBool(PREF_PROJECT_ZEBRA, false);
+            _hierarchyZebra = EditorPrefs.GetBool(PREF_HIERARCHY_ZEBRA, true);
+            _projectZebra = EditorPrefs.GetBool(PREF_PROJECT_ZEBRA, true);
             _hierarchyLines = EditorPrefs.GetBool(PREF_HIERARCHY_LINES, false);
             _projectLines = EditorPrefs.GetBool(PREF_PROJECT_LINES, false);
 
