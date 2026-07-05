@@ -43,7 +43,9 @@ namespace mhze.HierarchyContextMenu
             {
                 var go = Selection.activeGameObject;
                 if (go == null) return false;
-                return PrefabUtility.IsPartOfPrefabInstance(go);
+                if (PrefabUtility.IsPartOfPrefabInstance(go)) return true;
+                var prefabType = PrefabUtility.GetPrefabAssetType(go);
+                return prefabType == PrefabAssetType.Model;
             }
         }
 

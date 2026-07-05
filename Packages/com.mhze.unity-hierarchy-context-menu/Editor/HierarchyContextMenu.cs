@@ -59,7 +59,7 @@ namespace mhze.HierarchyContextMenu
                 var parts = item.DisplayName.Split('/');
                 topLevelNames.Add(parts[0]);
             }
-            bool isPrefab = clickedGo != null && PrefabUtility.IsPartOfPrefabInstance(clickedGo);
+            bool isPrefab = clickedGo != null && (PrefabUtility.IsPartOfPrefabInstance(clickedGo) || PrefabUtility.GetPrefabAssetType(clickedGo) == PrefabAssetType.Model);
             int additionalItems = isPrefab ? 2 : 0;
             int rootItemCount = 16 + topLevelNames.Count + additionalItems;
             float desiredHeight = Mathf.Max(44f + (rootItemCount * 22f), 60f);
