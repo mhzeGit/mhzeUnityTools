@@ -27,12 +27,29 @@ namespace HierarchyNavigator
 
         static ProjectNavigatorTool()
         {
-#if UNITY_6000_0_OR_NEWER
+#if !UNITY_6000_0_OR_NEWER
             EditorApplication.projectWindowItemByEntityIdOnGUI += OnProjectWindowItemGUI;
 #else
             EditorApplication.projectWindowItemOnGUI += OnProjectWindowItemGUI;
 #endif
+
+        }
+
+#if !UNITY_6000_0_OR_NEWER
+        private static void OnProjectWindowItemGUI(EntityId entityId, Rect rect)
+#else
+        private static void OnProjectWindowItemGUI(string guid, Rect rect)
+#endif
+        {
+            if (_inMoveMode && !string.IsNullOrEmpty(_targetFolder))
+            {
+#if !UNITY_6000_0_OR_NEWER
+                string path = AssetDatabase.GetAssetPath(entityId);
+#else
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+#endif
             Selection.selectionChanged += OnSelectionChanged;
+            }
         }
 
 #if UNITY_6000_0_OR_NEWER

@@ -9,10 +9,43 @@ namespace mhze.HierarchyContextMenu
     {
         static HierarchyContextMenu()
         {
-#if UNITY_6000_0_OR_NEWER
+#if !UNITY_6000_0_OR_NEWER
             EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyItemGUI;
 #else
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyItemGUI;
+#endif
+        }
+
+#if !UNITY_6000_0_OR_NEWER
+        private static void OnHierarchyItemGUI(EntityId entityId, Rect selectionRect)
+        {
+            if (!HierarchyContextMenuSettings.Enabled)
+                return;
+
+            if (Event.current.type != EventType.ContextClick)
+                return;
+
+            Event.current.Use();
+
+            if (HierarchyContextMenuWindow.IsOpen)
+                return;
+
+            var clickedObject = EditorUtility.EntityIdToObject(entityId);
+#else
+        private static void OnHierarchyItemGUI(int instanceID, Rect selectionRect)
+        {
+            if (!HierarchyContextMenuSettings.Enabled)
+                return;
+
+            if (Event.current.type != EventType.ContextClick)
+                return;
+
+            Event.current.Use();
+
+            if (HierarchyContextMenuWindow.IsOpen)
+                return;
+
+            var clickedObject = EditorUtility.InstanceIDToObject(instanceID);
 #endif
         }
 

@@ -87,7 +87,7 @@ namespace EditorVisualTweaks
             _hierarchyLines = EditorPrefs.GetBool(PREF_HIERARCHY_LINES, false);
             _projectLines = EditorPrefs.GetBool(PREF_PROJECT_LINES, false);
 
-#if UNITY_6000_0_OR_NEWER
+#if !UNITY_6000_0_OR_NEWER
             EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= OnHierarchyWindowItemGUI;
             EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyWindowItemGUI;
 
@@ -102,7 +102,7 @@ namespace EditorVisualTweaks
 #endif
         }
 
-#if UNITY_6000_0_OR_NEWER
+#if !UNITY_6000_0_OR_NEWER
         private static void OnHierarchyWindowItemGUI(EntityId entityId, Rect selectionRect)
         {
             if (!_hierarchyZebra && !_hierarchyLines)
@@ -134,7 +134,7 @@ namespace EditorVisualTweaks
 
         
 
-#if UNITY_6000_0_OR_NEWER
+#if !UNITY_6000_0_OR_NEWER
         private static void OnProjectWindowItemGUI(EntityId entityId, Rect selectionRect)
         {
             if (!_projectZebra && !_projectLines)

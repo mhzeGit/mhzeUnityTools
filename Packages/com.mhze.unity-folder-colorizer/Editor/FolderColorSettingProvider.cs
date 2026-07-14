@@ -238,7 +238,7 @@ namespace UnityFolderColorSettings.Editor
             OpenedFolderTexture = EditorGUIUtility.FindTexture("d_FolderOpened Icon");
             EmptyFolderTexture = EditorGUIUtility.FindTexture("d_FolderEmpty Icon");
 
-#if UNITY_6000_0_OR_NEWER
+#if !UNITY_6000_0_OR_NEWER
             EditorApplication.projectWindowItemByEntityIdOnGUI += DrawFolderIcon;
 #else
             EditorApplication.projectWindowItemInstanceOnGUI += DrawFolderIcon;
@@ -261,7 +261,7 @@ namespace UnityFolderColorSettings.Editor
             ProjectWindowUtil.UpdateBrowserFields();
         }
 
-#if UNITY_6000_0_OR_NEWER
+#if !UNITY_6000_0_OR_NEWER
         public static void DrawFolderIcon(EntityId entityId, Rect rect)
         {
             if (!UseCustomFolderColor) return;
@@ -453,7 +453,7 @@ namespace UnityFolderColorSettings.Editor
 
             if (state != null)
             {
-#if UNITY_6000_0_OR_NEWER
+#if !UNITY_6000_0_OR_NEWER
                 var entityId = AssetDatabase.LoadAssetAtPath<Object>(path).GetEntityId();
                 return state.expandedIDs.Contains(entityId.GetHashCode());
 #else
