@@ -296,6 +296,9 @@ namespace mhze.HierarchyContextMenu
                 case "textmeshpro":
                     return "Font Icon";
 
+                case "open c# project":
+                    return "cs Script Icon";
+
                 case "audio mixer":
                     return "AudioSource Icon";
 
