@@ -16,7 +16,7 @@ namespace MHZE.FolderStructureGenerator
         [System.NonSerialized] string _statusMessage = "";
         [System.NonSerialized] double _statusMessageTime;
         [System.NonSerialized] DefaultAsset _targetFolder;
-        [System.NonSerialized] string _rootFolderName = "_ProjectName";
+        [System.NonSerialized] string _rootFolderName = "_" + Application.productName;
         [System.NonSerialized] bool _wrapInRoot = true;
 
         [MenuItem("Tools/Folder Structure Generator")]
