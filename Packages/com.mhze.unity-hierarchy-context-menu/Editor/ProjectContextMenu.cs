@@ -55,48 +55,6 @@ namespace mhze.HierarchyContextMenu
             {
                 var assetPath = AssetDatabase.GUIDToAssetPath(guid);
 #endif
-            }
-        }
-
-#if UNITY_6000_0_OR_NEWER
-        private static void OnProjectItemGUI(EntityId entityId, Rect selectionRect)
-        {
-            if (!HierarchyContextMenuSettings.Enabled)
-                return;
-
-            if (Event.current.type != EventType.ContextClick)
-                return;
-
-            if (ProjectContextMenuWindow.IsOpen)
-                return;
-
-            Event.current.Use();
-
-            ProjectContextMenuWindow.ClickedOnItem = selectionRect.Contains(Event.current.mousePosition);
-
-            if (ProjectContextMenuWindow.ClickedOnItem)
-            {
-                var assetPath = AssetDatabase.GetAssetPath(entityId);
-#else
-        private static void OnProjectItemGUI(string guid, Rect selectionRect)
-        {
-            if (!HierarchyContextMenuSettings.Enabled)
-                return;
-
-            if (Event.current.type != EventType.ContextClick)
-                return;
-
-            if (ProjectContextMenuWindow.IsOpen)
-                return;
-
-            Event.current.Use();
-
-            ProjectContextMenuWindow.ClickedOnItem = selectionRect.Contains(Event.current.mousePosition);
-
-            if (ProjectContextMenuWindow.ClickedOnItem)
-            {
-                var assetPath = AssetDatabase.GUIDToAssetPath(guid);
-#endif
                 var asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
                 if (asset != null)
                     Selection.activeObject = asset;
