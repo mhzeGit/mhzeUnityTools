@@ -25,7 +25,7 @@ namespace MHZE.FolderStructureGenerator
             preset.presetName = "Standard Unity Project";
             preset.rootFolders = new List<FolderNode>
             {
-                new FolderNode("_Scripts")
+                new FolderNode("Scripts")
                 {
                     children = new List<FolderNode>
                     {
@@ -37,7 +37,7 @@ namespace MHZE.FolderStructureGenerator
                         new FolderNode("Utils")
                     }
                 },
-                new FolderNode("_Art")
+                new FolderNode("Art")
                 {
                     children = new List<FolderNode>
                     {
@@ -55,7 +55,7 @@ namespace MHZE.FolderStructureGenerator
                         new FolderNode("Sprites")
                     }
                 },
-                new FolderNode("_Audio")
+                new FolderNode("Audio")
                 {
                     children = new List<FolderNode>
                     {
@@ -64,7 +64,7 @@ namespace MHZE.FolderStructureGenerator
                         new FolderNode("Voice")
                     }
                 },
-                new FolderNode("_Prefabs")
+                new FolderNode("Prefabs")
                 {
                     children = new List<FolderNode>
                     {
@@ -74,8 +74,8 @@ namespace MHZE.FolderStructureGenerator
                         new FolderNode("UI")
                     }
                 },
-                new FolderNode("_Scenes"),
-                new FolderNode("_Animations")
+                new FolderNode("Scenes"),
+                new FolderNode("Animations")
             };
             return preset;
         }
