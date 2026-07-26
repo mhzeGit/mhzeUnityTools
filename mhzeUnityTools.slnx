@@ -6,6 +6,7 @@
   <Project Path="mhze.MissingScriptInspector.Editor.csproj" />
   <Project Path="mhze.UrlPackageUpdater.Editor.csproj" />
   <Project Path="mhze.FastPlayButton.Editor.csproj" />
+  <Project Path="mhze.FolderStructureGenerator.Editor.csproj" />
   <Project Path="mhze.BatchRenamer.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="mhze.EditorCustomCommands.Editor.csproj" />

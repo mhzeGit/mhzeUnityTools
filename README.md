@@ -63,3 +63,8 @@ https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.quick-text
 ```
 https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-custom-commands
 ```
+
+**Unity Folder Structure Generator**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-folder-structure-generator
+```

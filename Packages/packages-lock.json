@@ -36,6 +36,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.mhze.unity-folder-structure-generator": {
+      "version": "file:com.mhze.unity-folder-structure-generator",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.mhze.unity-git-integration": {
       "version": "file:com.mhze.unity-git-integration",
       "depth": 0,
