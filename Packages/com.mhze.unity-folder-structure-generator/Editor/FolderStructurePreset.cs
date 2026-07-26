@@ -30,6 +30,7 @@ namespace MHZE.FolderStructureGenerator
                     children = new List<FolderNode>
                     {
                         new FolderNode("Managers"),
+                        new FolderNode("Mediators"),
                         new FolderNode("Player"),
                         new FolderNode("Enemies"),
                         new FolderNode("UI"),
@@ -43,7 +44,14 @@ namespace MHZE.FolderStructureGenerator
                         new FolderNode("Materials"),
                         new FolderNode("Shaders"),
                         new FolderNode("Textures"),
-                        new FolderNode("Models"),
+                        new FolderNode("Models")
+                        {
+                            children = new List<FolderNode>
+                            {
+                                new FolderNode("Environment"),
+                                new FolderNode("Props")
+                            }
+                        },
                         new FolderNode("Sprites")
                     }
                 },
@@ -56,18 +64,18 @@ namespace MHZE.FolderStructureGenerator
                         new FolderNode("Voice")
                     }
                 },
-                new FolderNode("_Prefabs"),
-                new FolderNode("_Scenes"),
-                new FolderNode("_Animations"),
-                new FolderNode("_Resources")
+                new FolderNode("_Prefabs")
                 {
                     children = new List<FolderNode>
                     {
-                        new FolderNode("Configs"),
-                        new FolderNode("Localization")
+                        new FolderNode("Player"),
+                        new FolderNode("Environment"),
+                        new FolderNode("Props"),
+                        new FolderNode("UI")
                     }
                 },
-                new FolderNode("_ThirdParty")
+                new FolderNode("_Scenes"),
+                new FolderNode("_Animations")
             };
             return preset;
         }
