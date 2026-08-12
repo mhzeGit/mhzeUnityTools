@@ -70,7 +70,9 @@ namespace mhze.BatchRenamer
             BatchRenamerWindow.ShowWindow(objects);
         }
 
+#if !UNITY_6000_0_OR_NEWER
         [MenuItem("Edit/Rename _F2")]
+#endif
         private static void OnF2Rename()
         {
             var objects = GetSelectedProjectAssets();
@@ -124,7 +126,9 @@ namespace mhze.BatchRenamer
             });
         }
 
+#if !UNITY_6000_0_OR_NEWER
         [MenuItem("Edit/Rename _F2", true)]
+#endif
         private static bool ValidateOnF2Rename()
         {
             return Selection.activeObject != null;

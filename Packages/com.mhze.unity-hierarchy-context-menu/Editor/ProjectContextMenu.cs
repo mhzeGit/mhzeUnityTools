@@ -9,14 +9,14 @@ namespace mhze.HierarchyContextMenu
     {
         static ProjectContextMenu()
         {
-#if !UNITY_6000_0_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
             EditorApplication.projectWindowItemByEntityIdOnGUI += OnProjectItemGUI;
 #else
             EditorApplication.projectWindowItemOnGUI += OnProjectItemGUI;
 #endif
         }
 
-#if !UNITY_6000_0_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
         private static void OnProjectItemGUI(EntityId entityId, Rect selectionRect)
         {
             if (!HierarchyContextMenuSettings.Enabled)
