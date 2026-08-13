@@ -50,5 +50,8 @@ Menu path for guide window: `Tools/Hierarchy Navigator/Settings && Help`
 - Project asset moves are file operations and are not covered by Unity Undo.
 - Hierarchy moves and reparenting use Undo.
 
+## Documentation
+See `Documentation/Editor Navigator Documentation.rtf` in this package (PDF/RTF format required for the Unity Asset Store).
+
 ## License
 See `LICENSE.md` in this package.
