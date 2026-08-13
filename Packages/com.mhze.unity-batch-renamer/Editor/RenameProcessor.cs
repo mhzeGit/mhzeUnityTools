@@ -592,16 +592,7 @@ namespace mhze.BatchRenamer
 
         private static string CultureTitleCase(string input)
         {
-            if (string.IsNullOrEmpty(input)) return input;
-            var words = input.Split(new[] { ' ', '_', '-', '.' }, StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < words.Length; i++)
-            {
-                if (words[i].Length > 0)
-                {
-                    words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1).ToLowerInvariant();
-                }
-            }
-            return string.Join("_", words);
+            return ConvertWordCasing(input, capitalizeFirst: true, lowerRest: true);
         }
 
         private static string ToCamelCase(string input)
@@ -613,16 +604,36 @@ namespace mhze.BatchRenamer
 
         private static string ToPascalCase(string input)
         {
+            return ConvertWordCasing(input, capitalizeFirst: true, lowerRest: false);
+        }
+
+        private static string ConvertWordCasing(string input, bool capitalizeFirst, bool lowerRest)
+        {
             if (string.IsNullOrEmpty(input)) return input;
-            var words = input.Split(new[] { ' ', '_', '-', '.' }, StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < words.Length; i++)
+            var sb = new System.Text.StringBuilder(input.Length);
+            int i = 0;
+            while (i < input.Length)
             {
-                if (words[i].Length > 0)
+                char c = input[i];
+                if (c == ' ' || c == '_' || c == '-' || c == '.')
                 {
-                    words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1);
+                    sb.Append(c);
+                    i++;
+                    continue;
                 }
+
+                int start = i;
+                while (i < input.Length && input[i] != ' ' && input[i] != '_' && input[i] != '-' && input[i] != '.')
+                    i++;
+
+                string word = input.Substring(start, i - start);
+                if (capitalizeFirst)
+                    word = char.ToUpperInvariant(word[0]) + word.Substring(1);
+                if (lowerRest)
+                    word = word.Substring(0, 1) + word.Substring(1).ToLowerInvariant();
+                sb.Append(word);
             }
-            return string.Join("", words);
+            return sb.ToString();
         }
 
         private string ApplyNumberFormat(string baseName, string number)
