@@ -1,0 +1,11 @@
+{
+  "name": "com.gigaduck.hierarchy-context-menu",
+  "version": "1.0.0",
+  "displayName": "Hierarchy Context Menu",
+  "description": "A modern, searchable replacement for the Unity Hierarchy context menu built with UI Toolkit.",
+  "unity": "6000.0",
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  }
+}

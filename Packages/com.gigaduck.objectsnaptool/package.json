@@ -1,0 +1,23 @@
+{
+  "name": "com.gigaduck.objectsnaptool",
+  "version": "1.0.0",
+  "displayName": "Object Snap Tool",
+  "description": "A simple Unity Editor tool for snapping selected objects to surfaces using hotkeys. Press End to snap to ground, or use Ctrl/Shift/Alt + Arrow keys for directional snapping.",
+  "unity": "2020.3",
+  "keywords": [
+    "editor",
+    "tool",
+    "snap",
+    "ground",
+    "positioning",
+    "level design",
+    "world building"
+  ],
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  },
+  "category": "Editor Extensions",
+  "dependencies": {},
+  "samples": []
+}

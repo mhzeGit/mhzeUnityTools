@@ -1,0 +1,11 @@
+{
+  "name": "com.gigaduck.editor-custom-commands",
+  "version": "1.0.0",
+  "displayName": "Editor Custom Commands",
+  "description": "Custom keyboard shortcuts for the Unity Editor. Press a configurable hotkey to open the Add Component popup and instantly search for components to add to selected objects.",
+  "unity": "2020.3",
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  }
+}

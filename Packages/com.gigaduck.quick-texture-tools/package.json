@@ -1,0 +1,19 @@
+{
+  "name": "com.gigaduck.quick-texture-tools",
+  "version": "1.2.0",
+  "displayName": "Quick Texture Tools",
+  "description": "Quick editor tools for inverting textures, generating mask maps, flipping normal Y channels, and whitening textures.",
+  "unity": "2022.2",
+  "unityRelease": "0f1",
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  },
+  "keywords": [
+    "texture",
+    "editor",
+    "tools",
+    "pipeline",
+    "maskmap"
+  ]
+}

@@ -1,16 +1,16 @@
 ﻿<Solution>
   <Project Path="asset-store-tools-editor.csproj" />
-  <Project Path="mhze.HierarchyContextMenu.Editor.csproj" />
-  <Project Path="mhze.GitIntegration.Editor.csproj" />
-  <Project Path="Unity.ObjectSnapTool.Editor.csproj" />
-  <Project Path="mhze.EditorNavigator.Editor.csproj" />
-  <Project Path="mhze.MissingScriptInspector.Editor.csproj" />
-  <Project Path="mhze.UrlPackageUpdater.Editor.csproj" />
-  <Project Path="mhze.FastPlayButton.Editor.csproj" />
-  <Project Path="mhze.FolderStructureGenerator.Editor.csproj" />
-  <Project Path="mhze.BatchRenamer.Editor.csproj" />
+  <Project Path="Gigaduck.EditorNavigator.Editor.csproj" />
+  <Project Path="Gigaduck.GitIntegration.Editor.csproj" />
+  <Project Path="Gigaduck.FolderStructureGenerator.Editor.csproj" />
+  <Project Path="Gigaduck.HierarchyContextMenu.Editor.csproj" />
+  <Project Path="Gigaduck.MissingScriptInspector.Editor.csproj" />
+  <Project Path="Gigaduck.BatchRenamer.Editor.csproj" />
+  <Project Path="Gigaduck.FastPlayButton.Editor.csproj" />
+  <Project Path="Gigaduck.UrlPackageUpdater.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
-  <Project Path="mhze.EditorCustomCommands.Editor.csproj" />
-  <Project Path="Unity.QuickTextureTools.Editor.csproj" />
-  <Project Path="mhze.FolderColorizer.Editor.csproj" />
+  <Project Path="Gigaduck.ObjectSnapTool.Editor.csproj" />
+  <Project Path="Gigaduck.EditorCustomCommands.Editor.csproj" />
+  <Project Path="Gigaduck.QuickTextureTools.Editor.csproj" />
+  <Project Path="Gigaduck.FolderColorizer.Editor.csproj" />
 </Solution>

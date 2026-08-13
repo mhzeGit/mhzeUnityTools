@@ -4,67 +4,67 @@ Collection of Unity Editor tools and packages.
 
 ## Packages
 
-**Unity Editor Navigator**
+**Editor Navigator**
 ```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-navigator
-```
-
-**Unity Fast Play Button**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-fast-play-button
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.editor-navigator
 ```
 
-**Unity Folder Colorizer**
+**Fast Play Button**
 ```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-folder-colorizer
-```
-
-**Unity Git Integration**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-git-integration
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.fast-play-button
 ```
 
-**Unity Editor Visual Tweaks**
+**Folder Colorizer**
 ```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-visual-tweaks
-```
-
-**Unity Hierarchy Context Menu**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-hierarchy-context-menu
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.folder-colorizer
 ```
 
-**Unity Missing Script Inspector**
+**Git Integration**
 ```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-missing-script-inspector
-```
-
-**Unity Batch Renamer**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-batch-renamer
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.git-integration
 ```
 
-**Unity URL Package Updater**
+**Editor Visual Tweaks**
 ```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-url-package-updater
-```
-
-**Unity Object Snap Tool**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.objectsnaptool
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.editor-visual-tweaks
 ```
 
-**Unity Quick Texture Tools**
+**Hierarchy Context Menu**
 ```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.unity.quick-texture-tools
-```
-
-**Unity Editor Custom Commands**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-editor-custom-commands
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.hierarchy-context-menu
 ```
 
-**Unity Folder Structure Generator**
+**Missing Script Inspector**
 ```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.mhze.unity-folder-structure-generator
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.missing-script-inspector
+```
+
+**Batch Renamer**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.batch-renamer
+```
+
+**URL Package Updater**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.url-package-updater
+```
+
+**Object Snap Tool**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.objectsnaptool
+```
+
+**Quick Texture Tools**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.quick-texture-tools
+```
+
+**Editor Custom Commands**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.editor-custom-commands
+```
+
+**Folder Structure Generator**
+```
+https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.folder-structure-generator
 ```

@@ -1,0 +1,11 @@
+{
+  "name": "com.gigaduck.batch-renamer",
+  "version": "1.0.0",
+  "displayName": "Batch Renamer",
+  "description": "A powerful batch renaming tool for Unity assets and GameObjects with real-time preview.",
+  "unity": "6000.0",
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  }
+}

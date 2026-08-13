@@ -1,0 +1,13 @@
+{
+  "name": "com.gigaduck.folder-colorizer",
+  "version": "1.0.0",
+  "displayName": "Folder Colorizer",
+  "description": "A Unity Editor tool that allows you to customize folder colors in the Project view for better organization and visual clarity.",
+  "unity": "6000.1",
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  },
+  "dependencies": {},
+  "_fingerprint": "0c65dd77ab9f0eaad22ec8ed4ba1f4f50252818e"
+}

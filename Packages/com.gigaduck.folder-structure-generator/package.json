@@ -1,0 +1,11 @@
+{
+  "name": "com.gigaduck.folder-structure-generator",
+  "version": "1.0.0",
+  "displayName": "Folder Structure Generator",
+  "description": "Generate folder structures from presets or custom templates. Supports nested folder hierarchies and batch folder creation with meta files.",
+  "unity": "2020.3",
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  }
+}
