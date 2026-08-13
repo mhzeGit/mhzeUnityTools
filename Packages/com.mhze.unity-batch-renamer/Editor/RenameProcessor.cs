@@ -275,7 +275,7 @@ namespace mhze.BatchRenamer
                         bool hasActiveFilters = EnabledCategories.Count > 0;
                         if (!hasActiveFilters)
                         {
-                            matchesFilter = true;
+                            matchesFilter = false;
                         }
                         else
                         {
@@ -317,7 +317,7 @@ namespace mhze.BatchRenamer
                             bool hasActiveFilters = EnabledCategories.Count > 0;
                             if (!hasActiveFilters)
                             {
-                                passesFilter = true;
+                                passesFilter = false;
                             }
                             else
                             {
@@ -369,7 +369,7 @@ namespace mhze.BatchRenamer
                     else
                     {
                         bool hasActiveFilters = EnabledCategories.Count > 0;
-                        uiPassesFilter = !hasActiveFilters || EnabledCategories.Contains(ClassifyObject(item.Target));
+                        uiPassesFilter = hasActiveFilters && EnabledCategories.Contains(ClassifyObject(item.Target));
                     }
 
                     if (uiPassesFilter)
@@ -652,21 +652,17 @@ namespace mhze.BatchRenamer
             if (go == null) return false;
 
             int totalCategories = Enum.GetValues(typeof(HierarchyCategory)).Length - 1;
-            bool allCategoriesSelected = EnabledHierarchyCategories.Count == totalCategories;
+            if (EnabledHierarchyCategories.Count == 0)
+                return false;
 
-            if (!allCategoriesSelected && EnabledHierarchyCategories.Count > 0)
+            if (EnabledHierarchyCategories.Count < totalCategories)
             {
-                bool matchesAnyCategory = false;
                 foreach (var cat in EnabledHierarchyCategories)
                 {
                     if (HasComponentOfCategory(go, cat))
-                    {
-                        matchesAnyCategory = true;
-                        break;
-                    }
+                        return true;
                 }
-                if (!matchesAnyCategory)
-                    return false;
+                return false;
             }
 
             return true;

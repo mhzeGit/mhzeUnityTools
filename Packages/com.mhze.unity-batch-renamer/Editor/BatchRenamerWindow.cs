@@ -48,6 +48,7 @@ namespace mhze.BatchRenamer
         private readonly HashSet<TextureSubCategory> _filterTextureSubCategories = new HashSet<TextureSubCategory>();
         private readonly HashSet<HierarchyCategory> _hierarchySelectedCategories = new HashSet<HierarchyCategory>();
         private VisualElement _leftColumn;
+        private ScrollView _leftScroll;
         private VisualElement _filterSectionContent;
         private VisualElement _filterDropdownButton;
 
@@ -96,14 +97,22 @@ namespace mhze.BatchRenamer
             mainRow.style.flexGrow = 1;
             mainRow.style.minHeight = 0;
 
+            var leftScroll = new ScrollView(ScrollViewMode.Vertical);
+            _leftScroll = leftScroll;
+            leftScroll.name = "left-column-scroll";
+            leftScroll.style.flexGrow = 0;
+            leftScroll.style.flexShrink = 1;
+            leftScroll.style.minHeight = 0;
+            leftScroll.style.minWidth = 280;
+            leftScroll.style.maxWidth = 380;
+            leftScroll.style.marginRight = 12;
+
             var leftColumn = new VisualElement();
             _leftColumn = leftColumn;
             leftColumn.style.flexDirection = FlexDirection.Column;
-            leftColumn.style.flexGrow = 0;
             leftColumn.style.flexShrink = 0;
-            leftColumn.style.marginRight = 12;
             leftColumn.style.minWidth = 280;
-            leftColumn.style.maxWidth = 380;
+            leftScroll.Add(leftColumn);
 
             var rightColumn = new VisualElement();
             rightColumn.style.flexDirection = FlexDirection.Column;
@@ -122,7 +131,7 @@ namespace mhze.BatchRenamer
             BuildPreviewSection(rightColumn);
             BuildActionsSection(rightColumn);
 
-            mainRow.Add(leftColumn);
+            mainRow.Add(leftScroll);
             mainRow.Add(rightColumn);
             rootVisualElement.Add(mainRow);
 
@@ -214,10 +223,12 @@ namespace mhze.BatchRenamer
             {
                 float childBottom = child.layout.y + child.layout.height;
                 float childMarginBottom = child.resolvedStyle.marginBottom;
+                if (float.IsNaN(childBottom)) childBottom = 0;
+                if (float.IsNaN(childMarginBottom)) childMarginBottom = 0;
                 controlsExtent = Mathf.Max(controlsExtent, childBottom + childMarginBottom);
             }
 
-            if (controlsExtent <= 0)
+            if (controlsExtent <= 0 || float.IsNaN(controlsExtent))
             {
                 rootVisualElement.schedule.Execute(AdjustWindowSize).StartingIn(100);
                 return;
@@ -230,19 +241,22 @@ namespace mhze.BatchRenamer
 
             float requiredHeight = Mathf.Ceil(rootPadding + headerHeight + controlsExtent + minPreviewHeight + actionsHeight);
 
-            float leftWidth = _leftColumn.resolvedStyle.width;
-            if (leftWidth <= 0) leftWidth = 320;
+            float leftWidth = _leftScroll != null ? _leftScroll.resolvedStyle.width : _leftColumn.resolvedStyle.width;
+            if (leftWidth <= 0 || float.IsNaN(leftWidth)) leftWidth = 320;
             float rightMinWidth = 300;
             float gap = 12;
             float hPadding = 24;
             float requiredWidth = Mathf.Ceil(leftWidth + gap + rightMinWidth + hPadding);
 
-            minSize = new Vector2(requiredWidth, requiredHeight);
-            maxSize = new Vector2(Mathf.Max(2000, requiredWidth), Mathf.Max(2000, requiredHeight));
+            float minHeight = 380;
+            minSize = Vector2.zero;
+            maxSize = Vector2.zero;
+            minSize = new Vector2(requiredWidth, minHeight);
+            maxSize = new Vector2(Mathf.Max(2000, requiredWidth), 2000);
 
             var pos = position;
             pos.width = Mathf.Max(pos.width, requiredWidth);
-            pos.height = Mathf.Max(pos.height, requiredHeight);
+            pos.height = Mathf.Max(pos.height, Mathf.Min(requiredHeight, 2000));
             position = pos;
         }
 
@@ -477,22 +491,54 @@ namespace mhze.BatchRenamer
             popup.style.paddingBottom = 4;
             popup.style.flexDirection = FlexDirection.Column;
 
-            var noneRow = new VisualElement();
-            noneRow.style.flexDirection = FlexDirection.Row;
-            noneRow.style.alignItems = Align.Center;
-            noneRow.style.paddingLeft = 8;
-            noneRow.style.paddingRight = 8;
-            noneRow.style.paddingTop = 2;
-            noneRow.style.paddingBottom = 2;
-            noneRow.style.minHeight = 22;
-            noneRow.name = "filter-none-row";
-            noneRow.RegisterCallback<MouseDownEvent>(_ => SelectNoneFilter());
+            var nothingRow = new VisualElement();
+            nothingRow.style.flexDirection = FlexDirection.Row;
+            nothingRow.style.alignItems = Align.Center;
+            nothingRow.style.paddingLeft = 8;
+            nothingRow.style.paddingRight = 8;
+            nothingRow.style.paddingTop = 2;
+            nothingRow.style.paddingBottom = 2;
+            nothingRow.style.minHeight = 22;
+            nothingRow.name = "filter-nothing-row";
+            nothingRow.RegisterCallback<MouseDownEvent>(_ => SelectNothingFilter());
 
-            var noneLabel = new Label("None");
-            noneLabel.style.fontSize = 12;
-            noneLabel.style.color = TextDim;
-            noneRow.Add(noneLabel);
-            popup.Add(noneRow);
+            var nothingCheck = new Label(_filterSelectedCategories.Count == 0 ? "\u2713" : " ");
+            nothingCheck.style.fontSize = 12;
+            nothingCheck.style.color = AccentBlue;
+            nothingCheck.style.minWidth = 16;
+            nothingCheck.style.flexShrink = 0;
+            nothingRow.Add(nothingCheck);
+
+            var nothingLabel = new Label("Nothing");
+            nothingLabel.style.fontSize = 12;
+            nothingLabel.style.color = TextDim;
+            nothingRow.Add(nothingLabel);
+            popup.Add(nothingRow);
+
+            var everythingRow = new VisualElement();
+            everythingRow.style.flexDirection = FlexDirection.Row;
+            everythingRow.style.alignItems = Align.Center;
+            everythingRow.style.paddingLeft = 8;
+            everythingRow.style.paddingRight = 8;
+            everythingRow.style.paddingTop = 2;
+            everythingRow.style.paddingBottom = 2;
+            everythingRow.style.minHeight = 22;
+            everythingRow.name = "filter-everything-row";
+            everythingRow.RegisterCallback<MouseDownEvent>(_ => SelectEverythingFilter());
+
+            int totalFilterCategories = Enum.GetValues(typeof(AssetCategory)).Length - 1;
+            var everythingCheck = new Label(_filterSelectedCategories.Count == totalFilterCategories ? "\u2713" : " ");
+            everythingCheck.style.fontSize = 12;
+            everythingCheck.style.color = AccentBlue;
+            everythingCheck.style.minWidth = 16;
+            everythingCheck.style.flexShrink = 0;
+            everythingRow.Add(everythingCheck);
+
+            var everythingLabel = new Label("Everything");
+            everythingLabel.style.fontSize = 12;
+            everythingLabel.style.color = TextPrimary;
+            everythingRow.Add(everythingLabel);
+            popup.Add(everythingRow);
 
             var sep = new VisualElement();
             sep.style.height = 1;
@@ -697,22 +743,54 @@ namespace mhze.BatchRenamer
             popup.style.paddingBottom = 4;
             popup.style.flexDirection = FlexDirection.Column;
 
-            var noneRow = new VisualElement();
-            noneRow.style.flexDirection = FlexDirection.Row;
-            noneRow.style.alignItems = Align.Center;
-            noneRow.style.paddingLeft = 8;
-            noneRow.style.paddingRight = 8;
-            noneRow.style.paddingTop = 2;
-            noneRow.style.paddingBottom = 2;
-            noneRow.style.minHeight = 22;
-            noneRow.name = "hierarchy-filter-none-row";
-            noneRow.RegisterCallback<MouseDownEvent>(_ => SelectNoneHierarchyFilter());
+            var nothingRow = new VisualElement();
+            nothingRow.style.flexDirection = FlexDirection.Row;
+            nothingRow.style.alignItems = Align.Center;
+            nothingRow.style.paddingLeft = 8;
+            nothingRow.style.paddingRight = 8;
+            nothingRow.style.paddingTop = 2;
+            nothingRow.style.paddingBottom = 2;
+            nothingRow.style.minHeight = 22;
+            nothingRow.name = "hierarchy-filter-nothing-row";
+            nothingRow.RegisterCallback<MouseDownEvent>(_ => SelectNothingFilter());
 
-            var noneLabel = new Label("None");
-            noneLabel.style.fontSize = 12;
-            noneLabel.style.color = TextDim;
-            noneRow.Add(noneLabel);
-            popup.Add(noneRow);
+            var nothingCheck = new Label(_hierarchySelectedCategories.Count == 0 ? "\u2713" : " ");
+            nothingCheck.style.fontSize = 12;
+            nothingCheck.style.color = AccentBlue;
+            nothingCheck.style.minWidth = 16;
+            nothingCheck.style.flexShrink = 0;
+            nothingRow.Add(nothingCheck);
+
+            var nothingLabel = new Label("Nothing");
+            nothingLabel.style.fontSize = 12;
+            nothingLabel.style.color = TextDim;
+            nothingRow.Add(nothingLabel);
+            popup.Add(nothingRow);
+
+            var everythingRow = new VisualElement();
+            everythingRow.style.flexDirection = FlexDirection.Row;
+            everythingRow.style.alignItems = Align.Center;
+            everythingRow.style.paddingLeft = 8;
+            everythingRow.style.paddingRight = 8;
+            everythingRow.style.paddingTop = 2;
+            everythingRow.style.paddingBottom = 2;
+            everythingRow.style.minHeight = 22;
+            everythingRow.name = "hierarchy-filter-everything-row";
+            everythingRow.RegisterCallback<MouseDownEvent>(_ => SelectEverythingFilter());
+
+            int totalFilterCategories = Enum.GetValues(typeof(HierarchyCategory)).Length - 1;
+            var everythingCheck = new Label(_hierarchySelectedCategories.Count == totalFilterCategories ? "\u2713" : " ");
+            everythingCheck.style.fontSize = 12;
+            everythingCheck.style.color = AccentBlue;
+            everythingCheck.style.minWidth = 16;
+            everythingCheck.style.flexShrink = 0;
+            everythingRow.Add(everythingCheck);
+
+            var everythingLabel = new Label("Everything");
+            everythingLabel.style.fontSize = 12;
+            everythingLabel.style.color = TextPrimary;
+            everythingRow.Add(everythingLabel);
+            popup.Add(everythingRow);
 
             var sep = new VisualElement();
             sep.style.height = 1;
@@ -837,7 +915,7 @@ namespace mhze.BatchRenamer
             _filterPopup = null;
         }
 
-        private void SelectNoneFilter()
+        private void SelectNothingFilter()
         {
             if (_processor.IsHierarchyMode)
             {
@@ -853,9 +931,29 @@ namespace mhze.BatchRenamer
             MarkPreviewDirty();
         }
 
-        private void SelectNoneHierarchyFilter()
+        private void SelectEverythingFilter()
         {
-            _hierarchySelectedCategories.Clear();
+            if (_processor.IsHierarchyMode)
+            {
+                var cats = (HierarchyCategory[])Enum.GetValues(typeof(HierarchyCategory));
+                foreach (var cat in cats)
+                {
+                    if (cat != HierarchyCategory.All)
+                        _hierarchySelectedCategories.Add(cat);
+                }
+            }
+            else
+            {
+                var cats = (AssetCategory[])Enum.GetValues(typeof(AssetCategory));
+                foreach (var cat in cats)
+                {
+                    if (cat != AssetCategory.All)
+                        _filterSelectedCategories.Add(cat);
+                }
+                var subs = (TextureSubCategory[])Enum.GetValues(typeof(TextureSubCategory));
+                foreach (var sub in subs)
+                    _filterTextureSubCategories.Add(sub);
+            }
             CloseFilterPopup();
             UpdateFilterSummary();
             MarkPreviewDirty();
