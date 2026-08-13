@@ -15,16 +15,6 @@ Unity Editor Visual Tweaks adds readability improvements to Hierarchy and Projec
 - Project folder depth lines (list/tree style rows).
 - User preferences under `Preferences/Editor Visuals`.
 
-## Installation
-### Option A: Add from Git URL
-1. Open Unity Package Manager.
-2. Click + then Add package from git URL.
-3. Paste this package repository URL.
-
-### Option B: Local package folder
-1. Copy `unity-editor-visual-tweaks` into your project's `Packages` folder.
-2. Reopen Unity or wait for package refresh.
-
 ## How To Use
 1. Open `Edit/Preferences`.
 2. Go to `Editor Visuals`.

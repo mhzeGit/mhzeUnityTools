@@ -19,16 +19,6 @@ Quick Texture Tools provides fast, repeatable texture operations directly in Uni
 - Whiten RGB while preserving alpha.
 - Context menu support on selected textures.
 
-## Installation
-### Option A: Add from Git URL
-1. Open Unity Package Manager.
-2. Click + then Add package from git URL.
-3. Paste this package repository URL.
-
-### Option B: Local package folder
-1. Copy `com.gigaduck.quick-texture-tools` into your project's `Packages` folder.
-2. Reopen Unity or wait for package refresh.
-
 ## How To Use
 Window entry: `Tools/Quick Texture Tools`
 

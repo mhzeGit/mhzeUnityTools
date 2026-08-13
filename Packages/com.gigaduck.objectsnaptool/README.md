@@ -23,10 +23,6 @@ A simple Unity Editor tool for snapping selected objects to surfaces using keybo
 
 Alternatively, use the menu: `Tools > Snap to Ground`
 
-## Installation
-
-This package is automatically recognized by Unity when placed in the `Packages` folder.
-
 ## Technical Details
 
 - Max snap distance: 100 units

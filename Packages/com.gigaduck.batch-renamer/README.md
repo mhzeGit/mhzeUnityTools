@@ -18,16 +18,6 @@ Batch Renamer lets you rename multiple Unity assets and GameObjects at once with
 - **Number Preservation** — detect trailing numbers and re-append them with configurable format after rename.
 - **Real-time preview** — highlighted match regions, diff display, and per-row old→new name comparison.
 
-## Installation
-### Option A: Add from Git URL
-1. Open Unity Package Manager.
-2. Click + then Add package from git URL.
-3. Paste `https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.batch-renamer`
-
-### Option B: Local package folder
-1. Copy `com.gigaduck.batch-renamer` into your project's `Packages` folder.
-2. Reopen Unity or wait for package refresh.
-
 ## How To Use
 1. Select assets in the Project window or GameObjects in the Hierarchy.
 2. Open via **Assets/Batch Rename** or **GameObject/Batch Rename**.

@@ -15,16 +15,6 @@ Quickly generate folder structures from built-in presets or your own custom temp
 - **One-Click Setup**: Press "Setup Folders" to create the entire tree under `Assets` or any target folder.
 - **Live Editing**: Rename, add, or remove folders directly in the window.
 
-## Installation
-### Option A: Add from Git URL
-1. Open Unity Package Manager.
-2. Click + then Add package from git URL.
-3. Paste this package repository URL.
-
-### Option B: Local package folder
-1. Copy `com.gigaduck.folder-structure-generator` into your project's `Packages` folder.
-2. Reopen Unity or wait for package refresh.
-
 ## How To Use
 1. Open **Tools > Gigaduck > Folder Structure Generator**.
 2. Select a preset from the dropdown.

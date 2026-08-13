@@ -16,16 +16,6 @@ Unity Editor Navigator adds keyboard-first workflows to the Unity editor so you 
 - Undo support for Hierarchy operations.
 - Settings/help window with shortcut reference.
 
-## Installation
-### Option A: Add from Git URL
-1. Open Unity Package Manager.
-2. Click + then Add package from git URL.
-3. Paste this package repository URL.
-
-### Option B: Local package folder
-1. Copy `unity-editor-navigator` into your project's `Packages` folder.
-2. Reopen Unity or wait for package refresh.
-
 ## How To Use
 ### Hierarchy shortcuts
 Use these while Hierarchy is focused:

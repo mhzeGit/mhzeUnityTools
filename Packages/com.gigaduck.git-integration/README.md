@@ -18,16 +18,6 @@ Unity Git Integration brings core Git workflows into the Unity editor: commit hi
 - Main window shortcut: `Tools/Git Integration` (Ctrl + Alt + G).
 - Setup/config tools for user identity, remotes, `.gitignore`, and LFS.
 
-## Installation
-### Option A: Add from Git URL
-1. Open Unity Package Manager.
-2. Click + then Add package from git URL.
-3. Paste this package repository URL.
-
-### Option B: Local package folder
-1. Copy `unity-git-integration` into your project's `Packages` folder.
-2. Reopen Unity or wait for package refresh.
-
 ## How To Use
 1. Open `Tools/Git Integration`.
 2. Use History view to browse commits and select one for details.

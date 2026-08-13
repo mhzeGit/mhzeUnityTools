@@ -15,16 +15,6 @@ Unity Folder Colorizer applies custom colors to Project window folders so you ca
 - Automatic persistence to `ProjectSettings/FolderColorSettings.json`.
 - Handles legacy settings migration.
 
-## Installation
-### Option A: Add from Git URL
-1. Open Unity Package Manager.
-2. Click + then Add package from git URL.
-3. Paste this package repository URL.
-
-### Option B: Local package folder
-1. Copy `unity-folder-colorizer` into your project's `Packages` folder.
-2. Reopen Unity or wait for package refresh.
-
 ## How To Use
 1. Open Project Settings.
 2. Go to `Project/Folder Color Settings`.
