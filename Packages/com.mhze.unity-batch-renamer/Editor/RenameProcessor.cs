@@ -626,14 +626,47 @@ namespace mhze.BatchRenamer
                 while (i < input.Length && input[i] != ' ' && input[i] != '_' && input[i] != '-' && input[i] != '.')
                     i++;
 
-                string word = input.Substring(start, i - start);
-                if (capitalizeFirst)
-                    word = char.ToUpperInvariant(word[0]) + word.Substring(1);
-                if (lowerRest)
-                    word = word.Substring(0, 1) + word.Substring(1).ToLowerInvariant();
-                sb.Append(word);
+                string run = input.Substring(start, i - start);
+                int wordStart = 0;
+                for (int j = 1; j < run.Length; j++)
+                {
+                    if (IsWordBoundary(run, j))
+                    {
+                        AppendConvertedWord(sb, run.Substring(wordStart, j - wordStart), capitalizeFirst, lowerRest);
+                        wordStart = j;
+                    }
+                }
+                AppendConvertedWord(sb, run.Substring(wordStart), capitalizeFirst, lowerRest);
             }
             return sb.ToString();
+        }
+
+        private static bool IsWordBoundary(string run, int index)
+        {
+            char prev = run[index - 1];
+            char cur = run[index];
+            if (char.IsUpper(cur) && char.IsLower(prev))
+                return true;
+            return char.IsUpper(cur) && char.IsUpper(prev) &&
+                   index + 1 < run.Length && char.IsLower(run[index + 1]);
+        }
+
+        private static void AppendConvertedWord(System.Text.StringBuilder sb, string word, bool capitalizeFirst, bool lowerRest)
+        {
+            if (word.Length == 0) return;
+            bool allUpper = true;
+            for (int i = 0; i < word.Length; i++)
+            {
+                if (!char.IsUpper(word[i]))
+                {
+                    allUpper = false;
+                    break;
+                }
+            }
+
+            sb.Append(capitalizeFirst ? char.ToUpperInvariant(word[0]) : word[0]);
+            if (word.Length > 1)
+                sb.Append(lowerRest || allUpper ? word.Substring(1).ToLowerInvariant() : word.Substring(1));
         }
 
         private string ApplyNumberFormat(string baseName, string number)
