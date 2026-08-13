@@ -46,7 +46,7 @@ namespace UnityFolderColorSettings.Editor
         {
             get
             {
-                var packageRoot = Path.Combine(Application.dataPath, "..", "Packages", "com.gigaduck.folder-colorizer");
+                var packageRoot = Path.Combine(Application.dataPath, "com.gigaduck.folder-colorizer");
                 return Path.Combine(packageRoot, "Resources", DefaultSettingsFileName);
             }
         }

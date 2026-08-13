@@ -1,71 +1,5 @@
 {
   "dependencies": {
-    "com.gigaduck.batch-renamer": {
-      "version": "file:com.gigaduck.batch-renamer",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.editor-custom-commands": {
-      "version": "file:com.gigaduck.editor-custom-commands",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.editor-navigator": {
-      "version": "file:com.gigaduck.editor-navigator",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.editor-visual-tweaks": {
-      "version": "file:com.gigaduck.editor-visual-tweaks",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.fast-play-button": {
-      "version": "file:com.gigaduck.fast-play-button",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.folder-colorizer": {
-      "version": "file:com.gigaduck.folder-colorizer",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.folder-structure-generator": {
-      "version": "file:com.gigaduck.folder-structure-generator",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.git-integration": {
-      "version": "file:com.gigaduck.git-integration",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.hierarchy-context-menu": {
-      "version": "file:com.gigaduck.hierarchy-context-menu",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.missing-script-inspector": {
-      "version": "file:com.gigaduck.missing-script-inspector",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.url-package-updater": {
-      "version": "file:com.gigaduck.url-package-updater",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
     "com.unity.ai.navigation": {
       "version": "2.0.14",
       "depth": 0,
@@ -173,18 +107,6 @@
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"
-    },
-    "com.gigaduck.objectsnaptool": {
-      "version": "file:com.gigaduck.objectsnaptool",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
-    "com.gigaduck.quick-texture-tools": {
-      "version": "file:com.gigaduck.quick-texture-tools",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
     },
     "com.unity.render-pipelines.core": {
       "version": "17.5.0",

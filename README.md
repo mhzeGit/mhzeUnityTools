@@ -1,70 +1,25 @@
-# mhzeUnityTools
+# Gigaduck Unity Tools
 
-Collection of Unity Editor tools and packages.
+Collection of Unity Editor tools by Gigaduck.
+
+Each tool is a self-contained package folder under `Assets/`, ready to be uploaded to the Unity Asset Store.
 
 ## Packages
 
-**Editor Navigator**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.editor-navigator
-```
+- **Batch Renamer** — `Assets/com.gigaduck.batch-renamer`
+- **Editor Custom Commands** — `Assets/com.gigaduck.editor-custom-commands`
+- **Editor Navigator** — `Assets/com.gigaduck.editor-navigator`
+- **Editor Visual Tweaks** — `Assets/com.gigaduck.editor-visual-tweaks`
+- **Fast Play Button** — `Assets/com.gigaduck.fast-play-button`
+- **Folder Colorizer** — `Assets/com.gigaduck.folder-colorizer`
+- **Folder Structure Generator** — `Assets/com.gigaduck.folder-structure-generator`
+- **Git Integration** — `Assets/com.gigaduck.git-integration`
+- **Hierarchy Context Menu** — `Assets/com.gigaduck.hierarchy-context-menu`
+- **Missing Script Inspector** — `Assets/com.gigaduck.missing-script-inspector`
+- **Object Snap Tool** — `Assets/com.gigaduck.objectsnaptool`
+- **Quick Texture Tools** — `Assets/com.gigaduck.quick-texture-tools`
+- **URL Package Updater** — `Assets/com.gigaduck.url-package-updater`
 
-**Fast Play Button**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.fast-play-button
-```
+## Publishing to the Asset Store
 
-**Folder Colorizer**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.folder-colorizer
-```
-
-**Git Integration**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.git-integration
-```
-
-**Editor Visual Tweaks**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.editor-visual-tweaks
-```
-
-**Hierarchy Context Menu**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.hierarchy-context-menu
-```
-
-**Missing Script Inspector**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.missing-script-inspector
-```
-
-**Batch Renamer**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.batch-renamer
-```
-
-**URL Package Updater**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.url-package-updater
-```
-
-**Object Snap Tool**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.objectsnaptool
-```
-
-**Quick Texture Tools**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.quick-texture-tools
-```
-
-**Editor Custom Commands**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.editor-custom-commands
-```
-
-**Folder Structure Generator**
-```
-https://github.com/mhzeGit/mhzeUnityTools.git?path=Packages/com.gigaduck.folder-structure-generator
-```
+Each package folder under `Assets/` can be exported and uploaded using Unity's **Asset Store Tools** (`Tools > Asset Store Tools` in the editor).

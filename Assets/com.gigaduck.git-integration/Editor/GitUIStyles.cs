@@ -5,7 +5,7 @@ namespace GitIntegration
 {
     public static class GitUIStyles
     {
-        private const string PackagePath  = "Packages/com.gigaduck.git-integration";
+        private const string PackagePath  = "Assets/com.gigaduck.git-integration";
         private const string IconsPath    = PackagePath + "/ToolAssets/Icons/AssetChangesIcon/";
 
 
