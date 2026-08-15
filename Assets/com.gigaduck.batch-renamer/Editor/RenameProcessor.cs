@@ -853,7 +853,7 @@ namespace Gigaduck.BatchRenamer
             AssetDatabase.Refresh();
             EditorApplication.delayCall += () =>
             {
-                EditorUtility.DisplayDialog("Batch Rename Complete",
+                EditorUtility.DisplayDialog("Advanced Batch Rename Complete",
                     $"Successfully renamed {renamedCount} item(s).\n" +
                     (errorCount > 0 ? $"{errorCount} error(s) occurred.\nCheck Console for details." : ""),
                     "OK");
@@ -877,7 +877,7 @@ namespace Gigaduck.BatchRenamer
                 }
             }
             if (sceneObjects.Count > 0)
-                Undo.RecordObjects(sceneObjects.ToArray(), "Batch Rename");
+                Undo.RecordObjects(sceneObjects.ToArray(), "Advanced Batch Rename");
 
             for (int i = 0; i < Items.Count; i++)
             {
@@ -1031,7 +1031,7 @@ namespace Gigaduck.BatchRenamer
             var savedTotalErrors = totalErrors;
             EditorApplication.delayCall += () =>
             {
-                EditorUtility.DisplayDialog("Batch Rename Complete",
+                EditorUtility.DisplayDialog("Advanced Batch Rename Complete",
                     $"Successfully renamed {savedTotalRenamed} item(s).\n" +
                     (savedTotalErrors > 0 ? $"{savedTotalErrors} error(s) occurred.\nCheck Console for details." : ""),
                     "OK");

@@ -9,7 +9,7 @@ namespace Gigaduck.BatchRenamer
 {
     static class BatchRenamer
     {
-        [MenuItem("Assets/Create/Batch Rename Preset", false, 200)]
+        [MenuItem("Assets/Create/Advanced Batch Rename Preset", false, 200)]
         static void CreatePreset()
         {
             var preset = ScriptableObject.CreateInstance<BatchRenamePreset>();
@@ -19,14 +19,14 @@ namespace Gigaduck.BatchRenamer
             else if (!AssetDatabase.IsValidFolder(path))
                 path = Path.GetDirectoryName(path);
 
-            string assetPath = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(path, "New Batch Rename Preset.asset"));
+            string assetPath = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(path, "New Advanced Batch Rename Preset.asset"));
             AssetDatabase.CreateAsset(preset, assetPath);
             AssetDatabase.SaveAssets();
             EditorUtility.FocusProjectWindow();
             Selection.activeObject = preset;
         }
 
-        [MenuItem("Assets/Batch Rename", false, 20)]
+        [MenuItem("Assets/Advanced Batch Rename", false, 20)]
         static void OpenFromProject()
         {
             var objects = GetSelectedProjectAssets();
@@ -57,7 +57,7 @@ namespace Gigaduck.BatchRenamer
             return objects;
         }
 
-        [MenuItem("GameObject/Batch Rename", false, 20)]
+        [MenuItem("GameObject/Advanced Batch Rename", false, 20)]
         static void OpenFromHierarchy()
         {
             var objects = Selection.objects;
@@ -134,8 +134,8 @@ namespace Gigaduck.BatchRenamer
             return Selection.activeObject != null;
         }
 
-        [MenuItem("Edit/Batch Rename", false, 21)]
-        [Shortcut("Edit/Batch Rename", KeyCode.F2, ShortcutModifiers.Action)]
+        [MenuItem("Edit/Advanced Batch Rename", false, 21)]
+        [Shortcut("Edit/Advanced Batch Rename", KeyCode.F2, ShortcutModifiers.Action)]
         private static void OnBatchRenameShortcut()
         {
             var objects = GetSelectedProjectAssets();
@@ -143,7 +143,7 @@ namespace Gigaduck.BatchRenamer
                 BatchRenamerWindow.ShowWindow(objects);
         }
 
-        [MenuItem("Edit/Batch Rename", true, 21)]
+        [MenuItem("Edit/Advanced Batch Rename", true, 21)]
         private static bool ValidateOnBatchRenameShortcut()
         {
             return Selection.objects != null && Selection.objects.Length > 1;

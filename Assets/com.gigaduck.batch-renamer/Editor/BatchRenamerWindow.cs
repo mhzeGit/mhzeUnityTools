@@ -72,7 +72,7 @@ namespace Gigaduck.BatchRenamer
                     Debug.Log($"[BatchRenamer]   ShowWindow obj[{i}] type={obj?.GetType().Name ?? "null"} name='{obj?.name ?? "null"}' path='{path}'");
                 }
             }
-            var window = GetWindow<BatchRenamerWindow>(true, "Batch Rename");
+            var window = GetWindow<BatchRenamerWindow>(true, "Advanced Batch Rename");
             window._pendingObjects = selectedObjects;
             window.Show();
 
@@ -263,7 +263,7 @@ namespace Gigaduck.BatchRenamer
 
         private void BuildHeader()
         {
-            var header = new Label("Batch Rename");
+            var header = new Label("Advanced Batch Rename");
             header.style.fontSize = 18;
             header.style.color = TextPrimary;
             header.style.unityFontStyleAndWeight = FontStyle.Bold;
@@ -2054,7 +2054,7 @@ namespace Gigaduck.BatchRenamer
             {
                 string opDesc = $"{_currentPreset.operations.Count} operation(s)";
                 bool proceed = EditorUtility.DisplayDialog(
-                    "Confirm Batch Rename",
+                    "Confirm Advanced Batch Rename",
                     $"Are you sure you want to rename {changedCount} item(s) using {opDesc}?\nThis action can be undone (Ctrl+Z).",
                     "Rename", "Cancel");
 
