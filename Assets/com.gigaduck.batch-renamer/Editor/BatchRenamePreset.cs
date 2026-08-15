@@ -13,6 +13,7 @@ namespace Gigaduck.BatchRenamer
         public string replaceText = "";
         public string prefix = "";
         public string suffix = "";
+        public bool skipIfAlreadyExists;
         public TextCaseMode textCase = TextCaseMode.None;
         public bool preserveNumbers;
         public NumberFormatPreset numberFormat = NumberFormatPreset.UnderscoreN;

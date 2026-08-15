@@ -17,6 +17,7 @@ namespace Gigaduck.BatchRenamer
         private Toggle _caseSensitiveToggle;
         private TextField _prefixField;
         private TextField _suffixField;
+        private Toggle _skipIfExistsToggle;
         private EnumField _caseField;
         private Toggle _preserveNumbersToggle;
         private EnumField _numberFormatField;
@@ -1040,6 +1041,17 @@ namespace Gigaduck.BatchRenamer
             _suffixField = CreateLabelledField(section, "Suffix", "Add suffix...");
             _suffixField.RegisterValueChangedCallback(_ => MarkPreviewDirty());
 
+            _skipIfExistsToggle = new Toggle("Don't add if already exists");
+            var skipLabel = _skipIfExistsToggle.Q<Label>();
+            if (skipLabel != null)
+            {
+                skipLabel.style.fontSize = 12;
+                skipLabel.style.color = TextSecondary;
+                skipLabel.style.marginLeft = 4;
+            }
+            _skipIfExistsToggle.RegisterValueChangedCallback(_ => MarkPreviewDirty());
+            section.Add(_skipIfExistsToggle);
+
             _caseField = new EnumField("Case", TextCaseMode.None);
             _caseField.label = "Case";
             _caseField.style.marginBottom = 4;
@@ -1416,6 +1428,7 @@ namespace Gigaduck.BatchRenamer
             _processor.ReplaceText = _replaceField?.value ?? "";
             _processor.Prefix = _prefixField?.value ?? "";
             _processor.Suffix = _suffixField?.value ?? "";
+            _processor.SkipIfAlreadyExists = _skipIfExistsToggle?.value ?? false;
             _processor.CaseSensitive = _caseSensitiveToggle?.value ?? false;
             _processor.TextCase = _caseField != null ? (TextCaseMode)_caseField.value : TextCaseMode.None;
             _processor.PreserveNumbers = _preserveNumbersToggle?.value ?? false;
@@ -2135,6 +2148,7 @@ namespace Gigaduck.BatchRenamer
             if (_replaceField != null) _replaceField.SetValueWithoutNotify(op.replaceText);
             if (_prefixField != null) _prefixField.SetValueWithoutNotify(op.prefix);
             if (_suffixField != null) _suffixField.SetValueWithoutNotify(op.suffix);
+            if (_skipIfExistsToggle != null) _skipIfExistsToggle.SetValueWithoutNotify(op.skipIfAlreadyExists);
             if (_caseField != null) _caseField.SetValueWithoutNotify(op.textCase);
             if (_preserveNumbersToggle != null) _preserveNumbersToggle.SetValueWithoutNotify(op.preserveNumbers);
             if (_numberFormatField != null) _numberFormatField.SetValueWithoutNotify(op.numberFormat);

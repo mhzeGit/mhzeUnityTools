@@ -62,6 +62,7 @@ namespace Gigaduck.BatchRenamer
         public string ReplaceText = "";
         public string Prefix = "";
         public string Suffix = "";
+        public bool SkipIfAlreadyExists;
         public TextCaseMode TextCase = TextCaseMode.None;
         public bool PreserveNumbers;
         public NumberFormatPreset NumberFormat = NumberFormatPreset.UnderscoreN;
@@ -552,10 +553,10 @@ namespace Gigaduck.BatchRenamer
                 }
             }
 
-            if (!string.IsNullOrEmpty(resolvedPrefix))
+            if (!string.IsNullOrEmpty(resolvedPrefix) && !(SkipIfAlreadyExists && result.StartsWith(resolvedPrefix, StringComparison.Ordinal)))
                 result = resolvedPrefix + result;
 
-            if (!string.IsNullOrEmpty(resolvedSuffix))
+            if (!string.IsNullOrEmpty(resolvedSuffix) && !(SkipIfAlreadyExists && result.EndsWith(resolvedSuffix, StringComparison.Ordinal)))
                 result = result + resolvedSuffix;
 
             result = ApplyTextCase(result);
@@ -940,6 +941,7 @@ namespace Gigaduck.BatchRenamer
             ReplaceText = op.replaceText;
             Prefix = op.prefix;
             Suffix = op.suffix;
+            SkipIfAlreadyExists = op.skipIfAlreadyExists;
             TextCase = op.textCase;
             PreserveNumbers = op.preserveNumbers;
             NumberFormat = op.numberFormat;
@@ -962,6 +964,7 @@ namespace Gigaduck.BatchRenamer
             string uiReplaceText = ReplaceText;
             string uiPrefix = Prefix;
             string uiSuffix = Suffix;
+            bool uiSkipIfAlreadyExists = SkipIfAlreadyExists;
             TextCaseMode uiTextCase = TextCase;
             bool uiPreserveNumbers = PreserveNumbers;
             NumberFormatPreset uiNumberFormat = NumberFormat;
@@ -1001,6 +1004,7 @@ namespace Gigaduck.BatchRenamer
             ReplaceText = uiReplaceText;
             Prefix = uiPrefix;
             Suffix = uiSuffix;
+            SkipIfAlreadyExists = uiSkipIfAlreadyExists;
             TextCase = uiTextCase;
             PreserveNumbers = uiPreserveNumbers;
             NumberFormat = uiNumberFormat;
