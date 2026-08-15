@@ -37,6 +37,10 @@ namespace Gigaduck.BatchRenamer
         public string NewName;
         public List<SearchExpression.MatchEntry> MatchedTexts;
         public bool IsValid = true;
+        public int Index = -1;
+        public bool HasConflict;
+        public string ConflictReason;
+        internal AssetCategory CategoryCache = (AssetCategory)(-1);
     }
 
     public enum HierarchyCategory
@@ -68,6 +72,9 @@ namespace Gigaduck.BatchRenamer
         public NumberFormatPreset NumberFormat = NumberFormatPreset.UnderscoreN;
         public int StartIndex = 1;
         public bool CaseSensitive = false;
+        public bool SearchMustMatch = true;
+        public bool UseRegex;
+        public string RegexError;
         public HashSet<AssetCategory> EnabledCategories = new HashSet<AssetCategory>();
         public HashSet<TextureSubCategory> EnabledTextureSubCategories = new HashSet<TextureSubCategory>();
         public bool IsHierarchyMode { get; set; }
@@ -78,18 +85,14 @@ namespace Gigaduck.BatchRenamer
         private SearchExpression _cachedExpression;
         private string _lastSearchPattern;
         private bool _lastCaseSensitive;
+        private bool _lastUseRegex;
 
         public void CollectFromObjects(Object[] objects)
         {
-            Debug.Log($"[BatchRenamer] CollectFromObjects called, objects count={(objects != null ? objects.Length : 0)}");
             if (objects == null || objects.Length == 0)
-            {
-                Debug.LogWarning($"[BatchRenamer] WARNING: CollectFromObjects received null or empty array - returning without clearing items");
                 return;
-            }
 
             Items.Clear();
-            Debug.Log($"[BatchRenamer] CollectFromObjects: Items cleared, now will process {objects.Length} objects");
 
             bool hasSceneGameObjects = false;
             bool hasAssets = false;
@@ -110,8 +113,6 @@ namespace Gigaduck.BatchRenamer
                 }
             }
 
-            Debug.Log($"[BatchRenamer] CollectFromObjects: hasAssets={hasAssets} hasScene={hasSceneGameObjects}");
-
             if (hasAssets || (!hasSceneGameObjects))
             {
                 CollectFromProjectSelection(objects);
@@ -120,7 +121,6 @@ namespace Gigaduck.BatchRenamer
             {
                 CollectFromHierarchySelection(objects);
             }
-            Debug.Log($"[BatchRenamer] CollectFromObjects done, Items.Count={Items.Count}");
         }
 
         public void SetActiveCategories(HashSet<AssetCategory> categories)
@@ -131,18 +131,12 @@ namespace Gigaduck.BatchRenamer
         private void CollectFromProjectSelection(Object[] objects)
         {
             IsHierarchyMode = false;
-            Debug.Log($"[BatchRenamer] CollectFromProjectSelection called with {objects.Length} objects");
             var visited = new HashSet<string>();
             foreach (var obj in objects)
             {
                 var path = AssetDatabase.GetAssetPath(obj);
-                var objType = obj?.GetType().Name ?? "null";
-                Debug.Log($"[BatchRenamer]   CPPS obj type={objType} name='{obj?.name}' path='{path ?? "null"}'");
                 if (string.IsNullOrEmpty(path))
-                {
-                    Debug.LogWarning($"[BatchRenamer]   WARNING: path is null/empty for {objType} '{obj?.name}' - skipping");
                     continue;
-                }
 
                 if (AssetDatabase.IsValidFolder(path))
                 {
@@ -153,7 +147,6 @@ namespace Gigaduck.BatchRenamer
                             Target = obj,
                             OriginalName = obj.name
                         });
-                        Debug.Log($"[BatchRenamer]   ADDED folder item: '{obj.name}' path='{path}'");
                     }
                     CollectFromFolder(path, visited);
                 }
@@ -164,21 +157,13 @@ namespace Gigaduck.BatchRenamer
                         Target = obj,
                         OriginalName = obj.name
                     });
-                    Debug.Log($"[BatchRenamer]   ADDED item: '{obj.name}' path='{path}' Items.Count={Items.Count}");
-                }
-                else
-                {
-                    Debug.Log($"[BatchRenamer]   SKIPPED (duplicate): '{obj.name}' path='{path}'");
                 }
             }
-            Debug.Log($"[BatchRenamer] CollectFromProjectSelection done, Items.Count={Items.Count}");
         }
 
         private void CollectFromFolder(string folderPath, HashSet<string> visited)
         {
-            Debug.Log($"[BatchRenamer]   CollectFromFolder: '{folderPath}'");
             var guids = AssetDatabase.FindAssets("", new[] { folderPath });
-            Debug.Log($"[BatchRenamer]   FindAssets found {guids.Length} assets in '{folderPath}'");
             foreach (var guid in guids)
             {
                 var assetPath = AssetDatabase.GUIDToAssetPath(guid);
@@ -192,7 +177,6 @@ namespace Gigaduck.BatchRenamer
                             Target = asset,
                             OriginalName = asset.name
                         });
-                        Debug.Log($"[BatchRenamer]   ADDED item from folder: '{asset.name}' path='{assetPath}' Items.Count={Items.Count}");
                     }
                 }
             }
@@ -230,83 +214,49 @@ namespace Gigaduck.BatchRenamer
             bool savedPreserveNumbers = PreserveNumbers;
             NumberFormatPreset savedNumberFormat = NumberFormat;
             bool savedCaseSensitive = CaseSensitive;
+            bool savedSearchMustMatch = SearchMustMatch;
             var savedCategories = new HashSet<AssetCategory>(EnabledCategories);
             var savedTextureSubCategories = new HashSet<TextureSubCategory>(EnabledTextureSubCategories);
             var savedHierarchyCategories = new HashSet<HierarchyCategory>(EnabledHierarchyCategories);
 
-            if (hasPresetOps)
-            {
-                ApplyOperation(snapshot[0]);
-            }
-
-            bool patternChanged = SearchPattern != _lastSearchPattern || CaseSensitive != _lastCaseSensitive;
+            bool patternChanged = SearchPattern != _lastSearchPattern || CaseSensitive != _lastCaseSensitive || UseRegex != _lastUseRegex;
             if (patternChanged)
             {
-                _cachedExpression = !string.IsNullOrEmpty(SearchPattern)
-                    ? SearchExpression.Parse(SearchPattern, CaseSensitive)
-                    : null;
+                RegexError = null;
+                _cachedExpression = ParseSearchPattern();
                 _lastSearchPattern = SearchPattern;
                 _lastCaseSensitive = CaseSensitive;
-                if (_cachedExpression != null)
-                    Debug.Log($"[BatchRenamer] Parsed '{SearchPattern}' (caseSensitive={CaseSensitive}) → {_cachedExpression.Describe()}");
+                _lastUseRegex = UseRegex;
             }
 
-            foreach (var item in Items)
+            if (PreserveNumbers && NumberFormat == NumberFormatPreset.UnderscorePadded)
             {
-                List<SearchExpression.MatchEntry> matchedEntries = null;
-                if (_cachedExpression != null)
-                    matchedEntries = _cachedExpression.Match(item.OriginalName);
-                bool matchesSearch = _cachedExpression == null || matchedEntries.Count > 0;
-
-                item.MatchedTexts = matchedEntries;
-
-                if (hasPresetOps)
+                NumberPadWidth = 2;
+                foreach (var item in Items)
                 {
-                    item.IsValid = true;
-                }
-                else
-                {
-                    bool matchesFilter;
-                    if (IsHierarchyMode)
-                    {
-                        matchesFilter = MatchesHierarchyFilter(item);
-                    }
-                    else
-                    {
-                        bool hasActiveFilters = EnabledCategories.Count > 0;
-                        if (!hasActiveFilters)
-                        {
-                            matchesFilter = false;
-                        }
-                        else
-                        {
-                            var cat = ClassifyObject(item.Target);
-                            matchesFilter = EnabledCategories.Contains(cat);
-
-                            if (matchesFilter && cat == AssetCategory.Texture && EnabledTextureSubCategories.Count > 0)
-                            {
-                                var subCat = ClassifyTexture(item.Target);
-                                matchesFilter = EnabledTextureSubCategories.Contains(subCat);
-                            }
-                        }
-                    }
-                    item.IsValid = matchesFilter;
+                    var m = Regex.Match(item.OriginalName, @"(\d+)$");
+                    if (m.Success && m.Groups[1].Value.Length > NumberPadWidth)
+                        NumberPadWidth = m.Groups[1].Value.Length;
                 }
             }
 
             if (hasPresetOps)
             {
-                Debug.Log($"[BatchRenamer] Preset chain: {snapshot.Length} operation(s)");
-                for (int idx = 0; idx < Items.Count; idx++)
-                {
-                    var item = Items[idx];
-                    string name = item.OriginalName;
-                    for (int opIdx = 0; opIdx < snapshot.Length; opIdx++)
-                    {
-                        var op = snapshot[opIdx];
-                        Debug.Log($"[BatchRenamer]   Chain item='{item.OriginalName}' op#{opIdx + 1} search='{op.searchPattern}' replace='{op.replaceText}' prefix='{op.prefix}' suffix='{op.suffix}' nameBefore='{name}'");
+                var chainNames = new string[Items.Count];
+                for (int i = 0; i < Items.Count; i++)
+                    chainNames[i] = Items[i].OriginalName;
 
-                        ApplyOperation(op);
+                foreach (var op in snapshot)
+                {
+                    ApplyOperation(op);
+
+                    bool opHasSearch = !string.IsNullOrEmpty(SearchPattern);
+                    var opExpression = ParseSearchPattern();
+
+                    int opValidIndex = 0;
+                    for (int idx = 0; idx < Items.Count; idx++)
+                    {
+                        var item = Items[idx];
 
                         bool passesFilter;
                         if (IsHierarchyMode)
@@ -322,90 +272,75 @@ namespace Gigaduck.BatchRenamer
                             }
                             else
                             {
-                                var cat = ClassifyObject(item.Target);
+                                var cat = GetCachedCategory(item);
                                 passesFilter = EnabledCategories.Contains(cat);
 
                                 if (passesFilter && cat == AssetCategory.Texture && EnabledTextureSubCategories.Count > 0)
-                                {
                                     passesFilter = EnabledTextureSubCategories.Contains(ClassifyTexture(item.Target));
-                                }
                             }
                         }
 
-                        if (!passesFilter)
-                        {
-                            Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} filtered out");
-                            continue;
-                        }
+                        if (passesFilter && opHasSearch && op.searchMustMatch)
+                            passesFilter = opExpression != null && opExpression.Match(chainNames[idx]).Count > 0;
 
-                        var expression = !string.IsNullOrEmpty(SearchPattern)
-                            ? SearchExpression.Parse(SearchPattern, CaseSensitive)
-                            : null;
-                        var entries = expression?.Match(name);
+                        if (!passesFilter) continue;
 
-                        Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} entries={(entries != null ? entries.Count : 0)}");
-
-                        name = ComputeNewName(name, entries, idx);
-
-                        Debug.Log($"[BatchRenamer]   Chain op#{opIdx + 1} nameAfter='{name}'");
+                        var entries = opExpression?.Match(chainNames[idx]);
+                        chainNames[idx] = ComputeNewName(chainNames[idx], entries, opValidIndex);
+                        opValidIndex++;
                     }
+                }
 
-                    SearchPattern = savedSearchPattern;
-                    ReplaceText = savedReplaceText;
-                    Prefix = savedPrefix;
-                    Suffix = savedSuffix;
-                    TextCase = savedTextCase;
-                    PreserveNumbers = savedPreserveNumbers;
-                    NumberFormat = savedNumberFormat;
-                    CaseSensitive = savedCaseSensitive;
-                    EnabledCategories = savedCategories;
-                    EnabledTextureSubCategories = savedTextureSubCategories;
-                    EnabledHierarchyCategories = savedHierarchyCategories;
-
-                    bool uiPassesFilter;
-                    if (IsHierarchyMode)
-                    {
-                        uiPassesFilter = MatchesHierarchyFilter(item);
-                    }
-                    else
-                    {
-                        bool hasActiveFilters = EnabledCategories.Count > 0;
-                        uiPassesFilter = hasActiveFilters && EnabledCategories.Contains(ClassifyObject(item.Target));
-                    }
-
-                    if (uiPassesFilter)
-                    {
-                        var uiExpression = !string.IsNullOrEmpty(SearchPattern)
-                            ? SearchExpression.Parse(SearchPattern, CaseSensitive)
-                            : null;
-                        var uiEntries = uiExpression?.Match(name);
-                        name = ComputeNewName(name, uiEntries, idx);
-                    }
-
-                    item.NewName = name;
-
-                    if (!string.IsNullOrEmpty(SearchPattern))
-                    {
-                        var uiMatchedExpression = SearchExpression.Parse(SearchPattern, CaseSensitive);
-                        item.MatchedTexts = uiMatchedExpression.Match(item.OriginalName);
-                    }
-                    else
-                    {
-                        item.MatchedTexts = null;
-                    }
-
-                    Debug.Log($"[BatchRenamer]   Chain final newName='{item.NewName}'");
+                for (int idx = 0; idx < Items.Count; idx++)
+                {
+                    var item = Items[idx];
+                    item.IsValid = true;
+                    item.Index = -1;
+                    item.MatchedTexts = null;
+                    item.NewName = chainNames[idx];
                 }
             }
             else
             {
+                int validIndex = 0;
                 for (int idx = 0; idx < Items.Count; idx++)
                 {
                     var item = Items[idx];
-                    if (item.IsValid)
-                        item.NewName = ComputeNewName(item.OriginalName, item.MatchedTexts, idx);
+
+                    List<SearchExpression.MatchEntry> matchedEntries = null;
+                    if (_cachedExpression != null)
+                        matchedEntries = _cachedExpression.Match(item.OriginalName);
+                    bool matchesSearch = _cachedExpression == null || (matchedEntries != null && matchedEntries.Count > 0);
+                    item.MatchedTexts = matchedEntries;
+
+                    bool matchesFilter;
+                    if (IsHierarchyMode)
+                    {
+                        matchesFilter = MatchesHierarchyFilter(item);
+                    }
                     else
-                        item.NewName = item.OriginalName;
+                    {
+                        bool hasActiveFilters = EnabledCategories.Count > 0;
+                        if (!hasActiveFilters)
+                        {
+                            matchesFilter = false;
+                        }
+                        else
+                        {
+                            var cat = GetCachedCategory(item);
+                            matchesFilter = EnabledCategories.Contains(cat);
+
+                            if (matchesFilter && cat == AssetCategory.Texture && EnabledTextureSubCategories.Count > 0)
+                                matchesFilter = EnabledTextureSubCategories.Contains(ClassifyTexture(item.Target));
+                        }
+                    }
+
+                    bool searchPasses = matchesSearch || !SearchMustMatch;
+                    item.IsValid = matchesFilter && searchPasses;
+                    item.Index = item.IsValid ? validIndex++ : -1;
+                    item.NewName = item.IsValid
+                        ? ComputeNewName(item.OriginalName, item.MatchedTexts, item.Index)
+                        : item.OriginalName;
                 }
             }
 
@@ -417,15 +352,35 @@ namespace Gigaduck.BatchRenamer
             PreserveNumbers = savedPreserveNumbers;
             NumberFormat = savedNumberFormat;
             CaseSensitive = savedCaseSensitive;
+            SearchMustMatch = savedSearchMustMatch;
             EnabledCategories = savedCategories;
             EnabledTextureSubCategories = savedTextureSubCategories;
             EnabledHierarchyCategories = savedHierarchyCategories;
 
-            _cachedExpression = !string.IsNullOrEmpty(SearchPattern)
-                ? SearchExpression.Parse(SearchPattern, CaseSensitive)
-                : null;
+            RegexError = null;
+            _cachedExpression = ParseSearchPattern();
             _lastSearchPattern = SearchPattern;
             _lastCaseSensitive = CaseSensitive;
+            _lastUseRegex = UseRegex;
+
+            DetectConflicts();
+        }
+
+        private SearchExpression ParseSearchPattern()
+        {
+            if (string.IsNullOrEmpty(SearchPattern))
+                return null;
+            try
+            {
+                return UseRegex
+                    ? SearchExpression.ParseRegex(SearchPattern, CaseSensitive)
+                    : SearchExpression.Parse(SearchPattern, CaseSensitive);
+            }
+            catch (ArgumentException ex)
+            {
+                RegexError = "Invalid regex: " + ex.Message;
+                return new SearchExpression(new SearchExpression.NeverNode());
+            }
         }
 
         internal string EvaluateConditions(string input, string originalName)
@@ -523,7 +478,7 @@ namespace Gigaduck.BatchRenamer
 
                 bool hasNumberToken = resolvedReplaceText.IndexOf("{Number}", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                if (contiguous && hasNumberToken && sorted.Count > 1)
+                if (contiguous && hasNumberToken && sorted.Count > 1 && !UseRegex)
                 {
                     string number = "";
                     foreach (var e in sorted)
@@ -542,6 +497,8 @@ namespace Gigaduck.BatchRenamer
                     foreach (var entry in sorted)
                     {
                         string replacement = resolvedReplaceText;
+                        if (entry.Match != null)
+                            replacement = entry.Match.Result(resolvedReplaceText);
                         if (hasNumberToken)
                         {
                             var numberMatch = Regex.Match(entry.Text, @"\d+");
@@ -670,8 +627,12 @@ namespace Gigaduck.BatchRenamer
                 sb.Append(lowerRest || allUpper ? word.Substring(1).ToLowerInvariant() : word.Substring(1));
         }
 
+        private int NumberPadWidth = 2;
+
         private string ApplyNumberFormat(string baseName, string number)
         {
+            if (NumberFormat == NumberFormatPreset.UnderscorePadded)
+                return baseName + "_" + number.PadLeft(Math.Max(2, NumberPadWidth), '0');
             string format = GetNumberFormatString(NumberFormat);
             return baseName + string.Format(format, number);
         }
@@ -843,9 +804,146 @@ namespace Gigaduck.BatchRenamer
             }
         }
 
+        private AssetCategory GetCachedCategory(RenameItem item)
+        {
+            if (item.CategoryCache == (AssetCategory)(-1))
+                item.CategoryCache = ClassifyObject(item.Target);
+            return item.CategoryCache;
+        }
+
+        public void DetectConflicts()
+        {
+            foreach (var item in Items)
+            {
+                item.HasConflict = false;
+                item.ConflictReason = null;
+            }
+            if (Items.Count == 0) return;
+
+            var finalByPath = new Dictionary<string, List<RenameItem>>(StringComparer.OrdinalIgnoreCase);
+            var originalByPath = new Dictionary<string, RenameItem>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in Items)
+            {
+                if (!item.IsValid || item.Target == null) continue;
+                string path = AssetDatabase.GetAssetPath(item.Target);
+                if (string.IsNullOrEmpty(path)) continue;
+                if (!originalByPath.ContainsKey(path))
+                    originalByPath[path] = item;
+                if (item.OriginalName == item.NewName) continue;
+
+                string finalPath = GetFinalPath(path, item.NewName);
+                if (!finalByPath.TryGetValue(finalPath, out var list))
+                {
+                    list = new List<RenameItem>();
+                    finalByPath[finalPath] = list;
+                }
+                list.Add(item);
+            }
+
+            foreach (var kvp in finalByPath)
+            {
+                if (kvp.Value.Count <= 1) continue;
+                foreach (var item in kvp.Value)
+                {
+                    item.HasConflict = true;
+                    item.ConflictReason = $"Duplicate target name: \"{item.NewName}\"";
+                }
+            }
+
+            foreach (var item in Items)
+            {
+                if (!item.IsValid || item.HasConflict || item.Target == null) continue;
+                if (item.OriginalName == item.NewName) continue;
+                string path = AssetDatabase.GetAssetPath(item.Target);
+                if (string.IsNullOrEmpty(path)) continue;
+                string finalPath = GetFinalPath(path, item.NewName);
+
+                if (originalByPath.TryGetValue(finalPath, out var occupant) && occupant != item)
+                {
+                    bool occupantFreed = occupant.IsValid && occupant.OriginalName != occupant.NewName && !occupant.HasConflict;
+                    if (occupantFreed) continue;
+                    item.HasConflict = true;
+                    item.ConflictReason = $"Name already in use by \"{occupant.OriginalName}\"";
+                    continue;
+                }
+
+                if (string.Equals(path, finalPath, StringComparison.OrdinalIgnoreCase)) continue;
+                string diskPath = ToDiskPath(finalPath);
+                if (File.Exists(diskPath) || Directory.Exists(diskPath))
+                {
+                    item.HasConflict = true;
+                    item.ConflictReason = "Target name already exists";
+                }
+            }
+
+            var changingGos = new HashSet<GameObject>();
+            var goGroups = new Dictionary<(Transform parent, string name), List<RenameItem>>();
+            foreach (var item in Items)
+            {
+                if (!item.IsValid || item.HasConflict || item.Target is not GameObject go) continue;
+                if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(go))) continue;
+                if (item.OriginalName == item.NewName) continue;
+
+                changingGos.Add(go);
+                var key = (go.transform.parent, item.NewName);
+                if (!goGroups.TryGetValue(key, out var list))
+                {
+                    list = new List<RenameItem>();
+                    goGroups[key] = list;
+                }
+                list.Add(item);
+            }
+
+            foreach (var kvp in goGroups)
+            {
+                if (kvp.Value.Count > 1)
+                {
+                    foreach (var item in kvp.Value)
+                    {
+                        item.HasConflict = true;
+                        item.ConflictReason = $"Duplicate target name: \"{item.NewName}\"";
+                    }
+                    continue;
+                }
+
+                var goItem = kvp.Value[0];
+                var go = (GameObject)goItem.Target;
+                var parent = go.transform.parent;
+                if (parent == null) continue;
+                foreach (Transform child in parent)
+                {
+                    if (child == go.transform) continue;
+                    if (child.name == goItem.NewName && !changingGos.Contains(child.gameObject))
+                    {
+                        goItem.HasConflict = true;
+                        goItem.ConflictReason = $"Name already in use by \"{child.name}\"";
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static string GetFinalPath(string currentPath, string newName)
+        {
+            string dir = Path.GetDirectoryName(currentPath);
+            if (string.IsNullOrEmpty(dir))
+                return newName;
+            dir = dir.Replace('\\', '/');
+            if (AssetDatabase.IsValidFolder(currentPath))
+                return dir + "/" + newName;
+            return dir + "/" + newName + Path.GetExtension(currentPath);
+        }
+
+        private static string ToDiskPath(string assetPath)
+        {
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            return Path.Combine(projectRoot, assetPath.Replace('/', Path.DirectorySeparatorChar));
+        }
+
         public void ApplyRenames()
         {
-            var (renamedCount, errorCount, hasHierarchyItems) = RenameCore();
+            var (renamedCount, errorCount, conflictCount, hasHierarchyItems) = RenameCore();
 
             if (hasHierarchyItems)
                 EditorApplication.DirtyHierarchyWindowSorting();
@@ -855,84 +953,145 @@ namespace Gigaduck.BatchRenamer
             {
                 EditorUtility.DisplayDialog("Advanced Batch Rename Complete",
                     $"Successfully renamed {renamedCount} item(s).\n" +
-                    (errorCount > 0 ? $"{errorCount} error(s) occurred.\nCheck Console for details." : ""),
+                    (errorCount > 0 ? $"{errorCount} error(s) occurred.\nCheck Console for details.\n" : "") +
+                    (conflictCount > 0 ? $"{conflictCount} item(s) skipped due to name conflicts.\n" : ""),
                     "OK");
             };
         }
 
-        private (int renamedCount, int errorCount, bool hasHierarchyItems) RenameCore()
+        private (int renamedCount, int errorCount, int conflictCount, bool hasHierarchyItems) RenameCore()
         {
             int renamedCount = 0;
             int errorCount = 0;
+            int conflictCount = 0;
             bool hasHierarchyItems = false;
 
-            var sceneObjects = new List<Object>();
+            DetectConflicts();
+
+            var sceneRenames = new List<(GameObject go, string newName)>();
+            var pending = new List<RenameItem>();
             foreach (var item in Items)
             {
+                if (!item.IsValid || item.Target == null) continue;
+                if (item.HasConflict) { conflictCount++; continue; }
+                if (item.OriginalName == item.NewName) continue;
+
                 if (item.Target is GameObject go)
                 {
                     string path = AssetDatabase.GetAssetPath(go);
                     if (string.IsNullOrEmpty(path))
-                        sceneObjects.Add(go);
+                        sceneRenames.Add((go, item.NewName));
+                    else
+                        pending.Add(item);
+                }
+                else
+                {
+                    pending.Add(item);
                 }
             }
-            if (sceneObjects.Count > 0)
-                Undo.RecordObjects(sceneObjects.ToArray(), "Advanced Batch Rename");
 
-            for (int i = 0; i < Items.Count; i++)
+            if (sceneRenames.Count > 0)
             {
-                var item = Items[i];
-                if (!item.IsValid || item.Target == null) continue;
-                if (item.OriginalName == item.NewName) continue;
+                var objects = new Object[sceneRenames.Count];
+                for (int i = 0; i < sceneRenames.Count; i++)
+                    objects[i] = sceneRenames[i].go;
+                Undo.RecordObjects(objects, "Advanced Batch Rename");
 
-                try
+                foreach (var (go, newName) in sceneRenames)
                 {
-                    string path = AssetDatabase.GetAssetPath(item.Target);
-
-                    if (string.IsNullOrEmpty(path))
+                    try
                     {
-                        if (item.Target is GameObject go)
-                        {
-                            hasHierarchyItems = true;
-                            go.name = item.NewName;
-                            renamedCount++;
-                        }
+                        go.name = newName;
+                        renamedCount++;
+                        hasHierarchyItems = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[Batch Renamer] Error renaming {go.name}: {ex.Message}");
+                        errorCount++;
+                    }
+                }
+            }
+
+            var occupied = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in Items)
+            {
+                string path = AssetDatabase.GetAssetPath(item.Target);
+                if (!string.IsNullOrEmpty(path))
+                    occupied.Add(path);
+            }
+
+            int guard = pending.Count * 3 + 16;
+            while (pending.Count > 0 && guard-- > 0)
+            {
+                bool progressed = false;
+                for (int i = pending.Count - 1; i >= 0; i--)
+                {
+                    var item = pending[i];
+                    string path = AssetDatabase.GetAssetPath(item.Target);
+                    if (string.IsNullOrEmpty(path)) { pending.RemoveAt(i); continue; }
+
+                    string finalPath = GetFinalPath(path, item.NewName);
+                    if (string.Equals(path, finalPath, StringComparison.Ordinal)) { pending.RemoveAt(i); continue; }
+
+                    bool caseOnly = string.Equals(path, finalPath, StringComparison.OrdinalIgnoreCase);
+                    if (!caseOnly && occupied.Contains(finalPath)) continue;
+
+                    string error = AssetDatabase.RenameAsset(path, item.NewName);
+                    if (string.IsNullOrEmpty(error))
+                    {
+                        occupied.Remove(path);
+                        occupied.Add(finalPath);
+                        renamedCount++;
+                        pending.RemoveAt(i);
+                        progressed = true;
                     }
                     else
                     {
-                        bool isFolder = AssetDatabase.IsValidFolder(path);
-                        string newPath;
-                        if (isFolder)
-                        {
-                            newPath = Path.Combine(Path.GetDirectoryName(path), item.NewName).Replace('\\', '/');
-                        }
-                        else
-                        {
-                            newPath = Path.Combine(Path.GetDirectoryName(path), item.NewName + Path.GetExtension(path)).Replace('\\', '/');
-                        }
-
-                        if (string.Equals(path, newPath, StringComparison.Ordinal)) continue;
-
-                        string error = AssetDatabase.RenameAsset(path, item.NewName);
-                        if (string.IsNullOrEmpty(error))
-                        {
-                            renamedCount++;
-                        }
-                        else
-                        {
-                            Debug.LogError($"[Batch Renamer] Failed to rename {path}: {error}");
-                            errorCount++;
-                        }
+                        Debug.LogError($"[Batch Renamer] Failed to rename {path}: {error}");
+                        errorCount++;
+                        pending.RemoveAt(i);
                     }
                 }
-                catch (Exception ex)
+
+                if (!progressed && pending.Count > 0)
                 {
-                    Debug.LogError($"[Batch Renamer] Error renaming {item.OriginalName}: {ex.Message}");
-                    errorCount++;
+                    var item = pending[0];
+                    string path = AssetDatabase.GetAssetPath(item.Target);
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        pending.RemoveAt(0);
+                        continue;
+                    }
+
+                    string finalPath = GetFinalPath(path, item.NewName);
+                    string tempName = "~gd_rename_" + item.NewName;
+                    int n = 0;
+                    while (occupied.Contains(GetFinalPath(path, tempName)))
+                        tempName = "~gd_rename_" + item.NewName + "_" + (++n);
+
+                    string error = AssetDatabase.RenameAsset(path, tempName);
+                    if (string.IsNullOrEmpty(error))
+                    {
+                        occupied.Remove(path);
+                        occupied.Add(GetFinalPath(path, tempName));
+                    }
+                    else
+                    {
+                        Debug.LogError($"[Batch Renamer] Failed to resolve rename cycle for {path}: {error}");
+                        errorCount++;
+                        pending.RemoveAt(0);
+                    }
                 }
             }
 
-            return (renamedCount, errorCount, hasHierarchyItems);
+            if (pending.Count > 0)
+            {
+                errorCount += pending.Count;
+                Debug.LogError($"[Batch Renamer] {pending.Count} item(s) could not be renamed due to unresolvable conflicts.");
+            }
+
+            return (renamedCount, errorCount, conflictCount, hasHierarchyItems);
         }
 
         public void ApplyOperation(BatchRenameOperation op)
@@ -946,6 +1105,8 @@ namespace Gigaduck.BatchRenamer
             PreserveNumbers = op.preserveNumbers;
             NumberFormat = op.numberFormat;
             CaseSensitive = op.caseSensitive;
+            SearchMustMatch = op.searchMustMatch;
+            UseRegex = op.useRegex;
             StartIndex = op.startIndex;
             EnabledCategories = new HashSet<AssetCategory>(op.enabledCategories);
             EnabledTextureSubCategories = new HashSet<TextureSubCategory>(op.enabledTextureSubCategories);
@@ -969,6 +1130,8 @@ namespace Gigaduck.BatchRenamer
             bool uiPreserveNumbers = PreserveNumbers;
             NumberFormatPreset uiNumberFormat = NumberFormat;
             bool uiCaseSensitive = CaseSensitive;
+            bool uiSearchMustMatch = SearchMustMatch;
+            bool uiUseRegex = UseRegex;
             int uiStartIndex = StartIndex;
             var uiCategories = new HashSet<AssetCategory>(EnabledCategories);
             var uiTextureSubCategories = new HashSet<TextureSubCategory>(EnabledTextureSubCategories);
@@ -979,6 +1142,7 @@ namespace Gigaduck.BatchRenamer
 
             int totalRenamed = 0;
             int totalErrors = 0;
+            int totalConflicts = 0;
             bool hasHierarchyItems = false;
 
             foreach (var op in operations)
@@ -986,17 +1150,16 @@ namespace Gigaduck.BatchRenamer
                 ApplyOperation(op);
                 RefreshPreview();
 
-                var (renamed, errors, hierarchy) = RenameCore();
+                var (renamed, errors, conflicts, hierarchy) = RenameCore();
                 totalRenamed += renamed;
                 totalErrors += errors;
+                totalConflicts += conflicts;
                 if (hierarchy) hasHierarchyItems = true;
 
                 foreach (var item in Items)
                 {
-                    if (item.IsValid && item.NewName != item.OriginalName)
-                    {
+                    if (item.IsValid && !item.HasConflict && item.NewName != item.OriginalName)
                         item.OriginalName = item.NewName;
-                    }
                 }
             }
 
@@ -1009,16 +1172,12 @@ namespace Gigaduck.BatchRenamer
             PreserveNumbers = uiPreserveNumbers;
             NumberFormat = uiNumberFormat;
             CaseSensitive = uiCaseSensitive;
+            SearchMustMatch = uiSearchMustMatch;
+            UseRegex = uiUseRegex;
             StartIndex = uiStartIndex;
             EnabledCategories = uiCategories;
             EnabledTextureSubCategories = uiTextureSubCategories;
             EnabledHierarchyCategories = uiHierarchyCategories;
-
-            RefreshPreview();
-            var (uiRenamed, uiErrors, uiHierarchy) = RenameCore();
-            totalRenamed += uiRenamed;
-            totalErrors += uiErrors;
-            if (uiHierarchy) hasHierarchyItems = true;
 
             PreviewOperations = savedPreviewOperations;
 
@@ -1029,11 +1188,13 @@ namespace Gigaduck.BatchRenamer
 
             var savedTotalRenamed = totalRenamed;
             var savedTotalErrors = totalErrors;
+            var savedTotalConflicts = totalConflicts;
             EditorApplication.delayCall += () =>
             {
                 EditorUtility.DisplayDialog("Advanced Batch Rename Complete",
                     $"Successfully renamed {savedTotalRenamed} item(s).\n" +
-                    (savedTotalErrors > 0 ? $"{savedTotalErrors} error(s) occurred.\nCheck Console for details." : ""),
+                    (savedTotalErrors > 0 ? $"{savedTotalErrors} error(s) occurred.\nCheck Console for details.\n" : "") +
+                    (savedTotalConflicts > 0 ? $"{savedTotalConflicts} item(s) skipped due to name conflicts.\n" : ""),
                     "OK");
             };
         }
@@ -1069,6 +1230,7 @@ namespace Gigaduck.BatchRenamer
         {
             public string Text;
             public int Index;
+            public Match Match;
         }
 
         public interface INode
@@ -1125,6 +1287,39 @@ namespace Gigaduck.BatchRenamer
             }
 
             public string Describe() => "Number";
+        }
+
+        public class RegexNode : INode
+        {
+            private readonly Regex _regex;
+
+            public RegexNode(Regex regex)
+            {
+                _regex = regex;
+            }
+
+            public List<MatchEntry> Match(string name)
+            {
+                var results = new List<MatchEntry>();
+                foreach (Match m in _regex.Matches(name))
+                {
+                    if (m.Length == 0) continue;
+                    results.Add(new MatchEntry { Text = m.Value, Index = m.Index, Match = m });
+                }
+                return results;
+            }
+
+            public string Describe() => $"Regex(\"{_regex}\")";
+        }
+
+        public class NeverNode : INode
+        {
+            public List<MatchEntry> Match(string name)
+            {
+                return new List<MatchEntry>();
+            }
+
+            public string Describe() => "Never";
         }
 
         public class OrNode : INode
@@ -1224,6 +1419,14 @@ namespace Gigaduck.BatchRenamer
             int pos = 0;
             var result = ParseExpression(tokens, ref pos, comparison);
             return new SearchExpression(result);
+        }
+
+        public static SearchExpression ParseRegex(string pattern, bool caseSensitive = false)
+        {
+            var options = RegexOptions.CultureInvariant | RegexOptions.Compiled;
+            if (!caseSensitive)
+                options |= RegexOptions.IgnoreCase;
+            return new SearchExpression(new RegexNode(new Regex(pattern, options)));
         }
 
         private static List<string> Tokenize(string input)

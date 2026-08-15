@@ -15,6 +15,8 @@ namespace Gigaduck.BatchRenamer
         private TextField _searchField;
         private TextField _replaceField;
         private Toggle _caseSensitiveToggle;
+        private Toggle _searchMatchToggle;
+        private Toggle _regexToggle;
         private TextField _prefixField;
         private TextField _suffixField;
         private Toggle _skipIfExistsToggle;
@@ -43,6 +45,7 @@ namespace Gigaduck.BatchRenamer
         private static readonly Color GreenHighlight = new Color(0.4f, 0.9f, 0.4f);
         private static readonly Color RemovedHighlight = new Color(0.85f, 0.45f, 0.1f);
         private static readonly Color MatchHighlight = new Color(0.9f, 0.7f, 0.1f);
+        private static readonly Color ConflictRed = new Color(1f, 0.45f, 0.45f);
         private static readonly Color PreviewBg = new Color(0.1f, 0.1f, 0.1f);
 
         private readonly HashSet<AssetCategory> _filterSelectedCategories = new HashSet<AssetCategory>();
@@ -62,16 +65,6 @@ namespace Gigaduck.BatchRenamer
 
         public static void ShowWindow(Object[] selectedObjects)
         {
-            Debug.Log($"[BatchRenamer] ShowWindow called with {(selectedObjects != null ? selectedObjects.Length : 0)} objects");
-            if (selectedObjects != null)
-            {
-                for (int i = 0; i < selectedObjects.Length; i++)
-                {
-                    var obj = selectedObjects[i];
-                    var path = obj != null ? AssetDatabase.GetAssetPath(obj) : "NULL_OBJ";
-                    Debug.Log($"[BatchRenamer]   ShowWindow obj[{i}] type={obj?.GetType().Name ?? "null"} name='{obj?.name ?? "null"}' path='{path}'");
-                }
-            }
             var window = GetWindow<BatchRenamerWindow>(true, "Advanced Batch Rename");
             window._pendingObjects = selectedObjects;
             window.Show();
@@ -142,7 +135,6 @@ namespace Gigaduck.BatchRenamer
                     AdjustWindowSize();
             }).StartingIn(50);
 
-            Debug.Log($"[BatchRenamer] CreateGUI: _previewDirty={_previewDirty}, Items.Count={_processor.Items.Count}");
             if (_pendingObjects != null)
             {
                 ShowLoadingState();
@@ -150,7 +142,6 @@ namespace Gigaduck.BatchRenamer
             }
             else if (_previewDirty)
             {
-                Debug.Log($"[BatchRenamer] CreateGUI: calling RefreshPreview from _previewDirty, Items.Count={_processor.Items.Count}");
                 RefreshPreview();
                 _previewDirty = false;
             }
@@ -161,7 +152,6 @@ namespace Gigaduck.BatchRenamer
             if (_processor == null || _previewContainer == null) return;
 
             var selObjs = BatchRenamer.GetSelectedProjectAssets();
-            Debug.Log($"[BatchRenamer] OnSelectionChange fired, assetGUIDs based objects count={selObjs?.Length}, _previewContainer={_previewContainer != null}");
 
             bool hasFolders = selObjs != null && selObjs.Any(o =>
             {
@@ -209,7 +199,6 @@ namespace Gigaduck.BatchRenamer
             if (_pendingObjects == null) return;
             var objects = _pendingObjects;
             _pendingObjects = null;
-            Debug.Log($"[BatchRenamer] ProcessPendingObjects: processing {objects.Length} objects");
             _processor.CollectFromObjects(objects);
             RefreshFilterUI();
             RefreshPreview();
@@ -304,6 +293,20 @@ namespace Gigaduck.BatchRenamer
             }
             _caseSensitiveToggle.RegisterValueChangedCallback(_ => MarkPreviewDirty());
             csRow.Add(_caseSensitiveToggle);
+
+            _regexToggle = new Toggle("Regex");
+            _regexToggle.value = false;
+            _regexToggle.style.marginLeft = 12;
+            var regexLabel = _regexToggle.Q<Label>();
+            if (regexLabel != null)
+            {
+                regexLabel.style.fontSize = 12;
+                regexLabel.style.color = TextPrimary;
+                regexLabel.style.marginLeft = 4;
+            }
+            _regexToggle.RegisterValueChangedCallback(_ => MarkPreviewDirty());
+            csRow.Add(_regexToggle);
+
             section.Add(csRow);
 
 
@@ -1041,6 +1044,19 @@ namespace Gigaduck.BatchRenamer
             _suffixField = CreateLabelledField(section, "Suffix", "Add suffix...");
             _suffixField.RegisterValueChangedCallback(_ => MarkPreviewDirty());
 
+            _searchMatchToggle = new Toggle("Search matches only");
+            var smLabel = _searchMatchToggle.Q<Label>();
+            if (smLabel != null)
+            {
+                smLabel.style.fontSize = 12;
+                smLabel.style.color = TextPrimary;
+                smLabel.style.marginLeft = 4;
+            }
+            _searchMatchToggle.value = true;
+            _searchMatchToggle.tooltip = "When enabled, only items matching the search pattern are renamed, including prefix, suffix and case changes. Disable to apply prefix/suffix/case to all filtered items and use search only for find & replace.";
+            _searchMatchToggle.RegisterValueChangedCallback(_ => MarkPreviewDirty());
+            section.Add(_searchMatchToggle);
+
             _skipIfExistsToggle = new Toggle("Don't add if already exists");
             var skipLabel = _skipIfExistsToggle.Q<Label>();
             if (skipLabel != null)
@@ -1153,6 +1169,45 @@ namespace Gigaduck.BatchRenamer
                 row.Add(descLabel);
 
                 section.Add(row);
+            }
+
+            var regexContainer = new VisualElement();
+            regexContainer.style.display = DisplayStyle.None;
+            regexContainer.style.marginTop = 6;
+            regexContainer.style.paddingLeft = 6;
+            regexContainer.style.borderLeftWidth = 2;
+            regexContainer.style.borderLeftColor = AccentBlue;
+
+            var regexHeader = new Label("Regex Mode");
+            regexHeader.style.fontSize = 12;
+            regexHeader.style.color = TextPrimary;
+            regexHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
+            regexHeader.style.marginBottom = 2;
+            regexContainer.Add(regexHeader);
+
+            var regexNotes = new string[]
+            {
+                "Standard .NET regex applies to the Search field (\\d+, \\w+, [a-z]+, (group), a|b, ^anchor$, lookahead...).",
+                "Replace supports group references: $1 / ${name} for captures and $& for the whole match.",
+                "Tool tokens still work: {Number} re-inserts digits from the match, {Index} inserts the counter.",
+                "Disable Regex to use literal text and the ||, &&, [], ! operators instead.",
+            };
+            foreach (var note in regexNotes)
+            {
+                var noteLabel = new Label("\u2022 " + note);
+                noteLabel.style.fontSize = 11;
+                noteLabel.style.color = TextDim;
+                noteLabel.style.whiteSpace = WhiteSpace.Normal;
+                noteLabel.style.marginBottom = 2;
+                regexContainer.Add(noteLabel);
+            }
+
+            section.Add(regexContainer);
+
+            if (_regexToggle != null)
+            {
+                _regexToggle.RegisterValueChangedCallback(evt =>
+                    regexContainer.style.display = evt.newValue ? DisplayStyle.Flex : DisplayStyle.None);
             }
 
             parent.Add(section);
@@ -1404,7 +1459,7 @@ namespace Gigaduck.BatchRenamer
                     _previewDirty = false;
                 }
                 _pendingRefresh = null;
-            }).StartingIn(30);
+            }).StartingIn(60);
         }
 
         private void OnDisable()
@@ -1430,6 +1485,8 @@ namespace Gigaduck.BatchRenamer
             _processor.Suffix = _suffixField?.value ?? "";
             _processor.SkipIfAlreadyExists = _skipIfExistsToggle?.value ?? false;
             _processor.CaseSensitive = _caseSensitiveToggle?.value ?? false;
+            _processor.SearchMustMatch = _searchMatchToggle?.value ?? true;
+            _processor.UseRegex = _regexToggle?.value ?? false;
             _processor.TextCase = _caseField != null ? (TextCaseMode)_caseField.value : TextCaseMode.None;
             _processor.PreserveNumbers = _preserveNumbersToggle?.value ?? false;
             _processor.NumberFormat = _numberFormatField != null ? (NumberFormatPreset)_numberFormatField.value : NumberFormatPreset.UnderscoreN;
@@ -1439,12 +1496,7 @@ namespace Gigaduck.BatchRenamer
             _processor.SetActiveCategories(_filterSelectedCategories);
             _processor.EnabledTextureSubCategories = _filterTextureSubCategories;
 
-            Debug.Log($"[BatchRenamer] Window.RefreshPreview BEFORE processor.RefreshPreview: Items.Count={_processor.Items.Count}");
             _processor.RefreshPreview();
-            Debug.Log($"[BatchRenamer] Window.RefreshPreview AFTER processor.RefreshPreview: Items.Count={_processor.Items.Count}");
-
-            int matchCount = _processor.Items.Count(i => i.IsValid);
-            Debug.Log($"[BatchRenamer] Search='{_processor.SearchPattern}' valid={matchCount}/{_processor.Items.Count}");
 
             var showAll = true;
             var showToggle = rootVisualElement?.Q<Toggle>("show-filtered-toggle");
@@ -1459,13 +1511,18 @@ namespace Gigaduck.BatchRenamer
 
             int validCount = 0;
             int changedCount = 0;
+            int conflictCount = 0;
 
+            var pathByItem = new Dictionary<RenameItem, string>();
             var itemByPath = new Dictionary<string, RenameItem>();
             foreach (var item in _processor.Items)
             {
                 string p = AssetDatabase.GetAssetPath(item.Target);
                 if (!string.IsNullOrEmpty(p))
+                {
+                    pathByItem[item] = p;
                     itemByPath[p] = item;
+                }
             }
 
             var groups = new Dictionary<string, List<RenameItem>>();
@@ -1475,10 +1532,18 @@ namespace Gigaduck.BatchRenamer
             foreach (var item in _processor.Items)
             {
                 if (!item.IsValid && !showAll) continue;
-                if (item.IsValid) validCount++;
-                if (item.IsValid && item.OriginalName != item.NewName) changedCount++;
+                if (item.IsValid)
+                {
+                    validCount++;
+                    if (item.NewName != item.OriginalName)
+                    {
+                        if (item.HasConflict) conflictCount++;
+                        else changedCount++;
+                    }
+                }
 
-                string path = AssetDatabase.GetAssetPath(item.Target);
+                string path = "";
+                pathByItem.TryGetValue(item, out path);
                 if (string.IsNullOrEmpty(path) || !path.Contains('/'))
                 {
                     rootItems.Add(item);
@@ -1502,7 +1567,9 @@ namespace Gigaduck.BatchRenamer
 
             foreach (var item in rootItems)
             {
-                BuildPreviewRow(item, 0);
+                string path = "";
+                pathByItem.TryGetValue(item, out path);
+                BuildPreviewRow(item, path, 0);
                 firstItem = false;
             }
 
@@ -1521,7 +1588,7 @@ namespace Gigaduck.BatchRenamer
 
                 if (itemByPath.TryGetValue(parentPath, out var folderItem))
                 {
-                    BuildPreviewRow(folderItem, 0);
+                    BuildPreviewRow(folderItem, parentPath, 0);
                 }
                 else
                 {
@@ -1566,22 +1633,38 @@ namespace Gigaduck.BatchRenamer
 
                 foreach (var item in items)
                 {
-                    string itemPath = AssetDatabase.GetAssetPath(item.Target);
+                    string itemPath = "";
+                    pathByItem.TryGetValue(item, out itemPath);
                     if (!string.IsNullOrEmpty(itemPath) && groups.ContainsKey(itemPath))
                         continue;
-                    BuildPreviewRow(item, 1);
+                    BuildPreviewRow(item, itemPath, 1);
                 }
             }
 
             if (_previewHeader != null)
                 _previewHeader.text = $"Preview ({_processor.Items.Count} items)";
 
+            bool hasRegexError = !string.IsNullOrEmpty(_processor.RegexError);
+
             if (_statusLabel != null)
-                _statusLabel.text = $"{validCount} valid, {changedCount} will change";
+            {
+                if (hasRegexError)
+                {
+                    _statusLabel.text = _processor.RegexError;
+                    _statusLabel.style.color = new Color(1f, 0.4f, 0.4f);
+                }
+                else
+                {
+                    _statusLabel.text = conflictCount > 0
+                        ? $"{validCount} valid, {changedCount} will change, {conflictCount} conflict(s)"
+                        : $"{validCount} valid, {changedCount} will change";
+                    _statusLabel.style.color = TextSecondary;
+                }
+            }
 
             if (_renameButton != null)
             {
-                bool canRename = changedCount > 0;
+                bool canRename = !hasRegexError && changedCount > 0;
                 _renameButton.text = canRename
                     ? $"Rename Selected ({changedCount})"
                     : "Rename Selected";
@@ -1589,7 +1672,7 @@ namespace Gigaduck.BatchRenamer
             }
         }
 
-        private void BuildPreviewRow(RenameItem item, int depth = 0)
+        private void BuildPreviewRow(RenameItem item, string path, int depth = 0)
         {
             var row = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
@@ -1632,12 +1715,8 @@ namespace Gigaduck.BatchRenamer
 
             var icon = new VisualElement();
             Texture2D thumb = AssetPreview.GetMiniThumbnail(item.Target);
-            if (thumb == null)
-            {
-                string assetPath = AssetDatabase.GetAssetPath(item.Target);
-                if (!string.IsNullOrEmpty(assetPath) && AssetDatabase.IsValidFolder(assetPath))
-                    thumb = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
-            }
+            if (thumb == null && !string.IsNullOrEmpty(path) && AssetDatabase.IsValidFolder(path))
+                thumb = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
             icon.style.backgroundImage = thumb != null ? Background.FromTexture2D(thumb) : StyleKeyword.None;
             icon.style.width = 16;
             icon.style.height = 16;
@@ -1668,19 +1747,27 @@ namespace Gigaduck.BatchRenamer
 
             bool hasActivePreset = _processor.PreviewOperations != null && _processor.PreviewOperations.Count > 0;
             VisualElement newNameContainer;
-            if (hasActivePreset)
+            if (item.HasConflict)
+            {
+                var conflictLabel = new Label(item.NewName);
+                conflictLabel.style.fontSize = 12;
+                conflictLabel.style.color = ConflictRed;
+                conflictLabel.style.whiteSpace = WhiteSpace.Pre;
+                conflictLabel.tooltip = item.ConflictReason;
+                newNameContainer = conflictLabel;
+            }
+            else if (hasActivePreset)
             {
                 var ranges = ComputeSimpleDiffRanges(item.OriginalName, item.NewName);
                 newNameContainer = RenderDiffDisplay(item.NewName, ranges);
             }
             else
             {
-                int itemIdx = _processor.Items.IndexOf(item);
-                string indexStr = (_processor.StartIndex + itemIdx).ToString();
+                string indexStr = (_processor.StartIndex + item.Index).ToString();
                 string resolvedReplaceText = _processor.ReplaceText.Replace("{Index}", indexStr).Replace("{index}", indexStr);
                 string resolvedPrefix = _processor.EvaluateConditions(_processor.Prefix, item.OriginalName).Replace("{Index}", indexStr).Replace("{index}", indexStr);
                 string resolvedSuffix = _processor.EvaluateConditions(_processor.Suffix, item.OriginalName).Replace("{Index}", indexStr).Replace("{index}", indexStr);
-                newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, resolvedPrefix, resolvedSuffix, resolvedReplaceText);
+                newNameContainer = BuildDiffDisplay(item.OriginalName, item.NewName, item.MatchedTexts, resolvedPrefix, resolvedSuffix, resolvedReplaceText, _processor.UseRegex);
             }
             rightColumn.Add(newNameContainer);
 
@@ -1958,7 +2045,7 @@ namespace Gigaduck.BatchRenamer
                                  ranges);
         }
 
-        private static VisualElement BuildDiffDisplay(string oldName, string newName, List<SearchExpression.MatchEntry> matchedEntries, string prefixText, string suffixText, string replaceText)
+        private static VisualElement BuildDiffDisplay(string oldName, string newName, List<SearchExpression.MatchEntry> matchedEntries, string prefixText, string suffixText, string replaceText, bool useRegex)
         {
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
@@ -2000,7 +2087,7 @@ namespace Gigaduck.BatchRenamer
                     }
                 }
 
-                if (contiguous && hasNumberToken)
+                if (contiguous && hasNumberToken && !useRegex)
                 {
                     string number = "";
                     foreach (var e in sorted)
@@ -2021,14 +2108,14 @@ namespace Gigaduck.BatchRenamer
                     foreach (var entry in sorted)
                     {
                         if (entry.Index < 0 || string.IsNullOrEmpty(entry.Text)) continue;
-                        int repLen = replaceText.Length;
+                        string repText = entry.Match != null ? entry.Match.Result(replaceText) : replaceText;
                         if (hasNumberToken)
                         {
                             var numberMatch = Regex.Match(entry.Text, @"\d+");
                             string numberVal = numberMatch.Success ? numberMatch.Value : "";
-                            string resolved = Regex.Replace(replaceText, @"\{number\}", numberVal, RegexOptions.IgnoreCase);
-                            repLen = resolved.Length;
+                            repText = Regex.Replace(repText, @"\{number\}", numberVal, RegexOptions.IgnoreCase);
                         }
+                        int repLen = repText.Length;
                         int start = entry.Index + (prefixText?.Length ?? 0) + shift;
                         int end = start + repLen;
                         changedRanges.Add((start, end));
@@ -2047,26 +2134,32 @@ namespace Gigaduck.BatchRenamer
 
         private void OnRenameClicked()
         {
-            int changedCount = _processor.Items.Count(i => i.NewName != i.OriginalName);
+            int changedCount = _processor.Items.Count(i => i.IsValid && !i.HasConflict && i.NewName != i.OriginalName);
             if (changedCount == 0) return;
+
+            int conflictCount = _processor.Items.Count(i => i.HasConflict);
+            string conflictNote = conflictCount > 0
+                ? $"\n{conflictCount} item(s) will be skipped due to name conflicts."
+                : "";
 
             if (_currentPreset != null && _currentPreset.operations.Count > 0)
             {
                 string opDesc = $"{_currentPreset.operations.Count} operation(s)";
                 bool proceed = EditorUtility.DisplayDialog(
                     "Confirm Advanced Batch Rename",
-                    $"Are you sure you want to rename {changedCount} item(s) using {opDesc}?\nThis action can be undone (Ctrl+Z).",
+                    $"Are you sure you want to rename {changedCount} item(s) using {opDesc}?\nThis action can be undone (Ctrl+Z).{conflictNote}",
                     "Rename", "Cancel");
 
                 if (!proceed) return;
 
                 _processor.RunOperations(_currentPreset.operations);
+                RefreshPreview();
                 return;
             }
 
             bool singleProceed = EditorUtility.DisplayDialog(
                 "Confirm Batch Rename",
-                $"Are you sure you want to rename {changedCount} item(s)?\nThis action can be undone (Ctrl+Z).",
+                $"Are you sure you want to rename {changedCount} item(s)?\nThis action can be undone (Ctrl+Z).{conflictNote}",
                 "Rename", "Cancel");
 
             if (!singleProceed) return;
@@ -2074,7 +2167,7 @@ namespace Gigaduck.BatchRenamer
             _processor.ApplyRenames();
             foreach (var item in _processor.Items)
             {
-                if (item.IsValid && item.NewName != item.OriginalName)
+                if (item.IsValid && !item.HasConflict && item.NewName != item.OriginalName)
                     item.OriginalName = item.NewName;
             }
             RefreshPreview();
@@ -2144,34 +2237,6 @@ namespace Gigaduck.BatchRenamer
             section.Add(_operationsListSection);
 
             parent.Add(section);
-        }
-
-        private void ApplyOperationToUI(BatchRenameOperation op)
-        {
-            if (_searchField != null) _searchField.SetValueWithoutNotify(op.searchPattern);
-            if (_replaceField != null) _replaceField.SetValueWithoutNotify(op.replaceText);
-            if (_prefixField != null) _prefixField.SetValueWithoutNotify(op.prefix);
-            if (_suffixField != null) _suffixField.SetValueWithoutNotify(op.suffix);
-            if (_skipIfExistsToggle != null) _skipIfExistsToggle.SetValueWithoutNotify(op.skipIfAlreadyExists);
-            if (_caseField != null) _caseField.SetValueWithoutNotify(op.textCase);
-            if (_preserveNumbersToggle != null) _preserveNumbersToggle.SetValueWithoutNotify(op.preserveNumbers);
-            if (_numberFormatField != null) _numberFormatField.SetValueWithoutNotify(op.numberFormat);
-            if (_caseSensitiveToggle != null) _caseSensitiveToggle.SetValueWithoutNotify(op.caseSensitive);
-            if (_startIndexField != null) _startIndexField.SetValueWithoutNotify(op.startIndex);
-
-            _filterSelectedCategories.Clear();
-            foreach (var cat in op.enabledCategories)
-                _filterSelectedCategories.Add(cat);
-
-            _filterTextureSubCategories.Clear();
-            foreach (var sub in op.enabledTextureSubCategories)
-                _filterTextureSubCategories.Add(sub);
-
-            _hierarchySelectedCategories.Clear();
-            foreach (var cat in op.enabledHierarchyCategories)
-                _hierarchySelectedCategories.Add(cat);
-
-            UpdateFilterSummary();
         }
 
         private void RefreshOperationsListUI()

@@ -9,9 +9,10 @@ Advanced Batch Renamer lets you rename multiple Unity assets and GameObjects at 
 - Supports undo for GameObjects and asset database renaming for project files.
 
 ## Features
-- **Search & Replace** — search by literal text with optional case sensitivity.
+- **Search & Replace** — search by literal text or **standard .NET regex** with optional case sensitivity.
 - **Boolean operators** — use `||` (OR), `&&` (AND), and `[]` for grouping.
 - **`{Number}` token** — matches any digits in search; inserts the matched digits when used in replace.
+- **Regex mode** — toggle **Regex** to use patterns like `\d+`, `[A-Za-z]+`, capture groups `(\w+)`, alternation `a|b`, and anchors `^...$`; replace with `$1` / `${name}` / `$&` group references.
 - **Category filters** — filter by asset type: Prefab, Material, Texture, Model, Audio, Script, Animation, Folder, Scene.
 - **Prefix / Suffix** — prepend or append text.
 - **Text Case** — None, Lowercase, Uppercase, TitleCase, SentenceCase, CamelCase, PascalCase.
@@ -43,6 +44,16 @@ Advanced Batch Renamer lets you rename multiple Unity assets and GameObjects at 
 | `Hero` (case-sensitive ON) | only names with exactly "Hero" (not "hero" or "HERO") |
 | `{Number}` | any name containing digits |
 | `hero_{Number}` | any name containing "hero_" followed by digits |
+| `^\d+_` (Regex ON) | any name starting with digits followed by underscore |
+| `_v(\d+)$` → replace `_v$1` (Regex ON) | renames `hero_v2` to `hero_v2` with the version captured and re-inserted |
+| `[A-Z]` (Regex ON) | any name containing a capital letter |
+
+## Regex Mode
+- Toggle **Regex** next to **Case Sensitive** to treat the Search field as a .NET regular expression.
+- The **Case Sensitive** toggle adds/removes `RegexOptions.IgnoreCase`.
+- Replace supports standard .NET substitution syntax: `$1` (first capture group), `${name}` (named group), `$&` (whole match), `$$` (literal `$`).
+- The `{Number}` and `{Index}` tokens still work in regex mode.
+- An invalid regex is reported in the status bar and renaming is disabled until fixed.
 
 ## Notes
 - GameObject renames support Undo (Ctrl+Z).
