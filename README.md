@@ -6,7 +6,7 @@ Each tool is a self-contained package folder under `Assets/`, ready to be upload
 
 ## Packages
 
-- **Batch Renamer** — `Assets/com.gigaduck.batch-renamer`
+- **Advanced Batch Renamer** — `Assets/com.gigaduck.advanced-batch-renamer`
 - **Editor Custom Commands** — `Assets/com.gigaduck.editor-custom-commands`
 - **Editor Navigator** — `Assets/com.gigaduck.editor-navigator`
 - **Editor Visual Tweaks** — `Assets/com.gigaduck.editor-visual-tweaks`

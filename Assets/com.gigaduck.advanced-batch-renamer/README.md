@@ -1,7 +1,7 @@
-# Batch Renamer
+# Advanced Batch Renamer
 
 ## What This Tool Does
-Batch Renamer lets you rename multiple Unity assets and GameObjects at once with real-time preview, search/replace with boolean logic, prefix/suffix insertion, text case transformation, and number preservation.
+Advanced Batch Renamer lets you rename multiple Unity assets and GameObjects at once with real-time preview, search/replace with boolean logic, prefix/suffix insertion, text case transformation, and number preservation.
 
 ## Why It Helps
 - Saves huge amounts of time when renaming many assets or objects.
@@ -20,7 +20,7 @@ Batch Renamer lets you rename multiple Unity assets and GameObjects at once with
 
 ## How To Use
 1. Select assets in the Project window or GameObjects in the Hierarchy.
-2. Open via **Assets/Batch Rename** or **GameObject/Batch Rename**.
+2. Open via **Assets/Advanced Batch Rename** or **GameObject/Advanced Batch Rename**.
 3. Enter a search pattern:
    - Simple text: `player` matches names containing "player".
    - OR: `player||enemy` matches names containing either.

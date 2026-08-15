@@ -1,0 +1,160 @@
+{\rtf1\ansi\deff0\uc1
+{\fonttbl{\f0\fnil\fcharset0 Calibri;}{\f1\fmodern\fcharset0 Consolas;}}
+{\colortbl;\red0\green0\blue0;}
+\viewkind4\uc1\lang1033
+\pard\qc\b\fs40 Advanced Batch Rename\b0\par
+\pard\qc\fs24 User Documentation\par
+\pard\qc\fs20 Version 1.0  |  Gigaduck  |  Support: gigaduck.games@gmail.com\fs20\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs24 Table of Contents\b0\par
+1. Overview\par
+2. Requirements\par
+3. Installation\par
+4. Quick Start\par
+5. Usage Guide\par
+\hspace0 5.1 Opening the Tool\par
+\hspace0 5.2 Search and Replace\par
+\hspace0 5.3 Prefix and Suffix\par
+\hspace0 5.4 Text Case\par
+\hspace0 5.5 Number Preservation\par
+\hspace0 5.6 Filters\par
+\hspace0 5.7 Preview and Applying Changes\par
+\hspace0 5.8 Presets and Multi-Step Operations\par
+6. Script Reference\par
+7. Troubleshooting\par
+8. Support\par
+\pard\sa200\par
+\pard\b\fs24 1. Overview\b0\par
+Advanced Batch Rename is a Unity Editor tool that renames multiple assets and GameObjects at once from a single window with a real-time preview. It combines search and replace with boolean logic, prefix and suffix insertion, text case transformation, and number preservation.\par
+Key features:\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} Real-time preview showing every rename with a before-and-after diff.\par
+{\pntext\f1\'b7} Search and replace with boolean operators, a digits token, a sequential index token, and conditional expressions.\par
+{\pntext\f1\'b7} Prefix and suffix insertion with an option to skip items that already contain the exact text.\par
+{\pntext\f1\'b7} Text case conversion: lower, upper, title, sentence, camel, and Pascal case.\par
+{\pntext\f1\'b7} Automatic detection and preservation of trailing numbers with configurable formatting.\par
+{\pntext\f1\'b7} Filters by asset type in the Project window and by component in the Hierarchy window.\par
+{\pntext\f1\'b7} Presets that chain multiple rename operations and run them in sequence.\par
+{\pntext\f1\'b7} Undo support for Hierarchy renames and native asset renaming for project files.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs24 2. Requirements\b0\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} Unity 2021.3 or later.\par
+{\pntext\f1\'b7} Editor-only package; no runtime components and no third-party dependencies.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs24 3. Installation\b0\par
+Follow these steps to install the package in your project.\par
+\pard\li360\sa120\sl276\slmult1
+Step 1. Open the Unity Editor and open your project.\par
+Step 2. In the Project window, navigate to the Assets folder.\par
+Step 3. Copy the {\i com.gigaduck.advanced-batch-renamer} folder into your project's Assets folder. If you installed from the Asset Store, the package is already imported and you can skip to Step 5.\par
+Step 4. Allow Unity to import the package. A short compilation will run; wait until the Editor finishes importing.\par
+Step 5. Verify the installation. Select one or more assets in the Project window, then open {\i Assets} > {\i Advanced Batch Rename}. If the window opens and lists your items, the package is installed correctly.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs24 4. Quick Start\b0\par
+\pard\li360\sa120\sl276\slmult1
+Step 1. Select one or more assets in the Project window, or one or more GameObjects in the Hierarchy window.\par
+Step 2. Open the window from {\i Assets} > {\i Advanced Batch Rename}, {\i GameObject} > {\i Advanced Batch Rename}, or {\i Edit} > {\i Advanced Batch Rename} (Ctrl+F2 on Windows, Cmd+F2 on macOS).\par
+Step 3. In the Search field, type the text you want to match. Leave it empty to affect every item.\par
+Step 4. In the Replace field, type the replacement text. Leave it empty to delete the matched text.\par
+Step 5. Set a Prefix or Suffix if you want to add text at the start or end of the names.\par
+Step 6. Review the preview list. Matching items are shown by default; use the {\i Show filtered} toggle to see every item.\par
+Step 7. Click {\i Rename Selected}, then confirm in the dialog. The window stays open so you can review the result.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs24 5. Usage Guide\b0\par
+\pard\b\fs22 5.1 Opening the Tool\b0\par
+The window can be opened in several ways, depending on where your selection is.\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} {\b Assets} > {\b Advanced Batch Rename}: renames the selected assets in the Project window.\par
+{\pntext\f1\'b7} {\b GameObject} > {\b Advanced Batch Rename}: renames the selected GameObjects in the Hierarchy window.\par
+{\pntext\f1\'b7} {\b Edit} > {\b Advanced Batch Rename} (Ctrl+F2 on Windows, Cmd+F2 on macOS): renames the current selection.\par
+{\pntext\f1\'b7} Pressing F2 ({\b Edit} > {\b Rename}) also opens the window when multiple objects are selected.\par
+\pard\sa120\sl276\slmult1\par
+The window automatically shows the appropriate filter controls: asset-type filters for Project selections and component-based filters for Hierarchy selections.\par
+\pard\sa200\par
+\pard\b\fs22 5.2 Search and Replace\b0\par
+The Search field matches plain text and supports the following operators.\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} {\b ||} OR: {\i Apple||Carrot} matches names containing either term.\par
+{\pntext\f1\'b7} {\b &&} AND: {\i Apple&&Carrot} matches names containing both terms.\par
+{\pntext\f1\'b7} {\b !} NOT: {\i !Temp} matches names that do not contain the term.\par
+{\pntext\f1\'b7} {\b []} Group: {\i [Apple||Carrot]&&Boss} groups terms for complex expressions.\par
+{\pntext\f1\'b7} {\b \{Number\}} Digits: matches any run of digits in the name; in Replace it inserts the matched digits.\par
+{\pntext\f1\'b7} {\b \{Index\}} Sequential: inserts a running number (1, 2, 3, ...) starting from the Start Index value.\par
+{\pntext\f1\'b7} {\b ?} Conditional: {\i ?term:ifTrue:ifFalse} substitutes one value when the term is present and another when it is not. Prefixing the condition with ! inverts it: {\i !term:ifTrue:ifFalse}.\par
+\pard\sa120\sl276\slmult1\par
+The {\i Case Sensitive} toggle controls whether matching distinguishes uppercase from lowercase. An empty Search matches all items, and an empty Replace deletes the matched text.\par
+\pard\sa200\par
+\pard\b\fs22 5.3 Prefix and Suffix\b0\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} {\b Prefix}: text prepended to the beginning of each name.\par
+{\pntext\f1\'b7} {\b Suffix}: text appended to the end of each name.\par
+{\pntext\f1\'b7} {\b Don't add if already exists}: skips the prefix for names that already begin with the exact prefix text, and skips the suffix for names that already end with the exact suffix text. The comparison is exact, including spacing and capitalization.\par
+{\pntext\f1\'b7} Both fields support the \{Index\} token and conditional expressions.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs22 5.4 Text Case\b0\par
+The Case drop-down converts the complete name after all other operations have run.\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} None: no change.\par
+{\pntext\f1\'b7} Lowercase and Uppercase: converts the whole name.\par
+{\pntext\f1\'b7} Title Case: capitalizes the first letter of each word.\par
+{\pntext\f1\'b7} Sentence Case: capitalizes only the first letter.\par
+{\pntext\f1\'b7} Camel Case and Pascal Case: converts names to camelCase and PascalCase.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs22 5.5 Number Preservation\b0\par
+Enable {\i Detect & Preserve Numbers} to strip a trailing number (for example {\i _01}) before the other operations run and re-append it afterwards in a configurable format.\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} Underscore N: {\i name_1}\par
+{\pntext\f1\'b7} Parenthesized: {\i name (1)}\par
+{\pntext\f1\'b7} Dash N: {\i name-1}\par
+{\pntext\f1\'b7} Space N: {\i name 1}\par
+{\pntext\f1\'b7} Raw N: {\i name1}\par
+{\pntext\f1\'b7} Underscore Padded: {\i name_01} (keeps the original padding)\par
+{\pntext\f1\'b7} Dot N: {\i name.1}\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs22 5.6 Filters\b0\par
+Filters limit which items are affected.\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} Project mode: asset categories (Prefab, Material, Texture, Model, Audio, Script, Animation Clip, Animation Controller, Folder, Scene, Other), plus texture sub-categories (Default, Normal Map, Sprite).\par
+{\pntext\f1\'b7} Hierarchy mode: component-based categories (Mesh Renderer, Mesh Filter, Collider, Rigidbody, Animator, Audio Source, Light, Camera, Particle System, Canvas, Script, Empty).\par
+\pard\sa120\sl276\slmult1\par
+Only items that pass the active filters are renamed.\par
+\pard\sa200\par
+\pard\b\fs22 5.7 Preview and Applying Changes\b0\par
+The preview lists every item with {\i Before} and {\i After} columns and highlights the text that will change. The {\i Show filtered} toggle switches between matching items only and all items. Click {\i Rename Selected}, then confirm in the dialog. The window stays open after the rename so you can review the result. Hierarchy renames support Undo (Ctrl+Z); asset renames use the Asset Database and appear in the Project window immediately.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs22 5.8 Presets and Multi-Step Operations\b0\par
+Presets chain several rename operations into a single click. Each operation holds its own search, replace, prefix, suffix, case, number preservation, filter, and start index settings.\par
+\pard\li360\sa120\sl276\slmult1
+Step 1. Create a preset: right-click in the Project window and choose {\i Create} > {\i Advanced Batch Rename Preset}.\par
+Step 2. Select the preset asset and edit its Operations list in the Inspector. Add one entry per rename step.\par
+Step 3. In the Advanced Batch Rename window, assign the preset to the Preset field. The window previews the full chain.\par
+Step 4. Click {\i Rename Selected}. The operations run in order; the result of each step feeds the next.\par
+Step 5. To stop using a preset, clear the Preset field with the X button.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs24 6. Script Reference\b0\par
+Advanced Batch Rename requires no scripting by the user. All functionality is driven by the editor window and menu commands, so there is no public API you need to call.\par
+For developers who want to extend or integrate the tool, the source code is organised in the {\i Gigaduck.BatchRenamer} namespace and is compiled only in the Unity Editor (it is not included in player builds):\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} {\b BatchRenamer} (static class): menu items and shortcuts that open the window.\par
+{\pntext\f1\'b7} {\b BatchRenamerWindow} (EditorWindow): the tool's user interface and preview rendering.\par
+{\pntext\f1\'b7} {\b RenameProcessor}: the rename engine. It collects items, evaluates search expressions, computes new names, and applies the renames. Public members include SearchPattern, ReplaceText, Prefix, Suffix, SkipIfAlreadyExists, TextCase, PreserveNumbers, NumberFormat, StartIndex, CaseSensitive, and the Items collection. Call RefreshPreview() to recompute the preview, ApplyRenames() to apply the current settings, and RunOperations(List<BatchRenameOperation>) to apply a preset chain.\par
+{\pntext\f1\'b7} {\b BatchRenamePreset} (ScriptableObject): stores a list of BatchRenameOperation entries.\par
+{\pntext\f1\'b7} {\b BatchRenameOperation} (serialized class): one rename step. Its fields mirror the window controls: searchPattern, replaceText, prefix, suffix, skipIfAlreadyExists, textCase, preserveNumbers, numberFormat, caseSensitive, startIndex, and the category filter lists.\par
+{\pntext\f1\'b7} {\b TextCaseMode} (enum): None, Lowercase, Uppercase, TitleCase, SentenceCase, CamelCase, PascalCase.\par
+{\pntext\f1\'b7} {\b NumberFormatPreset} (enum): UnderscoreN, Parenthesized, DashN, SpaceN, RawN, UnderscorePadded, DotN.\par
+{\pntext\f1\'b7} {\b AssetCategory} (enum): the Project-window filter categories.\par
+{\pntext\f1\'b7} {\b HierarchyCategory} (enum): the Hierarchy-window filter categories.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs24 7. Troubleshooting\b0\par
+\pard\li360\sa120\sl276\slmult1
+{\pntext\f1\'b7} The menu item is missing: wait for the import and compilation to finish, then refresh the project with {\i Assets} > {\i Refresh}.\par
+{\pntext\f1\'b7} The preview is empty: the selection may be filtered out. Check the Filters dropdown and the {\i Show filtered} toggle.\par
+{\pntext\f1\'b7} Renaming does nothing: the selection may contain no valid items. Leave Search empty to include all items, and verify the changed count before confirming.\par
+{\pntext\f1\'b7} Search matches too much or too little: use the operators and the {\i Case Sensitive} toggle; the preview updates in real time.\par
+{\pntext\f1\'b7} The prefix or suffix is duplicated: enable {\i Don't add if already exists} to skip names that already contain the exact text.\par
+{\pntext\f1\'b7} GameObject renames cannot be undone: Undo applies to the Hierarchy path; asset renames use the Asset Database and cannot be undone with Ctrl+Z.\par
+\pard\sa200\sl276\slmult1\par
+\pard\b\fs24 8. Support\b0\par
+For support or feedback, contact gigaduck.games@gmail.com.\par
+}
