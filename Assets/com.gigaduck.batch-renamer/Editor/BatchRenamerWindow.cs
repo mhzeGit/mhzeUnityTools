@@ -1168,7 +1168,7 @@ namespace Gigaduck.BatchRenamer
 
             var showFilteredToggle = new Toggle("Show filtered");
             showFilteredToggle.name = "show-filtered-toggle";
-            showFilteredToggle.value = true;
+            showFilteredToggle.value = false;
             showFilteredToggle.style.unityTextAlign = TextAnchor.MiddleRight;
             var siLabel = showFilteredToggle.Q<Label>();
             if (siLabel != null)
