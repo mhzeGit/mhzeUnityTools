@@ -2061,7 +2061,6 @@ namespace Gigaduck.BatchRenamer
                 if (!proceed) return;
 
                 _processor.RunOperations(_currentPreset.operations);
-                Close();
                 return;
             }
 
@@ -2073,7 +2072,12 @@ namespace Gigaduck.BatchRenamer
             if (!singleProceed) return;
 
             _processor.ApplyRenames();
-            Close();
+            foreach (var item in _processor.Items)
+            {
+                if (item.IsValid && item.NewName != item.OriginalName)
+                    item.OriginalName = item.NewName;
+            }
+            RefreshPreview();
         }
 
         private void BuildPresetSection(VisualElement parent)
