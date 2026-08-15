@@ -1531,8 +1531,8 @@ namespace Gigaduck.BatchRenamer
 
             foreach (var item in _processor.Items)
             {
-                if (!item.IsValid && !showAll) continue;
-                if (item.IsValid)
+                if (!item.IsValid && !item.UserIncluded && !showAll) continue;
+                if (item.UserIncluded)
                 {
                     validCount++;
                     if (item.NewName != item.OriginalName)
@@ -1656,8 +1656,8 @@ namespace Gigaduck.BatchRenamer
                 else
                 {
                     _statusLabel.text = conflictCount > 0
-                        ? $"{validCount} valid, {changedCount} will change, {conflictCount} conflict(s)"
-                        : $"{validCount} valid, {changedCount} will change";
+                        ? $"{validCount} included, {changedCount} will change, {conflictCount} conflict(s)"
+                        : $"{validCount} included, {changedCount} will change";
                     _statusLabel.style.color = TextSecondary;
                 }
             }
@@ -1685,10 +1685,34 @@ namespace Gigaduck.BatchRenamer
             row.style.borderBottomWidth = 1;
             row.style.borderBottomColor = new Color(0.15f, 0.15f, 0.15f);
 
-            if (!item.IsValid)
+            if (!item.IsValid || !item.UserIncluded)
             {
                 row.style.opacity = 0.4f;
             }
+
+            var includeToggle = new Toggle();
+            includeToggle.name = "include-toggle";
+            includeToggle.value = item.UserIncluded;
+            includeToggle.style.flexShrink = 0;
+            includeToggle.style.marginRight = 6;
+            includeToggle.tooltip = "Include in rename \u2014 overrides search & filters";
+            var includeInput = includeToggle.Q(classes: "unity-base-field__input");
+            if (includeInput != null)
+            {
+                includeInput.style.paddingLeft = 0;
+                includeInput.style.paddingRight = 0;
+                includeInput.style.marginLeft = 0;
+                includeInput.style.marginRight = 0;
+                includeInput.style.marginTop = 0;
+                includeInput.style.marginBottom = 0;
+            }
+            includeToggle.RegisterValueChangedCallback(evt =>
+            {
+                item.UserTouched = true;
+                item.UserIncluded = evt.newValue;
+                MarkPreviewDirty();
+            });
+            row.Add(includeToggle);
 
             var leftColumn = new VisualElement();
             leftColumn.style.flexDirection = FlexDirection.Row;
@@ -2134,7 +2158,7 @@ namespace Gigaduck.BatchRenamer
 
         private void OnRenameClicked()
         {
-            int changedCount = _processor.Items.Count(i => i.IsValid && !i.HasConflict && i.NewName != i.OriginalName);
+            int changedCount = _processor.Items.Count(i => i.UserIncluded && !i.HasConflict && i.NewName != i.OriginalName);
             if (changedCount == 0) return;
 
             int conflictCount = _processor.Items.Count(i => i.HasConflict);
@@ -2167,7 +2191,7 @@ namespace Gigaduck.BatchRenamer
             _processor.ApplyRenames();
             foreach (var item in _processor.Items)
             {
-                if (item.IsValid && !item.HasConflict && item.NewName != item.OriginalName)
+                if (item.UserIncluded && !item.HasConflict && item.NewName != item.OriginalName)
                     item.OriginalName = item.NewName;
             }
             RefreshPreview();

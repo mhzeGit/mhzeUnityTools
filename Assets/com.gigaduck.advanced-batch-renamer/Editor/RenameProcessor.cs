@@ -41,6 +41,8 @@ namespace Gigaduck.BatchRenamer
         public bool HasConflict;
         public string ConflictReason;
         internal AssetCategory CategoryCache = (AssetCategory)(-1);
+        public bool UserIncluded = true;
+        public bool UserTouched;
     }
 
     public enum HierarchyCategory
@@ -294,10 +296,12 @@ namespace Gigaduck.BatchRenamer
                 for (int idx = 0; idx < Items.Count; idx++)
                 {
                     var item = Items[idx];
+                    if (!item.UserTouched)
+                        item.UserIncluded = true;
                     item.IsValid = true;
                     item.Index = -1;
                     item.MatchedTexts = null;
-                    item.NewName = chainNames[idx];
+                    item.NewName = item.UserIncluded ? chainNames[idx] : item.OriginalName;
                 }
             }
             else
@@ -337,8 +341,10 @@ namespace Gigaduck.BatchRenamer
 
                     bool searchPasses = matchesSearch || !SearchMustMatch;
                     item.IsValid = matchesFilter && searchPasses;
-                    item.Index = item.IsValid ? validIndex++ : -1;
-                    item.NewName = item.IsValid
+                    if (!item.UserTouched)
+                        item.UserIncluded = item.IsValid;
+                    item.Index = item.UserIncluded ? validIndex++ : -1;
+                    item.NewName = item.UserIncluded
                         ? ComputeNewName(item.OriginalName, item.MatchedTexts, item.Index)
                         : item.OriginalName;
                 }
@@ -825,7 +831,7 @@ namespace Gigaduck.BatchRenamer
 
             foreach (var item in Items)
             {
-                if (!item.IsValid || item.Target == null) continue;
+                if (!item.UserIncluded || item.Target == null) continue;
                 string path = AssetDatabase.GetAssetPath(item.Target);
                 if (string.IsNullOrEmpty(path)) continue;
                 if (!originalByPath.ContainsKey(path))
@@ -853,7 +859,7 @@ namespace Gigaduck.BatchRenamer
 
             foreach (var item in Items)
             {
-                if (!item.IsValid || item.HasConflict || item.Target == null) continue;
+                if (!item.UserIncluded || item.HasConflict || item.Target == null) continue;
                 if (item.OriginalName == item.NewName) continue;
                 string path = AssetDatabase.GetAssetPath(item.Target);
                 if (string.IsNullOrEmpty(path)) continue;
@@ -861,7 +867,7 @@ namespace Gigaduck.BatchRenamer
 
                 if (originalByPath.TryGetValue(finalPath, out var occupant) && occupant != item)
                 {
-                    bool occupantFreed = occupant.IsValid && occupant.OriginalName != occupant.NewName && !occupant.HasConflict;
+                    bool occupantFreed = occupant.UserIncluded && occupant.OriginalName != occupant.NewName && !occupant.HasConflict;
                     if (occupantFreed) continue;
                     item.HasConflict = true;
                     item.ConflictReason = $"Name already in use by \"{occupant.OriginalName}\"";
@@ -881,7 +887,7 @@ namespace Gigaduck.BatchRenamer
             var goGroups = new Dictionary<(Transform parent, string name), List<RenameItem>>();
             foreach (var item in Items)
             {
-                if (!item.IsValid || item.HasConflict || item.Target is not GameObject go) continue;
+                if (!item.UserIncluded || item.HasConflict || item.Target is not GameObject go) continue;
                 if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(go))) continue;
                 if (item.OriginalName == item.NewName) continue;
 
@@ -972,7 +978,7 @@ namespace Gigaduck.BatchRenamer
             var pending = new List<RenameItem>();
             foreach (var item in Items)
             {
-                if (!item.IsValid || item.Target == null) continue;
+                if (!item.UserIncluded || item.Target == null) continue;
                 if (item.HasConflict) { conflictCount++; continue; }
                 if (item.OriginalName == item.NewName) continue;
 
@@ -1158,7 +1164,7 @@ namespace Gigaduck.BatchRenamer
 
                 foreach (var item in Items)
                 {
-                    if (item.IsValid && !item.HasConflict && item.NewName != item.OriginalName)
+                    if (item.UserIncluded && !item.HasConflict && item.NewName != item.OriginalName)
                         item.OriginalName = item.NewName;
                 }
             }

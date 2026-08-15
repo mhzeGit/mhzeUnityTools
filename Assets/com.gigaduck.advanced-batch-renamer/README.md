@@ -18,6 +18,7 @@ Advanced Batch Renamer lets you rename multiple Unity assets and GameObjects at 
 - **Text Case** — None, Lowercase, Uppercase, TitleCase, SentenceCase, CamelCase, PascalCase.
 - **Number Preservation** — detect trailing numbers and re-append them with configurable format after rename.
 - **Real-time preview** — highlighted match regions, diff display, and per-row old→new name comparison.
+- **Per-item include/exclude** — checkbox on every preview row; uncheck to skip an item, or check an item the search/filter excluded to force-include it (applies prefix/suffix/case transforms). Overrides search results.
 
 ## How To Use
 1. Select assets in the Project window or GameObjects in the Hierarchy.
@@ -31,7 +32,7 @@ Advanced Batch Renamer lets you rename multiple Unity assets and GameObjects at 
 4. Toggle **Case Sensitive** to make matching exact.
 5. Enter replace text, prefix, suffix, or choose a text case mode.
    - Use `{Number}` in replace to insert the matched digits (e.g. replace `{Number}` with `ID_{Number}` turns `_01` into `ID_01`).
-6. Preview all changes in the scrollable list.
+6. Preview all changes in the scrollable list. Use each row's checkbox to include/exclude items individually — excluded items are skipped, and items the search missed can be force-included.
 7. Click **Rename Selected** to apply.
 
 ## Search Examples
