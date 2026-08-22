@@ -1,0 +1,21 @@
+{
+    "name": "Gigaduck.AutoBoxCollider.Editor.Tests",
+    "rootNamespace": "Gigaduck.AutoBoxCollider.Tests",
+    "references": [
+        "Gigaduck.AutoBoxCollider.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

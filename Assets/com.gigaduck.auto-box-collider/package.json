@@ -1,0 +1,22 @@
+{
+  "name": "com.gigaduck.auto-box-collider",
+  "version": "1.0.0",
+  "displayName": "Advanced Auto Box Collider",
+  "description": "Analyzes mesh volume and generates an optimized, preview-first set of oriented BoxColliders.",
+  "unity": "2021.3",
+  "keywords": [
+    "editor",
+    "collider",
+    "mesh",
+    "voxel",
+    "physics",
+    "optimization"
+  ],
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  },
+  "category": "Editor Extensions",
+  "dependencies": {},
+  "samples": []
+}

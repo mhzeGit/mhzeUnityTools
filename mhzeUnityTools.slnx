@@ -4,8 +4,10 @@
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Gigaduck.FolderStructureGenerator.Editor.csproj" />
   <Project Path="Gigaduck.EditorCustomCommands.Editor.csproj" />
+  <Project Path="Gigaduck.AutoBoxCollider.Editor.Tests.csproj" />
   <Project Path="Gigaduck.ObjectSnapTool.Editor.csproj" />
   <Project Path="Gigaduck.HierarchyContextMenu.Editor.csproj" />
+  <Project Path="Gigaduck.AutoBoxCollider.Editor.csproj" />
   <Project Path="Gigaduck.BatchRenamer.Editor.csproj" />
   <Project Path="Gigaduck.FolderColorizer.Editor.csproj" />
   <Project Path="Gigaduck.EditorNavigator.Editor.csproj" />
