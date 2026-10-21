@@ -13,6 +13,7 @@
   <Project Path="Gigaduck.EditorNavigator.Editor.csproj" />
   <Project Path="Gigaduck.FastPlayButton.Editor.csproj" />
   <Project Path="Gigaduck.MissingScriptInspector.Editor.csproj" />
+  <Project Path="Gigaduck.AssetSources.Editor.csproj" />
   <Project Path="Gigaduck.UrlPackageUpdater.Editor.csproj" />
   <Project Path="Gigaduck.QuickTextureTools.Editor.csproj" />
 </Solution>
