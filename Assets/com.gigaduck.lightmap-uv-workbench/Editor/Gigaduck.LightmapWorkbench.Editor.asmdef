@@ -1,0 +1,7 @@
+{
+  "name": "Gigaduck.LightmapUVWorkbench.Editor",
+  "rootNamespace": "Gigaduck.LightmapWorkbench",
+  "includePlatforms": [
+    "Editor"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "com.gigaduck.lightmap-uv-workbench",
+  "version": "1.0.0",
+  "displayName": "Lightmap UV Workbench",
+  "description": "Central FBX lightmap UV generation settings with individual and bulk editing, staged changes and explicit reimport.",
+  "unity": "6000.0",
+  "author": {
+    "name": "Gigaduck"
+  }
+}
