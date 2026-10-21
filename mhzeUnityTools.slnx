@@ -15,5 +15,6 @@
   <Project Path="Gigaduck.MissingScriptInspector.Editor.csproj" />
   <Project Path="Gigaduck.AssetSources.Editor.csproj" />
   <Project Path="Gigaduck.UrlPackageUpdater.Editor.csproj" />
+  <Project Path="Gigaduck.AssetSources.Editor.Tests.csproj" />
   <Project Path="Gigaduck.QuickTextureTools.Editor.csproj" />
 </Solution>
