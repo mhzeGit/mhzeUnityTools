@@ -1,0 +1,6 @@
+{
+  "name": "Gigaduck.AssetSources.Editor",
+  "rootNamespace": "Gigaduck.AssetSources",
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

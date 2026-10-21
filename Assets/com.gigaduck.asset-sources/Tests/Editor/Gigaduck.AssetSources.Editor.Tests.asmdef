@@ -1,0 +1,8 @@
+{
+  "name": "Gigaduck.AssetSources.Editor.Tests",
+  "rootNamespace": "Gigaduck.AssetSources.Tests",
+  "references": ["Gigaduck.AssetSources.Editor"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false,
+  "optionalUnityReferences": ["TestAssemblies"]
+}

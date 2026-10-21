@@ -1,0 +1,119 @@
+# Asset Sources
+
+Link a Unity asset to its external Blender, Graphmat, Painter or other editable masters once. Then right-click it and choose **Asset Sources > Open Blender Source**, **Open Graphmat Source**, **Open Painter Source**, or **Open Source...** for any other application. Multiple masters for one application produce a source chooser. **Show Source in Explorer** reveals the linked file.
+
+This is a standalone editor-only package with no dependencies, runtime components, project-specific paths, import hooks or background source scans. It does not edit, export, move or copy your artwork. Supports Unity 2022.3 and newer; verified in Unity 6.
+
+## Install
+
+In **Window > Package Manager > + > Install package from Git URL**, enter:
+
+```text
+https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.asset-sources
+```
+
+For a reproducible installation append `#<full commit SHA>`. The manifest dependency name is `com.gigaduck.asset-sources`.
+
+## First setup
+
+1. Open **Tools > Gigaduck > Asset Sources > Libraries** (the Libraries tab).
+2. Save a library definition, such as `project-art`, then **Locate Library on This PC** and select your external resource folder. An optional environment variable overrides that location.
+3. Select an FBX or another imported asset. Right-click **Asset Sources > Setup or Relink Sources...**.
+4. In Sources, choose the library and browse to the editable master. The application is inferred from the extension. Give the connection a stable source ID, such as `model`, `textures` or `animation-walk`, then **Save Source Link**.
+5. Add other sources with different IDs. Reusing an ID deliberately replaces that connection. Other connections remain untouched.
+6. Right-click the Unity asset to open its sources. Use **Relink** if an individual master moves, or **Unlink** to remove just the connection.
+
+The window follows selection. You can also drag a Unity asset into its asset field. For a selected scene object, the commands can resolve its first skinned mesh or mesh filter. For a prefab selected in the Project window, links belong to that prefab itself; links are not inferred from its children.
+
+## Moving between PCs
+
+On the new PC, open Libraries and locate each library once. All asset links continue to work when paths **inside** the resource folder stay the same. The resource root can have a different drive, username or parent directory.
+
+Applications normally use the operating system's file associations. In **Applications**, optionally locate the desired executable on each PC. Overrides are per application ID and project; they never travel in shared configuration. The launcher passes the source filename as a single quoted argument without a command shell. The chosen application must support opening a file this way. Other launch protocols require an application-specific integration; arbitrary command templates are not executed.
+
+## Storage
+
+```text
+ProjectSettings/AssetSources/Libraries.json         # versioned library definitions
+ProjectSettings/AssetSources/Links/<asset-guid>.json # one versioned record per Unity asset
+UserSettings/AssetSources.local.json                # ignored local roots and executables
+```
+
+Keep `ProjectSettings/AssetSources/` in version control. Ignore `UserSettings/` (standard Unity .gitignore does this). No source information is written into Unity `.meta` files. The Unity GUID comes from the asset's existing metadata: keep that `.meta` when replacing or moving an export. One source can serve any number of Unity assets, and each Unity asset can have multiple sources.
+
+Example `Libraries.json`:
+
+```json
+{
+  "schemaVersion": 1,
+  "libraries": [
+    { "id": "project-art", "displayName": "Project Art", "environmentVariable": "MY_GAME_ART_ROOT" }
+  ]
+}
+```
+
+Example `Links/<guid>.json`:
+
+```json
+{
+  "schemaVersion": 1,
+  "unityGuid": "1234567890abcdef1234567890abcdef",
+  "sources": [
+    { "id": "model", "libraryId": "project-art", "relativePath": "Props/Chair/Source/chair.blend", "applicationId": "blender", "label": "Chair master" },
+    { "id": "textures", "libraryId": "project-art", "relativePath": "Props/Chair/Source/chair.gmat", "applicationId": "graphmat", "label": "Chair textures" }
+  ]
+}
+```
+
+Use forward slashes and paths relative to the selected library. IDs accept letters, numbers, dots, hyphens and underscores. Library/source IDs are case-sensitive. Source IDs are unique within one asset. Library roots must be outside the Unity project. Missing sources, malformed JSON, unsupported schemas and paths escaping a library are rejected with diagnostics. A missing file never silently rebinds to a similarly named file.
+
+Records are cached as JSON by modification time. Normal open actions read only the selected record and settings, then check the linked file; they never scan the library. **Reload Links** clears caches after external edits. **Validate All Links** explicitly scans registered records and checks source existence plus Unity asset GUID existence. Per-record writes replace the previous file atomically. Simultaneous writes to the same record are last-writer-wins: coordinate edits to the same asset between agents.
+
+## Agent and exporter API (Unity editor / MCP execute_code)
+
+Namespace: `Gigaduck.AssetSources`. Assembly: `Gigaduck.AssetSources.Editor`. The package has no dependency on an MCP implementation. Call these public APIs from any editor automation capable of executing C#:
+
+```csharp
+var registry = Gigaduck.AssetSources.AssetSources.Registry;
+registry.DefineLibrary("project-art", "Project Art", "MY_GAME_ART_ROOT");
+registry.SetLibraryRoot("project-art", @"D:\Resources\MyGame"); // local only
+
+Gigaduck.AssetSources.AssetSources.Link(
+    "Assets/Models/Chair.fbx", "project-art",
+    "Props/Chair/Source/chair.blend",
+    applicationId: "blender", sourceId: "model", label: "Chair master");
+
+var record = Gigaduck.AssetSources.AssetSources.Get("Assets/Models/Chair.fbx");
+var errors = Gigaduck.AssetSources.AssetSources.ValidateAll(); // empty means valid
+// Explicit user action can open the source:
+Gigaduck.AssetSources.AssetSources.Open("Assets/Models/Chair.fbx", "model");
+```
+
+`Registry.RelativePath(libraryId, absoluteSourcePath)` converts a known external path safely. `Registry.GetRecord(guid)` and `Registry.Link(guid, SourceLink)` support GUID-based workflows. `Registry.Resolve(link)` returns the absolute path or throws an actionable exception. `AssetSources.Unlink(assetPath, sourceId)` removes just one connection. A fresh `SourceRegistry(projectRoot)` can inspect another project's settings. Reads return independent data objects; save changes through the API.
+
+Agent workflow: identify the exact imported Unity asset and the confirmed editable master, inspect existing links, link using a stable source ID, validate, and include the changed `ProjectSettings/AssetSources` files in the project's change record. Never choose a master solely from a filename resemblance, an inferred resource-index association, or the highest version suffix. Do not launch authoring applications just to register a link.
+
+## Agent CLI (no running Unity required)
+
+`Tools~/asset_sources.py` uses only Python 3 standard-library modules. Locate the package through Unity's `PackageInfo.FindForAssembly(typeof(Gigaduck.AssetSources.AssetSources).Assembly).resolvedPath`, or inspect its installed `Library/PackageCache/com.gigaduck.asset-sources@*/` directory. Unity's virtual `Packages/` asset paths are not necessarily physical filesystem directories.
+
+```text
+python "<package>/Tools~/asset_sources.py" --project "<Unity project>" library --id project-art --name "Project Art" --root "D:/Resources/MyGame"
+python "<package>/Tools~/asset_sources.py" --project "<Unity project>" link --asset "Assets/Models/Chair.fbx" --library project-art --source "Props/Chair/Source/chair.blend" --app blender --id model
+python "<package>/Tools~/asset_sources.py" --project "<Unity project>" inspect --asset "Assets/Models/Chair.fbx"
+python "<package>/Tools~/asset_sources.py" --project "<Unity project>" validate
+```
+
+Commands: `library`, `root`, `application`, `link`, `unlink`, `inspect`, `validate`; each supports `--help`. Output is JSON `{ "ok": true, "data": ... }` or `{ "ok": false, "error": ... }`; failures exit 1. `validate` returns its errors list and exits 1 if nonempty. `inspect` reports missing sources per entry without launching an application. `link` accepts an asset path or GUID, infers the application when `--app` is omitted, validates that the source exists, and upserts only the specified source ID. A GUID supplied directly is accepted for offline automation; use Unity's `ValidateAll()` to verify that such GUIDs still resolve to assets. Asset paths require an existing file and its `.meta`.
+
+Exporters should call `Link` after writing the final export and after Unity assigns its GUID. Source associations are explicit; the package does not watch or automatically re-export native files.
+
+## Tests
+
+The package includes Edit Mode tests for relocation, multiple/shared sources, path validation, invalid JSON, schema mismatch, missing files and environment overrides. In a consuming project, add `com.gigaduck.asset-sources` to the manifest's `testables` array to expose the package tests. Run assembly `Gigaduck.AssetSources.Editor.Tests`. This is unnecessary for normal use.
+
+CLI tests:
+
+```text
+python -B -m unittest discover -s "<package>/Tools~" -p test_asset_sources.py -v
+```

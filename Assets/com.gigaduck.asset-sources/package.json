@@ -1,0 +1,9 @@
+{
+  "name": "com.gigaduck.asset-sources",
+  "version": "1.0.0",
+  "displayName": "Asset Sources",
+  "description": "Portable links from Unity assets to external editable sources, with setup UI, context actions and an automation API.",
+  "unity": "2022.3",
+  "author": { "name": "Gigaduck", "email": "gigaduck.games@gmail.com" },
+  "dependencies": {}
+}
