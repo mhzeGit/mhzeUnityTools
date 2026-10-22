@@ -47,6 +47,10 @@ namespace Gigaduck.AssetSources
             }
         }
 
+        /// <summary>Resolves an application's executable the same way Open does, without launching it.</summary>
+        public static string ApplicationExecutable(string applicationId, string sampleSourcePath = null)
+            => SourceExport.Executable(sampleSourcePath ?? "." + applicationId, applicationId);
+
         public static void Open(string assetPath, string sourceId)
         {
             var source = Get(assetPath).sources.FirstOrDefault(x => x.id == sourceId)

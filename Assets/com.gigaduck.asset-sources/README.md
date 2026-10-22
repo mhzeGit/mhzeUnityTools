@@ -114,7 +114,15 @@ var record = Gigaduck.AssetSources.AssetSources.Get("Assets/Models/Chair.fbx");
 var errors = Gigaduck.AssetSources.AssetSources.ValidateAll(); // empty means valid
 // Explicit user action can open the source:
 Gigaduck.AssetSources.AssetSources.Open("Assets/Models/Chair.fbx", "model");
+
+// Resolve an editor executable without launching it:
+string graphmat = Gigaduck.AssetSources.AssetSources.ApplicationExecutable("graphmat");
+
+// A project pipeline can react to an armed master's save on the editor thread:
+Gigaduck.AssetSources.SourceLiveLink.SourceSaved += (source, path) => { /* source.applicationId, path */ };
 ```
+
+`SourceSaved` fires after a linked master's file timestamp changes and before the package's own export runs. A handler must do its slow work off the editor thread and return; exceptions are logged and do not stop the live link.
 
 `Registry.RelativePath(libraryId, absoluteSourcePath)` converts a known external path safely. `Registry.GetRecord(guid)` and `Registry.Link(guid, SourceLink)` support GUID-based workflows. `Registry.Resolve(link)` returns the absolute path or throws an actionable exception. `AssetSources.Unlink(assetPath, sourceId)` removes just one connection. A fresh `SourceRegistry(projectRoot)` can inspect another project's settings. Reads return independent data objects; save changes through the API.
 

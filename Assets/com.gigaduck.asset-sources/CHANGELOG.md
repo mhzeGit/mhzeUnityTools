@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+- Add a public `SourceSaved` event so project pipelines can react when an armed master changes.
+- Add `ApplicationExecutable` to resolve an application without launching it.
+
 ## 1.1.1
 
 - Report navigation-only links immediately instead of claiming they will update on save.

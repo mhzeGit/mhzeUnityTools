@@ -27,6 +27,9 @@ namespace Gigaduck.AssetSources
         private static double nextPoll;
         private const string SavedKey = "Gigaduck.AssetSources.LiveLink";
 
+        /// <summary>A source file changed on disk. Handlers run on the editor thread; a throwing handler does not stop syncing.</summary>
+        public static event Action<SourceLink, string> SourceSaved;
+
         internal static void Start(SourceLink source)
         {
             string path = AssetSources.Registry.Resolve(source);
@@ -151,7 +154,14 @@ namespace Gigaduck.AssetSources
             }
             if (session.targets == null) return;
             string stamp = Stamp(session.path);
-            if (session.stamp != stamp) { session.stamp = stamp; session.changed = EditorApplication.timeSinceStartup; }
+            if (session.stamp != stamp)
+            {
+                session.stamp = stamp;
+                session.changed = EditorApplication.timeSinceStartup;
+                if (stamp != "missing" && SourceSaved != null)
+                    try { SourceSaved(session.source, session.path); }
+                    catch (Exception ex) { Debug.LogWarning("Asset Sources save handler: " + ex.GetBaseException().Message); }
+            }
             if (session.export != null)
             {
                 if (!session.export.IsCompleted) return;
