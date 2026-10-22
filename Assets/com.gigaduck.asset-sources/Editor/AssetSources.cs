@@ -58,10 +58,12 @@ namespace Gigaduck.AssetSources
         {
             string path = Registry.Resolve(source);
             string executable = Registry.GetLocalSettings().applications.FirstOrDefault(x => x.id == source.applicationId)?.path;
-            if (string.IsNullOrEmpty(executable)) { EditorUtility.OpenWithDefaultApp(path); return; }
+            if (source.applicationId == "painter" && string.IsNullOrEmpty(executable)) executable = SourceExport.Executable(path, "painter");
+            if (string.IsNullOrEmpty(executable)) { SourceLiveLink.Start(source); EditorUtility.OpenWithDefaultApp(path); return; }
             if (!File.Exists(executable)) throw new FileNotFoundException("Application moved; locate it again in Asset Sources > Applications.", executable);
+            SourceLiveLink.Start(source);
             // The executable and source argument are separate. No command shell or editable command template.
-            var info = new ProcessStartInfo { FileName = executable, Arguments = "\"" + path.Replace("\"", "\\\"") + "\"", UseShellExecute = false };
+            var info = new ProcessStartInfo { FileName = executable, Arguments = (source.applicationId == "painter" ? "--enable-remote-scripting " : "") + SourceExport.Quote(path), UseShellExecute = false, CreateNoWindow = true };
             Process.Start(info);
         }
 

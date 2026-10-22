@@ -1,8 +1,8 @@
 # Asset Sources
 
-Link a Unity asset to its external Blender, Graphmat, Painter or other editable masters once. Then right-click it and choose **Asset Sources > Open Blender Source**, **Open Graphmat Source**, **Open Painter Source**, or **Open Source...** for any other application. Multiple masters for one application produce a source chooser. **Show Source in Explorer** reveals the linked file.
+Link a Unity asset to its external Blender, Graphmat, Painter or other editable masters once. Then right-click it and choose **Asset Sources > Open Blender Source**, **Open Graphmat Source**, **Open Painter Source**, or **Open Source...** for any other application. Multiple masters for one application produce a source chooser. **Show Source in Explorer** reveals the linked file. Opening a source also arms a live link: after you save the master, the package exports it in the background and replaces the linked Unity file, keeping its GUID and importer settings.
 
-This is a standalone editor-only package with no dependencies, runtime components, project-specific paths, import hooks or background source scans. It does not edit, export, move or copy your artwork. Supports Unity 2022.3 and newer; verified in Unity 6.
+This is a standalone editor-only package with no dependencies, runtime components, project-specific paths, import hooks or background source scans. It never changes a master file and never creates or deletes Unity assets. Supports Unity 2022.3 and newer; verified in Unity 6.
 
 ## Install
 
@@ -22,6 +22,32 @@ For a reproducible installation append `#<full commit SHA>`. The manifest depend
 4. In Sources, choose the library and browse to the editable master. The application is inferred from the extension. Give the connection a stable source ID, such as `model`, `textures` or `animation-walk`, then **Save Source Link**.
 5. Add other sources with different IDs. Reusing an ID deliberately replaces that connection. Other connections remain untouched.
 6. Right-click the Unity asset to open its sources. Use **Relink** if an individual master moves, or **Unlink** to remove just the connection.
+
+## Live link
+
+Opening a source through the package (window button, context menu or `AssetSources.Open`) starts a live link for that master. Saving it in Blender, Graphmat, Painter or Photoshop queues a background export, and the confirmed linked Unity assets are updated in place. The source picker stays responsive: the editor does not wait for the exporter.
+
+- Links are explicit. Only assets already connected to that exact master are updated; one master can update several assets.
+- The editor file is replaced atomically and its `.meta` is untouched, so GUID, references and importer settings survive.
+- If an exporter fails or its output is ambiguous, the current Unity asset is left as it is and the status line shows the reason.
+- Links stay armed across script reloads in the same editor session. **Tools > Gigaduck > Asset Sources > Stop Live Links** stops them.
+- Opening the source again is cheap; it only re-checks which Unity assets link to that master.
+
+Automatic export supports:
+
+| Master | Unity target | Notes |
+| --- | --- | --- |
+| Blender `.blend` | `.fbx`, `.obj`, `.glb` | Exports the meshes named like the Unity asset, using Unity's `-Z` forward / `Y` up axes. A target with custom global scale or axis settings should keep a manual export recipe. |
+| Blender `.blend` | image | Exports the embedded image whose name matches the Unity asset. |
+| Graphmat `.gmat` | `.png` | Exports the channel implied by the texture name; refuses packed or ambiguous names. Automatic normal export requires an OpenGL normal convention. |
+| Painter `.spp` | `.png` | Requires the master to be the open project with a single texture set, and Painter launched with remote scripting (the package adds the switch). |
+| Photoshop `.psd`/`.psb` | image | Windows only, through Photoshop automation; exports a private copy of the open document. |
+| Designer `.sbs` | `.sbsar`, `.png` | Uses Substance Automation Toolkit's `sbscooker` and `sbsrender`. |
+| Image or other same-extension pair | same extension | Copies the saved file directly. |
+
+Affinity has no scripting API, so a `.afphoto`/`.afdesign` master cannot be exported automatically. Link the editor's exported image instead; it syncs on save. The same applies to any pair without an exporter: the package reports it and changes nothing.
+
+Temporary export work goes to `Work/asset-sources-live/` beside the master, matching the resource-library convention, and is removed after publication.
 
 The window follows selection. You can also drag a Unity asset into its asset field. For a selected scene object, the commands can resolve its first skinned mesh or mesh filter. For a prefab selected in the Project window, links belong to that prefab itself; links are not inferred from its children.
 
@@ -106,11 +132,11 @@ python "<package>/Tools~/asset_sources.py" --project "<Unity project>" validate
 
 Commands: `library`, `root`, `application`, `link`, `unlink`, `inspect`, `validate`; each supports `--help`. Output is JSON `{ "ok": true, "data": ... }` or `{ "ok": false, "error": ... }`; failures exit 1. `validate` returns its errors list and exits 1 if nonempty. `inspect` reports missing sources per entry without launching an application. `link` accepts an asset path or GUID, infers the application when `--app` is omitted, validates that the source exists, and upserts only the specified source ID. A GUID supplied directly is accepted for offline automation; use Unity's `ValidateAll()` to verify that such GUIDs still resolve to assets. Asset paths require an existing file and its `.meta`.
 
-Exporters should call `Link` after writing the final export and after Unity assigns its GUID. Source associations are explicit; the package does not watch or automatically re-export native files.
+Exporters should call `Link` after writing the final export and after Unity assigns its GUID. Source associations stay explicit: the package watches only masters opened through it, and only for the duration of the editor session.
 
 ## Tests
 
-The package includes Edit Mode tests for relocation, multiple/shared sources, path validation, invalid JSON, schema mismatch, missing files and environment overrides. In a consuming project, add `com.gigaduck.asset-sources` to the manifest's `testables` array to expose the package tests. Run assembly `Gigaduck.AssetSources.Editor.Tests`. This is unnecessary for normal use.
+The package includes Edit Mode tests for relocation, multiple/shared sources, path validation, invalid JSON, schema mismatch, missing files, environment overrides, channel mapping, atomic publication and failed exports. In a consuming project, add `com.gigaduck.asset-sources` to the manifest's `testables` array to expose the package tests. Run assembly `Gigaduck.AssetSources.Editor.Tests`. This is unnecessary for normal use.
 
 CLI tests:
 

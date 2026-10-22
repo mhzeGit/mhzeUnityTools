@@ -79,7 +79,7 @@ namespace Gigaduck.AssetSources
                 EditorGUILayout.BeginHorizontal();
                 using (new EditorGUI.DisabledScope(!exists))
                 {
-                    if (GUILayout.Button("Open")) Act(() => AssetSources.Open(source));
+                    if (GUILayout.Button("Open + Live Link")) Act(() => AssetSources.Open(source));
                     if (GUILayout.Button("Reveal")) Act(() => AssetSources.Reveal(source));
                 }
                 if (GUILayout.Button("Relink"))
@@ -95,6 +95,7 @@ namespace Gigaduck.AssetSources
                 }
                 if (GUILayout.Button("Unlink")) Act(() => { AssetSources.Unlink(assetPath, source.id); message = "Link removed; the source file is unchanged."; });
                 EditorGUILayout.EndHorizontal();
+                EditorGUILayout.LabelField(SourceLiveLink.Status(source), EditorStyles.wordWrappedMiniLabel);
                 EditorGUILayout.EndVertical();
             }
 
