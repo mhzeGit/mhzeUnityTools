@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1
+
+- Publish the initial Blender handshake before its asynchronous target scan completes, preventing a startup race on fast launches.
+- Allow a disconnected source to reopen and give stopped connections a fresh session token.
+
 ## 1.4.0
 
 - Connect Blender when opening a source and update linked FBX/OBJ/GLB meshes from unsaved edits, after a short editing pause.

@@ -33,6 +33,7 @@ namespace Gigaduck.AssetSources
             directory = Path.Combine(Path.GetDirectoryName(source), "Work", "asset-sources-live", project + "-" + token);
             Directory.CreateDirectory(directory);
             Pulse();
+            if (!File.Exists(Config)) Configure(new List<SourceExport.Job>());
         }
 
         internal string Arguments => "--python " + SourceExport.Quote(Path.Combine(
@@ -54,6 +55,7 @@ namespace Gigaduck.AssetSources
         {
             if (EditorApplication.timeSinceStartup < nextLease) return;
             nextLease = EditorApplication.timeSinceStartup + 1;
+            if (!Directory.Exists(directory)) return;
             File.WriteAllText(Path.Combine(directory, "unity.alive"), "");
         }
 

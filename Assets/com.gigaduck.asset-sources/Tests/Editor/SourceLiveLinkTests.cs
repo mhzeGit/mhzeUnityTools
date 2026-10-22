@@ -68,6 +68,7 @@ namespace Gigaduck.AssetSources.Tests
         [Test] public void BlenderConnectionsIsolateMastersAndSurviveScriptReload()
         {
             var first = new BlenderLiveConnection(Path.Combine(folder, "first.blend"), folder);
+            Assert.That(File.Exists(first.Config), Is.True, "Blender must receive a valid request before the asynchronous target scan completes");
             var second = new BlenderLiveConnection(Path.Combine(folder, "second.blend"), folder);
             Assert.That(first.Config, Is.Not.EqualTo(second.Config));
             first.Configure(new List<SourceExport.Job>());

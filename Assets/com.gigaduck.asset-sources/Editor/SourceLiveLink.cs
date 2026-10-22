@@ -47,6 +47,8 @@ namespace Gigaduck.AssetSources
             var registry = new SourceRegistry(AssetSources.Registry.ProjectRoot);
             if (sessions.TryGetValue(key, out var active))
             {
+                if (active.blender != null && !File.Exists(active.blender.Config))
+                    active.blender = new BlenderLiveConnection(path, registry.ProjectRoot);
                 // Reopening refreshes the target list so links added since the first open are included.
                 active.records = Task.Run(() => FindTargets(registry, source));
                 return;
@@ -89,6 +91,7 @@ namespace Gigaduck.AssetSources
             sessions.Clear();
             EditorApplication.update -= Update;
             SessionState.EraseString(SavedKey);
+            SessionState.EraseString("Gigaduck.AssetSources.BlenderSession");
         }
 
         private static void BeforeReload()
