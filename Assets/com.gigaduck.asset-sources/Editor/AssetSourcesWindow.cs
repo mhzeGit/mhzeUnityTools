@@ -15,6 +15,7 @@ namespace Gigaduck.AssetSources
         private string sourceId = "model", sourceLabel = "", customApplication = "", sourcePath = "", message = "";
         private int libraryIndex, applicationIndex;
         private bool error;
+        private bool liveSync = true;
         private UnityEngine.Object target;
 
         [MenuItem("Tools/Gigaduck/Asset Sources")]
@@ -81,6 +82,11 @@ namespace Gigaduck.AssetSources
                 {
                     if (GUILayout.Button("Open + Live Link")) Act(() => AssetSources.Open(source));
                     if (GUILayout.Button("Reveal")) Act(() => AssetSources.Reveal(source));
+                    if (GUILayout.Button(source.noSync ? "Enable Live Sync" : "Disable Live Sync")) Act(() =>
+                    {
+                        AssetSources.Link(assetPath, source.libraryId, source.relativePath, source.applicationId, source.id, source.label, !source.noSync);
+                        message = source.noSync ? "Live sync enabled; saving the master will update Unity." : "Live sync disabled; the source stays linked for navigation.";
+                    });
                 }
                 if (GUILayout.Button("Relink"))
                 {
@@ -89,7 +95,7 @@ namespace Gigaduck.AssetSources
                     {
                         string file = EditorUtility.OpenFilePanel("Relink " + chosen.id, AssetSources.Registry.LibraryRoot(chosen.libraryId), "");
                         if (string.IsNullOrEmpty(file)) return;
-                        AssetSources.Link(assetPath, chosen.libraryId, AssetSources.Registry.RelativePath(chosen.libraryId, file), chosen.applicationId, chosen.id, chosen.label);
+                        AssetSources.Link(assetPath, chosen.libraryId, AssetSources.Registry.RelativePath(chosen.libraryId, file), chosen.applicationId, chosen.id, chosen.label, chosen.noSync);
                         message = "Source relinked.";
                     });
                 }
@@ -124,10 +130,11 @@ namespace Gigaduck.AssetSources
                 applicationIndex = Array.IndexOf(AssetSources.ApplicationIds, app);
             });
             EditorGUILayout.EndHorizontal();
+            liveSync = EditorGUILayout.Toggle("Live sync on save", liveSync);
             if (GUILayout.Button("Save Source Link")) Act(() =>
             {
                 string app = applicationIndex == AssetSources.ApplicationIds.Length ? customApplication : AssetSources.ApplicationIds[applicationIndex];
-                AssetSources.Link(assetPath, library, sourcePath, app, sourceId, sourceLabel);
+                AssetSources.Link(assetPath, library, sourcePath, app, sourceId, sourceLabel, !liveSync);
                 message = "Source linked. Right-click this asset > Asset Sources to open it.";
             });
             EditorGUILayout.LabelField("Reusing a Source ID replaces that link; use different IDs for additional files.", EditorStyles.wordWrappedMiniLabel);

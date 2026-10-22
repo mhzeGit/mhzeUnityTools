@@ -35,6 +35,11 @@ namespace Gigaduck.AssetSources
 
         internal static void Start(SourceLink source)
         {
+            if (source.noSync)
+            {
+                Debug.Log("[Asset Sources] Live sync is off for '" + source.id + "'; the source is opened for editing only.");
+                return;
+            }
             string path = AssetSources.Registry.Resolve(source);
             string key = Key(source);
             var registry = new SourceRegistry(AssetSources.Registry.ProjectRoot);
@@ -59,6 +64,7 @@ namespace Gigaduck.AssetSources
 
         public static string Status(SourceLink source)
         {
+            if (source.noSync) return "Linked for navigation only (live sync off)";
             if (StatusProvider != null)
                 foreach (var handler in StatusProvider.GetInvocationList())
                 {

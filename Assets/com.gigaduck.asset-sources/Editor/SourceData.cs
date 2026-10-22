@@ -26,6 +26,8 @@ namespace Gigaduck.AssetSources
         public string relativePath;
         public string applicationId = "default";
         public string label;
+        /// <summary>Link for navigation only: opening still works, but saving the master does not export it into Unity.</summary>
+        public bool noSync;
     }
 
     /// <summary>The portable source links for one Unity asset GUID.</summary>

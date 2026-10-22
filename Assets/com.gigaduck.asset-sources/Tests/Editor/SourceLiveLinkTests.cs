@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Gigaduck.AssetSources.Tests
 {
@@ -12,6 +13,16 @@ namespace Gigaduck.AssetSources.Tests
         private string folder;
         [SetUp] public void SetUp() { folder = Path.Combine(Path.GetTempPath(), "AssetSourcesLive-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder); }
         [TearDown] public void TearDown() { Directory.Delete(folder, true); }
+
+        [Test] public void LegacyLinksKeepLiveSync()
+        {
+            var link = JsonUtility.FromJson<SourceLink>("{ \"id\": \"x\", \"relativePath\": \"a.blend\" }");
+            Assert.That(link.noSync, Is.False);
+            Assert.That(SourceLiveLink.Status(link), Is.Not.EqualTo("Linked for navigation only (live sync off)"));
+        }
+
+        [Test] public void NoSyncLinksAreNavigationOnly() =>
+            Assert.That(SourceLiveLink.Status(new SourceLink { id = "x", noSync = true }), Is.EqualTo("Linked for navigation only (live sync off)"));
 
         [TestCase("Chair_BaseColor", "basecolor")]
         [TestCase("Chair_Normal", "normal")]

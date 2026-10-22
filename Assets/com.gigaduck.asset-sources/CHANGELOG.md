@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0
+
+- Add navigation-only source links for shared masters that must not auto-export into a generated asset.
+- Add a per-source Live sync toggle in the Asset Sources window.
+- Log the resolved source path, chosen executable and launch result when opening a source, and report missing executables or OS launch failures as errors.
+
 ## 1.2.2
 
 - Disable Open and Show actions for links whose source file is missing, and mark missing entries in the source chooser.

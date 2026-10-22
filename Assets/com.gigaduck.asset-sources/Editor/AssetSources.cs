@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 
 namespace Gigaduck.AssetSources
@@ -24,10 +25,10 @@ namespace Gigaduck.AssetSources
 
         public static AssetSourceRecord Get(string assetPath) => Registry.GetRecord(GuidForAsset(assetPath));
 
-        public static void Link(string assetPath, string libraryId, string relativePath, string applicationId = "default", string sourceId = "model", string label = null)
+        public static void Link(string assetPath, string libraryId, string relativePath, string applicationId = "default", string sourceId = "model", string label = null, bool noSync = false)
         {
             Registry.Link(GuidForAsset(assetPath), new SourceLink
-            { id = sourceId, libraryId = libraryId, relativePath = relativePath, applicationId = applicationId, label = label });
+            { id = sourceId, libraryId = libraryId, relativePath = relativePath, applicationId = applicationId, label = label, noSync = noSync });
         }
 
         public static void Unlink(string assetPath, string sourceId) => Registry.Unlink(GuidForAsset(assetPath), sourceId);
@@ -60,15 +61,58 @@ namespace Gigaduck.AssetSources
 
         public static void Open(SourceLink source)
         {
-            string path = Registry.Resolve(source);
+            string path;
+            try { path = Registry.Resolve(source); }
+            catch (Exception ex)
+            {
+                Debug.LogError("[Asset Sources] Cannot open '" + source.id + "' (" + source.relativePath + "): " + ex.Message);
+                throw;
+            }
+
+            Debug.Log("[Asset Sources] Opening " + source.applicationId + " source '" + source.id + "': " + path);
             string executable = Registry.GetLocalSettings().applications.FirstOrDefault(x => x.id == source.applicationId)?.path;
-            if (source.applicationId == "painter" && string.IsNullOrEmpty(executable)) executable = SourceExport.Executable(path, "painter");
-            if (string.IsNullOrEmpty(executable)) { SourceLiveLink.Start(source); EditorUtility.OpenWithDefaultApp(path); return; }
-            if (!File.Exists(executable)) throw new FileNotFoundException("Application moved; locate it again in Asset Sources > Applications.", executable);
+            if (string.IsNullOrEmpty(executable))
+                try { executable = SourceExport.Executable(path, source.applicationId); }
+                catch (Exception ex) { Debug.LogWarning("[Asset Sources] Could not resolve the " + source.applicationId + " executable: " + ex.Message); }
+
+            if (!string.IsNullOrEmpty(executable))
+            {
+                if (!File.Exists(executable))
+                {
+                    Debug.LogError("[Asset Sources] Application executable is missing: " + executable + ". Relink it in Asset Sources > Applications.");
+                    throw new FileNotFoundException("Application moved; locate it again in Asset Sources > Applications.", executable);
+                }
+                SourceLiveLink.Start(source);
+                // The executable and source argument are separate. No command shell or editable command template.
+                var info = new ProcessStartInfo { FileName = executable, Arguments = (source.applicationId == "painter" ? "--enable-remote-scripting " : "") + SourceExport.Quote(path), UseShellExecute = false, CreateNoWindow = true };
+                try
+                {
+                    var process = Process.Start(info);
+                    Debug.Log("[Asset Sources] Launched " + executable + (process == null ? "" : " (PID " + process.Id + ")") + " for " + path + ".");
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError("[Asset Sources] Could not launch " + executable + " for " + path + ": " + ex.GetBaseException().Message);
+                    throw;
+                }
+                return;
+            }
+
+            Debug.LogWarning("[Asset Sources] No executable was found for application '" + source.applicationId + "'. Asking the operating system to open " + path + ". If nothing happens, set the application path in Tools > Gigaduck > Asset Sources > Applications.");
             SourceLiveLink.Start(source);
-            // The executable and source argument are separate. No command shell or editable command template.
-            var info = new ProcessStartInfo { FileName = executable, Arguments = (source.applicationId == "painter" ? "--enable-remote-scripting " : "") + SourceExport.Quote(path), UseShellExecute = false, CreateNoWindow = true };
-            Process.Start(info);
+            try
+            {
+                if (Application.platform == RuntimePlatform.WindowsEditor)
+                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                else
+                    EditorUtility.OpenWithDefaultApp(path);
+                Debug.Log("[Asset Sources] Handed " + path + " to the operating system.");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[Asset Sources] The operating system could not open " + path + ": " + ex.GetBaseException().Message);
+                throw;
+            }
         }
 
         public static void Reveal(SourceLink source) => EditorUtility.RevealInFinder(Registry.Resolve(source));
