@@ -6,6 +6,28 @@ import bpy
 
 
 def export(job):
+    active = bpy.context.view_layer.objects.active
+    mode = active.mode if active else "OBJECT"
+    state = [(obj, obj.select_get(), obj.hide_get(), obj.hide_viewport, obj.hide_select)
+             for obj in bpy.context.view_layer.objects]
+    frame = bpy.context.scene.frame_current
+    try:
+        _export(job)
+    finally:
+        if bpy.context.object and bpy.context.object.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        for obj, selected, hidden, viewport, locked in state:
+            obj.hide_viewport = viewport
+            obj.hide_select = locked
+            obj.hide_set(hidden)
+            obj.select_set(selected)
+        bpy.context.view_layer.objects.active = active
+        bpy.context.scene.frame_set(frame)
+        if active and mode != "OBJECT":
+            bpy.ops.object.mode_set(mode=mode)
+
+
+def _export(job):
     output = job["output"]
     extension = os.path.splitext(output)[1].lower()
     if extension in {".png", ".tga", ".jpg", ".jpeg", ".tif", ".tiff", ".exr"}:
@@ -38,6 +60,8 @@ def export(job):
         bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
+        obj.hide_viewport = False
+        obj.hide_select = False
         obj.hide_set(False)
         obj.select_set(True)
         for modifier in obj.modifiers:
@@ -52,7 +76,8 @@ def export(job):
     bpy.context.view_layer.objects.active = meshes[0]
     if extension == ".fbx":
         bpy.ops.export_scene.fbx(filepath=output, use_selection=True, object_types={"MESH", "ARMATURE", "EMPTY"},
-                                 add_leaf_bones=False, axis_forward="-Z", axis_up="Y", path_mode="STRIP")
+                                 add_leaf_bones=False, axis_forward="-Z", axis_up="Y", path_mode="STRIP",
+                                 bake_anim=any(obj.type == "ARMATURE" or obj.animation_data for obj in bpy.context.selected_objects))
     elif extension == ".obj":
         bpy.ops.wm.obj_export(filepath=output, export_selected_objects=True, export_materials=False)
     elif extension in {".glb", ".gltf"}:

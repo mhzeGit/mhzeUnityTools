@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0
+
+- Connect Blender when opening a source and update linked FBX/OBJ/GLB meshes from unsaved edits, after a short editing pause.
+- Preserve Blender selection, visibility, active object, frame and edit mode during export; never save the master.
+- Keep the connection across Unity script reloads, reuse an already connected Blender session and stop it with Stop Live Links.
+- Respect per-target Live sync off both when finding shared-master outputs and immediately before publication.
+- Retain atomic publication, GUID/importer preservation, conflict checks and save-based export for other source types.
+- Add Blender integration checks for transforms, edit-mode geometry, feedback loops, failed mappings and source preservation.
+
 ## 1.3.0
 
 - Add navigation-only source links for shared masters that must not auto-export into a generated asset.

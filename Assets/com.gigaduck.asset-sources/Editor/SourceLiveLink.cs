@@ -22,6 +22,8 @@ namespace Gigaduck.AssetSources
             public Task<List<AssetSourceRecord>> records;
             public List<AssetSourceRecord> targets;
             public Task<List<SourceExport.Result>> export;
+            public BlenderLiveConnection blender;
+            public bool connected;
         }
         private static readonly Dictionary<string, Session> sessions = new Dictionary<string, Session>();
         private static double nextPoll;
@@ -51,6 +53,8 @@ namespace Gigaduck.AssetSources
             }
             // Only the small link registry is inspected, never the resource library or project assets.
             var session = new Session { source = source, path = path, stamp = Stamp(path) };
+            if (Path.GetExtension(path).Equals(".blend", StringComparison.OrdinalIgnoreCase))
+                session.blender = new BlenderLiveConnection(path, registry.ProjectRoot);
             session.records = Task.Run(() => FindTargets(registry, source));
             sessions.Add(key, session);
             EditorApplication.update -= Update;
@@ -81,7 +85,7 @@ namespace Gigaduck.AssetSources
         [MenuItem("Tools/Gigaduck/Asset Sources/Stop Live Links")]
         public static void StopAll()
         {
-            foreach (var session in sessions.Values) Discard(session);
+            foreach (var session in sessions.Values) { session.blender?.Stop(); Discard(session); }
             sessions.Clear();
             EditorApplication.update -= Update;
             SessionState.EraseString(SavedKey);
@@ -121,12 +125,25 @@ namespace Gigaduck.AssetSources
             foreach (string file in Directory.EnumerateFiles(folder, "*.json"))
             {
                 var record = registry.GetRecord(Path.GetFileNameWithoutExtension(file));
-                if (record.sources.Any(x => Key(x) == Key(source))) result.Add(record);
+                if (record.sources.Any(x => Matches(x, source))) result.Add(record);
             }
             return result;
         }
 
         private static string Key(SourceLink source) => source.libraryId + "/" + source.relativePath;
+        internal static bool Matches(SourceLink candidate, SourceLink source) => !candidate.noSync && Key(candidate) == Key(source);
+        internal static string BlenderArguments(SourceLink source) => !source.noSync && sessions.TryGetValue(Key(source), out var session)
+            ? session.blender?.Arguments ?? "" : "";
+        internal static bool BlenderConnected(SourceLink source) => !source.noSync && sessions.TryGetValue(Key(source), out var session)
+            && session.blender != null && session.blender.Connected;
+        internal static void Refresh()
+        {
+            foreach (var session in sessions.Values)
+            {
+                var registry = new SourceRegistry(AssetSources.Registry.ProjectRoot);
+                session.records = Task.Run(() => FindTargets(registry, session.source));
+            }
+        }
         private static string Stamp(string path)
         {
             var file = new FileInfo(path);
@@ -151,7 +168,7 @@ namespace Gigaduck.AssetSources
             {
                 string assetPath = AssetDatabase.GUIDToAssetPath(record.unityGuid);
                 if (string.IsNullOrEmpty(assetPath) || !assetPath.StartsWith("Assets/", StringComparison.Ordinal)) continue;
-                if (!AssetSources.Registry.GetRecord(record.unityGuid).sources.Any(x => Key(x) == Key(session.source))) continue;
+                if (!AssetSources.Registry.GetRecord(record.unityGuid).sources.Any(x => Matches(x, session.source))) continue;
                 if (SourceExport.CanExport(session.path, Path.Combine(AssetSources.Registry.ProjectRoot, assetPath))) exportable++;
                 else navigation++;
             }
@@ -161,10 +178,56 @@ namespace Gigaduck.AssetSources
                 : navigation > 0
                     ? "Linked for navigation only: this master produces no replacement Unity asset"
                     : "No Unity assets link to this source yet";
+            if (session.blender != null) session.blender.Configure(Jobs(session).Where(IsLiveMesh).ToList());
+        }
+
+        private static bool IsLiveMesh(SourceExport.Job job) => new[] { ".fbx", ".obj", ".glb" }.Contains(Path.GetExtension(job.target).ToLowerInvariant());
+
+        private static List<SourceExport.Job> Jobs(Session session)
+        {
+            var jobs = new List<SourceExport.Job>();
+            foreach (var record in session.targets)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(record.unityGuid);
+                if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal) ||
+                    !AssetSources.Registry.GetRecord(record.unityGuid).sources.Any(x => Matches(x, session.source))) continue;
+                if (SourceExport.CanExport(session.path, assetPath)) jobs.Add(SourceExport.Prepare(session.path, assetPath, record.unityGuid));
+            }
+            return jobs;
+        }
+
+        private static void Publish(Session session, List<SourceExport.Result> results, bool live)
+        {
+            int updated = 0;
+            var errors = new List<string>();
+            foreach (var result in results)
+                using (result)
+                {
+                    try
+                    {
+                        if (result.error != null) { errors.Add(result.assetPath + ": " + result.error); continue; }
+                        if (!live && session.changed > 0) continue;
+                        string target = AssetDatabase.GUIDToAssetPath(result.guid);
+                        if (string.IsNullOrEmpty(target) || target != result.assetPath ||
+                            !AssetSources.Registry.GetRecord(result.guid).sources.Any(x => Matches(x, session.source))) continue;
+                        string fullTarget = Path.Combine(AssetSources.Registry.ProjectRoot, target);
+                        if (SourceExport.Hash(fullTarget) != result.previousHash)
+                        { errors.Add(target + " changed during export; edit the source again to retry."); continue; }
+                        if (!SourceExport.Publish(result.output, fullTarget)) continue;
+                        AssetDatabase.ImportAsset(target, ImportAssetOptions.ForceUpdate);
+                        updated++;
+                    }
+                    catch (Exception ex) { errors.Add(result.assetPath + ": " + ex.GetBaseException().Message); }
+                }
+            session.status = errors.Count == 0
+                ? (live ? "Blender connected (no save needed)" : "Live on save") + "; updated " + updated + " assets"
+                : string.Join("\n", errors.Distinct());
+            if (errors.Count > 0) Debug.LogWarning("Asset Sources live link: " + session.status);
         }
 
         private static void Tick(Session session)
         {
+            session.blender?.Pulse();
             if (session.records != null)
             {
                 if (!session.records.IsCompleted) return;
@@ -174,6 +237,16 @@ namespace Gigaduck.AssetSources
                 RefreshTargets(session);
             }
             if (session.targets == null) return;
+            if (session.blender != null)
+            {
+                var frames = session.blender.Receive();
+                if (frames != null) Publish(session, frames, true);
+                else if (session.blender.Connected && !session.connected)
+                    session.status = "Blender connected (no save needed); waiting for edits";
+                else if (!session.blender.Connected && session.connected)
+                    session.status = "Blender disconnected; reopen the source to reconnect. Saved changes still sync.";
+                session.connected = session.blender.Connected;
+            }
             string stamp = Stamp(session.path);
             if (session.stamp != stamp)
             {
@@ -189,50 +262,20 @@ namespace Gigaduck.AssetSources
                 var task = session.export;
                 session.export = null;
                 var results = task.GetAwaiter().GetResult();
-                int updated = 0;
-                var errors = new List<string>();
-                foreach (var result in results)
+                if (session.connected)
                 {
-                    using (result)
-                    {
-                        try
-                        {
-                            if (result.error != null) { errors.Add(result.error); continue; }
-                            // A save arriving during export supersedes the older result.
-                            if (session.changed > 0) continue;
-                            string target = AssetDatabase.GUIDToAssetPath(result.guid);
-                            if (string.IsNullOrEmpty(target) || target != result.assetPath ||
-                                !AssetSources.Registry.GetRecord(result.guid).sources.Any(x => Key(x) == Key(session.source))) continue;
-                            string fullTarget = Path.Combine(AssetSources.Registry.ProjectRoot, target);
-                            if (SourceExport.Hash(fullTarget) != result.previousHash)
-                            { errors.Add(target + " changed during export; save the source again to retry."); continue; }
-                            if (!SourceExport.Publish(result.output, fullTarget)) continue;
-                            AssetDatabase.ImportAsset(target, ImportAssetOptions.ForceUpdate);
-                            updated++;
-                        }
-                        catch (Exception ex) { errors.Add(result.assetPath + ": " + ex.GetBaseException().Message); }
-                    }
+                    foreach (var result in results.Where(x => new[] { ".fbx", ".obj", ".glb" }.Contains(Path.GetExtension(x.assetPath).ToLowerInvariant()))) result.Dispose();
+                    results.RemoveAll(x => new[] { ".fbx", ".obj", ".glb" }.Contains(Path.GetExtension(x.assetPath).ToLowerInvariant()));
                 }
-                session.status = errors.Count == 0
-                    ? "Live on save; updated " + updated + " assets" + (session.skipped == 0 ? "" : "; " + session.skipped + " linked assets are not exported from this master")
-                    : string.Join("\n", errors.Distinct());
-                if (errors.Count > 0) Debug.LogWarning("Asset Sources live link: " + session.status);
+                if (results.Count > 0) Publish(session, results, false);
             }
             if (session.export != null || session.changed <= 0 || EditorApplication.timeSinceStartup - session.changed < .35 || stamp == "missing") return;
             session.changed = 0;
-            var jobs = new List<SourceExport.Job>();
-            session.skipped = 0;
-            foreach (var record in session.targets)
-            {
-                string assetPath = AssetDatabase.GUIDToAssetPath(record.unityGuid);
-                if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal)) continue;
-                if (!AssetSources.Registry.GetRecord(record.unityGuid).sources.Any(x => Key(x) == Key(session.source))) continue;
-                var job = SourceExport.Prepare(session.path, assetPath, record.unityGuid);
-                if (!SourceExport.CanExport(job.source, job.target)) { session.skipped++; continue; }
-                jobs.Add(job);
-            }
+            var jobs = Jobs(session);
+            if (session.blender != null && session.blender.Connected) jobs.RemoveAll(IsLiveMesh);
             if (jobs.Count == 0)
             {
+                if (session.connected) return;
                 session.status = session.skipped == 0 ? "No Unity assets link to this source yet"
                     : session.skipped + " linked assets are opened for navigation but are not exported from this master";
                 return;

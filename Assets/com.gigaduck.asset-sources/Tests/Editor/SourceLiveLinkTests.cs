@@ -54,7 +54,38 @@ namespace Gigaduck.AssetSources.Tests
             registry.Link("11111111111111111111111111111111", source);
             registry.Link("22222222222222222222222222222222", source);
             registry.Link("33333333333333333333333333333333", new SourceLink { id = "source", libraryId = "art", relativePath = "other.txt" });
+            registry.Link("44444444444444444444444444444444", new SourceLink { id = "source", libraryId = "art", relativePath = "master.txt", noSync = true });
             Assert.That(SourceLiveLink.FindTargets(registry, source).Count, Is.EqualTo(2));
+        }
+
+        [Test] public void DisablingALinkAlsoPreventsPublicationFromAnExistingSession()
+        {
+            var source = new SourceLink { libraryId = "art", relativePath = "master.blend" };
+            Assert.That(SourceLiveLink.Matches(new SourceLink { libraryId = "art", relativePath = "master.blend", noSync = true }, source), Is.False);
+            Assert.That(SourceLiveLink.Matches(new SourceLink { libraryId = "art", relativePath = "other.blend" }, source), Is.False);
+        }
+
+        [Test] public void BlenderConnectionsIsolateMastersAndSurviveScriptReload()
+        {
+            var first = new BlenderLiveConnection(Path.Combine(folder, "first.blend"), folder);
+            var second = new BlenderLiveConnection(Path.Combine(folder, "second.blend"), folder);
+            Assert.That(first.Config, Is.Not.EqualTo(second.Config));
+            first.Configure(new List<SourceExport.Job>());
+            var resumed = new BlenderLiveConnection(Path.Combine(folder, "first.blend"), folder);
+            Assert.That(resumed.Config, Is.EqualTo(first.Config));
+            Assert.That(File.Exists(resumed.Config), Is.True);
+            first.Stop(); second.Stop();
+            Assert.That(File.Exists(first.Config), Is.False);
+        }
+
+        [Test] public void BlenderRejectsOutputsOutsideItsSession()
+        {
+            var connection = new BlenderLiveConnection(Path.Combine(folder, "master.blend"), folder);
+            connection.Configure(new List<SourceExport.Job> { new SourceExport.Job { guid = "test", assetPath = "Assets/test.fbx", target = Path.Combine(folder, "test.fbx") } });
+            File.WriteAllText(Path.Combine(Path.GetDirectoryName(connection.Config), "ready.json"),
+                "{\"results\":[{\"guid\":\"test\",\"assetPath\":\"Assets/test.fbx\",\"output\":\"escape.fbx\"}]}");
+            Assert.Throws<InvalidDataException>(() => connection.Receive());
+            connection.Stop();
         }
 
         [Test] public void PublicationPreservesMetadataAndSkipsIdenticalBytes()

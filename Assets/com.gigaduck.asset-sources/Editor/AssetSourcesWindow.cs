@@ -85,7 +85,7 @@ namespace Gigaduck.AssetSources
                     if (GUILayout.Button(source.noSync ? "Enable Live Sync" : "Disable Live Sync")) Act(() =>
                     {
                         AssetSources.Link(assetPath, source.libraryId, source.relativePath, source.applicationId, source.id, source.label, !source.noSync);
-                        message = source.noSync ? "Live sync enabled; saving the master will update Unity." : "Live sync disabled; the source stays linked for navigation.";
+                        message = source.noSync ? "Live sync enabled; open the source to connect Blender, or save the master to update Unity." : "Live sync disabled; the source stays linked for navigation.";
                     });
                 }
                 if (GUILayout.Button("Relink"))

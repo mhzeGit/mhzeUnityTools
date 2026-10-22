@@ -29,9 +29,14 @@ namespace Gigaduck.AssetSources
         {
             Registry.Link(GuidForAsset(assetPath), new SourceLink
             { id = sourceId, libraryId = libraryId, relativePath = relativePath, applicationId = applicationId, label = label, noSync = noSync });
+            SourceLiveLink.Refresh();
         }
 
-        public static void Unlink(string assetPath, string sourceId) => Registry.Unlink(GuidForAsset(assetPath), sourceId);
+        public static void Unlink(string assetPath, string sourceId)
+        {
+            Registry.Unlink(GuidForAsset(assetPath), sourceId);
+            SourceLiveLink.Refresh();
+        }
         public static string[] ValidateAll() => Registry.ValidateAll(guid => !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(guid))).ToArray();
 
         public static string ApplicationForPath(string path)
@@ -83,8 +88,14 @@ namespace Gigaduck.AssetSources
                     throw new FileNotFoundException("Application moved; locate it again in Asset Sources > Applications.", executable);
                 }
                 SourceLiveLink.Start(source);
+                if (SourceLiveLink.BlenderConnected(source))
+                {
+                    Debug.Log("[Asset Sources] Blender is already connected for " + path + ".");
+                    return;
+                }
                 // The executable and source argument are separate. No command shell or editable command template.
-                var info = new ProcessStartInfo { FileName = executable, Arguments = (source.applicationId == "painter" ? "--enable-remote-scripting " : "") + SourceExport.Quote(path), UseShellExecute = false, CreateNoWindow = true };
+                var info = new ProcessStartInfo { FileName = executable, Arguments = (source.applicationId == "painter" ? "--enable-remote-scripting " : "") + SourceExport.Quote(path) +
+                    (Path.GetExtension(path).Equals(".blend", StringComparison.OrdinalIgnoreCase) ? " " + SourceLiveLink.BlenderArguments(source) : ""), UseShellExecute = false, CreateNoWindow = true };
                 try
                 {
                     var process = Process.Start(info);

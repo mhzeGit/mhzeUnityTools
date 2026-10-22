@@ -1,6 +1,6 @@
 # Asset Sources
 
-Link a Unity asset to its external Blender, Graphmat, Painter or other editable masters once. Then right-click it and choose **Asset Sources > Open Blender Source**, **Open Graphmat Source**, **Open Painter Source**, or **Open Source...** for any other application. Multiple masters for one application produce a source chooser. **Show Source in Explorer** reveals the linked file. Opening a source also arms a live link: after you save the master, the package exports it in the background and replaces the linked Unity file, keeping its GUID and importer settings.
+Link a Unity asset to its external Blender, Graphmat, Painter or other editable masters once. Then right-click it and choose **Asset Sources > Open Blender Source**, **Open Graphmat Source**, **Open Painter Source**, or **Open Source...** for any other application. Multiple masters for one application produce a source chooser. **Show Source in Explorer** reveals the linked file. Opening Blender connects its editor to Unity: linked meshes update from unsaved edits. Other source types export after saving. Unity files keep their GUIDs and importer settings.
 
 This is a standalone editor-only package with no dependencies, runtime components, project-specific paths, import hooks or background source scans. It never changes a master file and never creates or deletes Unity assets. Supports Unity 2022.3 and newer; verified in Unity 6.
 
@@ -25,9 +25,13 @@ For a reproducible installation append `#<full commit SHA>`. The manifest depend
 
 ## Live link
 
-Opening a source through the package (window button, context menu or `AssetSources.Open`) starts a live link for that master. Saving it in Blender, Graphmat, Painter or Photoshop queues a background export, and the confirmed linked Unity assets are updated in place. The source picker stays responsive: the editor does not wait for the exporter.
+Opening a source through the package (window button, context menu or `AssetSources.Open`) starts a live link for that master. **Blender FBX/OBJ/GLB targets update without Ctrl+S**: transforms, mesh edits (including Edit Mode), modifier changes and undo/redo queue an export after a 0.35-second editing pause. Only affected linked meshes are exported. The window reports **Blender connected (no save needed)** after the handshake. Export and Unity import time add to that delay, especially for large or animated assets.
 
-- Links are explicit. Only assets already connected to that exact master are updated; one master can update several assets.
+The package launches Blender with its bundled Python bridge; no add-on installation or network listener is needed. Reopen the source through the package once after upgrading: a Blender instance opened before this version has no bridge. An already connected source reuses its session. The bridge never saves the `.blend` and restores selection, active object, visibility, timeline frame and Edit Mode after exporting. Changing to another Blender file disconnects that session. **Stop Live Links** disconnects without closing Blender; reopen through the package to reconnect. Unity script reloads preserve the connection.
+
+Saving a master in Blender, Graphmat, Painter or Photoshop still queues a background export for other supported targets. Blender embedded-image targets currently use this save-based path. A disconnected Blender mesh link also retains the save-based fallback. The source picker stays responsive: the Unity editor does not wait for native background exporters.
+
+- Links are explicit. Only assets already connected to that exact master with live sync enabled are updated; one master can update several assets. Disabling or unlinking an asset prevents publication even if an export was already running.
 - A link that exists for navigation is reported as navigation only. That includes a Graphmat project linked to a material or prefab whose texture is a shared atlas: link the exported texture (or run the atlas pipeline) to update Unity from that master.
 - The editor file is replaced atomically and its `.meta` is untouched, so GUID, references and importer settings survive.
 - If an exporter fails or its output is ambiguous, the current Unity asset is left as it is and the status line shows the reason.
@@ -50,7 +54,7 @@ Automatic export supports:
 
 Affinity has no scripting API, so a `.afphoto`/`.afdesign` master cannot be exported automatically. Link the editor's exported image instead; it syncs on save. The same applies to any pair without an exporter: the package reports it and changes nothing.
 
-Temporary export work goes to `Work/asset-sources-live/` beside the master, matching the resource-library convention, and is removed after publication.
+Temporary export work goes to `Work/asset-sources-live/` beside the master, matching the resource-library convention. Published frames are removed after publication; the private connection folder is removed when Blender observes disconnection. A Unity heartbeat lets Blender stop after the editor exits or crashes. Each project, master and editor session has its own folder.
 
 The window follows selection. You can also drag a Unity asset into its asset field. For a selected scene object, the commands can resolve its first skinned mesh or mesh filter. For a prefab selected in the Project window, links belong to that prefab itself; links are not inferred from its children.
 
@@ -161,4 +165,10 @@ CLI tests:
 
 ```text
 python -B -m unittest discover -s "<package>/Tools~" -p test_asset_sources.py -v
+```
+
+Blender integration checks (use an external scratch folder, never a production master):
+
+```text
+blender --background --factory-startup --python-exit-code 1 --python "<package>/Tools~/test_blender_live.py" -- "<external-work-folder>"
 ```
