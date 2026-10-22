@@ -30,6 +30,9 @@ namespace Gigaduck.AssetSources
         /// <summary>A source file changed on disk. Handlers run on the editor thread; a throwing handler does not stop syncing.</summary>
         public static event Action<SourceLink, string> SourceSaved;
 
+        /// <summary>Lets a project pipeline describe how it syncs a source. The first non-empty answer wins.</summary>
+        public static event Func<SourceLink, string> StatusProvider;
+
         internal static void Start(SourceLink source)
         {
             string path = AssetSources.Registry.Resolve(source);
@@ -54,8 +57,20 @@ namespace Gigaduck.AssetSources
             Save();
         }
 
-        public static string Status(SourceLink source) => sessions.TryGetValue(Key(source), out var session)
-            ? session.status : "Opens with automatic sync on save";
+        public static string Status(SourceLink source)
+        {
+            if (StatusProvider != null)
+                foreach (var handler in StatusProvider.GetInvocationList())
+                {
+                    try
+                    {
+                        string text = ((Func<SourceLink, string>)handler)(source);
+                        if (!string.IsNullOrEmpty(text)) return text;
+                    }
+                    catch (Exception ex) { Debug.LogWarning("Asset Sources status handler: " + ex.GetBaseException().Message); }
+                }
+            return sessions.TryGetValue(Key(source), out var session) ? session.status : "Opens with automatic sync on save";
+        }
 
         [MenuItem("Tools/Gigaduck/Asset Sources/Stop Live Links")]
         public static void StopAll()

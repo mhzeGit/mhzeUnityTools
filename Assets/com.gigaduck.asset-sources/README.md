@@ -120,6 +120,9 @@ string graphmat = Gigaduck.AssetSources.AssetSources.ApplicationExecutable("grap
 
 // A project pipeline can react to an armed master's save on the editor thread:
 Gigaduck.AssetSources.SourceLiveLink.SourceSaved += (source, path) => { /* source.applicationId, path */ };
+
+// ...and report its own state in the Asset Sources window:
+Gigaduck.AssetSources.SourceLiveLink.StatusProvider += source => null; // return a message for sources your pipeline handles
 ```
 
 `SourceSaved` fires after a linked master's file timestamp changes and before the package's own export runs. A handler must do its slow work off the editor thread and return; exceptions are logged and do not stop the live link.

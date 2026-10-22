@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- Add a status provider so project pipelines can report their own sync state in the Asset Sources window.
+
 ## 1.2.0
 
 - Add a public `SourceSaved` event so project pipelines can react when an armed master changes.
