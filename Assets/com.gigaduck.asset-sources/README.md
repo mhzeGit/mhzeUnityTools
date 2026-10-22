@@ -28,6 +28,7 @@ For a reproducible installation append `#<full commit SHA>`. The manifest depend
 Opening a source through the package (window button, context menu or `AssetSources.Open`) starts a live link for that master. Saving it in Blender, Graphmat, Painter or Photoshop queues a background export, and the confirmed linked Unity assets are updated in place. The source picker stays responsive: the editor does not wait for the exporter.
 
 - Links are explicit. Only assets already connected to that exact master are updated; one master can update several assets.
+- A link that exists for navigation is reported as navigation only. That includes a Graphmat project linked to a material or prefab whose texture is a shared atlas: link the exported texture (or run the atlas pipeline) to update Unity from that master.
 - The editor file is replaced atomically and its `.meta` is untouched, so GUID, references and importer settings survive.
 - If an exporter fails or its output is ambiguous, the current Unity asset is left as it is and the status line shows the reason.
 - Links stay armed across script reloads in the same editor session. **Tools > Gigaduck > Asset Sources > Stop Live Links** stops them.

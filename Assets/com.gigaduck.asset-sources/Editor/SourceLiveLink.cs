@@ -120,6 +120,25 @@ namespace Gigaduck.AssetSources
             }
         }
 
+        private static void RefreshTargets(Session session)
+        {
+            int exportable = 0, navigation = 0;
+            foreach (var record in session.targets)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(record.unityGuid);
+                if (string.IsNullOrEmpty(assetPath) || !assetPath.StartsWith("Assets/", StringComparison.Ordinal)) continue;
+                if (!AssetSources.Registry.GetRecord(record.unityGuid).sources.Any(x => Key(x) == Key(session.source))) continue;
+                if (SourceExport.CanExport(session.path, Path.Combine(AssetSources.Registry.ProjectRoot, assetPath))) exportable++;
+                else navigation++;
+            }
+            session.skipped = navigation;
+            session.status = exportable > 0
+                ? "Live on save: " + exportable + " linked assets will update" + (navigation == 0 ? "" : " (" + navigation + " navigation only)")
+                : navigation > 0
+                    ? "Linked for navigation only: this master produces no replacement Unity asset"
+                    : "No Unity assets link to this source yet";
+        }
+
         private static void Tick(Session session)
         {
             if (session.records != null)
@@ -128,9 +147,7 @@ namespace Gigaduck.AssetSources
                 var task = session.records;
                 session.records = null;
                 session.targets = task.GetAwaiter().GetResult();
-                session.status = session.targets.Count == 0
-                    ? "No Unity assets link to this source yet"
-                    : "Live on save (" + session.targets.Count + " linked assets)";
+                RefreshTargets(session);
             }
             if (session.targets == null) return;
             string stamp = Stamp(session.path);

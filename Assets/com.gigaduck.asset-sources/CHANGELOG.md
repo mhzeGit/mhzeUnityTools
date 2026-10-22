@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Report navigation-only links immediately instead of claiming they will update on save.
+
 ## 1.1.0
 
 - Add live links: opening a source arms it, and saving it exports and updates every linked Unity asset in the background.
