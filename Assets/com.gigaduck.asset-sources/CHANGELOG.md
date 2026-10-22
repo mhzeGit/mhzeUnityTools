@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+
+- Disable Open and Show actions for links whose source file is missing, and mark missing entries in the source chooser.
+
 ## 1.2.1
 
 - Add a status provider so project pipelines can report their own sync state in the Asset Sources window.

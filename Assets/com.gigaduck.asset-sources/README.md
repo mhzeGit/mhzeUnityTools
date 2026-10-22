@@ -21,7 +21,7 @@ For a reproducible installation append `#<full commit SHA>`. The manifest depend
 3. Select an FBX or another imported asset. Right-click **Asset Sources > Setup or Relink Sources...**.
 4. In Sources, choose the library and browse to the editable master. The application is inferred from the extension. Give the connection a stable source ID, such as `model`, `textures` or `animation-walk`, then **Save Source Link**.
 5. Add other sources with different IDs. Reusing an ID deliberately replaces that connection. Other connections remain untouched.
-6. Right-click the Unity asset to open its sources. Use **Relink** if an individual master moves, or **Unlink** to remove just the connection.
+6. Right-click the Unity asset to open its sources. Use **Relink** if an individual master moves, or **Unlink** to remove just the connection. A link whose file is missing is disabled in the context menu and marked **missing** in the chooser; it is never opened or revealed.
 
 ## Live link
 

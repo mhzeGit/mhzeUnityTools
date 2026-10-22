@@ -117,8 +117,14 @@ namespace Gigaduck.AssetSources
             try
             {
                 string path = SelectedAssetPath();
-                return !string.IsNullOrEmpty(path) && Get(path).sources.Any(x => application == null || x.applicationId == application);
+                return !string.IsNullOrEmpty(path) && Get(path).sources.Any(x => (application == null || x.applicationId == application) && Exists(x));
             }
+            catch { return false; }
+        }
+
+        private static bool Exists(SourceLink source)
+        {
+            try { return File.Exists(Registry.Resolve(source, false)); }
             catch { return false; }
         }
 
@@ -130,13 +136,20 @@ namespace Gigaduck.AssetSources
             {
                 var sources = Get(SelectedAssetPath()).sources.Where(x => application == null || x.applicationId == application).ToArray();
                 if (sources.Length == 0) throw new InvalidOperationException("Link a source first using Setup or Relink Sources.");
-                if (sources.Length == 1) { if (reveal) Reveal(sources[0]); else Open(sources[0]); return; }
+                if (sources.Length == 1)
+                {
+                    if (!Exists(sources[0])) throw new FileNotFoundException("Source file is missing; use Setup or Relink Sources to reconnect it.", sources[0].relativePath);
+                    if (reveal) Reveal(sources[0]); else Open(sources[0]);
+                    return;
+                }
                 var menu = new GenericMenu();
                 foreach (var item in sources)
                 {
                     var source = item;
-                    menu.AddItem(new GUIContent((string.IsNullOrEmpty(source.label) ? source.id : source.label).Replace('/', ' ') + " (" + Path.GetFileName(source.relativePath) + ")"), false,
-                        () => Run(() => { if (reveal) Reveal(source); else Open(source); }));
+                    bool exists = Exists(source);
+                    var content = new GUIContent((string.IsNullOrEmpty(source.label) ? source.id : source.label).Replace('/', ' ') + " (" + Path.GetFileName(source.relativePath) + ")" + (exists ? "" : " - missing"));
+                    if (exists) menu.AddItem(content, false, () => Run(() => { if (reveal) Reveal(source); else Open(source); }));
+                    else menu.AddDisabledItem(content);
                 }
                 menu.ShowAsContext();
             });
