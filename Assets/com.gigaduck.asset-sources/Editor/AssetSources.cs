@@ -64,6 +64,19 @@ namespace Gigaduck.AssetSources
             Open(source);
         }
 
+        /// <summary>Explicitly enables the selected source's live link and opens its editor in one action.</summary>
+        public static void OpenWithLiveLink(string assetPath, string sourceId)
+        {
+            var source = Get(assetPath).sources.FirstOrDefault(x => x.id == sourceId)
+                ?? throw new InvalidOperationException("No source '" + sourceId + "'. Use Setup / Relink Sources first.");
+            if (source.noSync)
+            {
+                Link(assetPath, source.libraryId, source.relativePath, source.applicationId, source.id, source.label, false);
+                source.noSync = false;
+            }
+            Open(source);
+        }
+
         public static void Open(SourceLink source)
         {
             string path;
@@ -147,7 +160,7 @@ namespace Gigaduck.AssetSources
         private static bool CanSetup() => !string.IsNullOrEmpty(SelectedAssetPath());
 
         [MenuItem("Assets/Asset Sources/Open Blender Source", false, 2010)]
-        private static void Blender() => OpenApplication("blender");
+        private static void Blender() => ChooseSource("blender", connect: true);
         [MenuItem("Assets/Asset Sources/Open Blender Source", true)]
         private static bool CanBlender() => HasApplication("blender");
         [MenuItem("Assets/Asset Sources/Open Graphmat Source", false, 2011)]
@@ -185,16 +198,17 @@ namespace Gigaduck.AssetSources
 
         private static void OpenApplication(string application) => ChooseSource(application);
 
-        private static void ChooseSource(string application, bool reveal = false)
+        private static void ChooseSource(string application, bool reveal = false, bool connect = false)
         {
             Run(() =>
             {
-                var sources = Get(SelectedAssetPath()).sources.Where(x => application == null || x.applicationId == application).ToArray();
+                string assetPath = SelectedAssetPath();
+                var sources = Get(assetPath).sources.Where(x => application == null || x.applicationId == application).ToArray();
                 if (sources.Length == 0) throw new InvalidOperationException("Link a source first using Setup or Relink Sources.");
                 if (sources.Length == 1)
                 {
                     if (!Exists(sources[0])) throw new FileNotFoundException("Source file is missing; use Setup or Relink Sources to reconnect it.", sources[0].relativePath);
-                    if (reveal) Reveal(sources[0]); else Open(sources[0]);
+                    if (reveal) Reveal(sources[0]); else if (connect) OpenWithLiveLink(assetPath, sources[0].id); else Open(sources[0]);
                     return;
                 }
                 var menu = new GenericMenu();
@@ -203,7 +217,7 @@ namespace Gigaduck.AssetSources
                     var source = item;
                     bool exists = Exists(source);
                     var content = new GUIContent((string.IsNullOrEmpty(source.label) ? source.id : source.label).Replace('/', ' ') + " (" + Path.GetFileName(source.relativePath) + ")" + (exists ? "" : " - missing"));
-                    if (exists) menu.AddItem(content, false, () => Run(() => { if (reveal) Reveal(source); else Open(source); }));
+                    if (exists) menu.AddItem(content, false, () => Run(() => { if (reveal) Reveal(source); else if (connect) OpenWithLiveLink(assetPath, source.id); else Open(source); }));
                     else menu.AddDisabledItem(content);
                 }
                 menu.ShowAsContext();

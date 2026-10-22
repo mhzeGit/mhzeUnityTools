@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEditor;
 
 namespace Gigaduck.AssetSources.Tests
 {
@@ -23,6 +24,32 @@ namespace Gigaduck.AssetSources.Tests
 
         [Test] public void NoSyncLinksAreNavigationOnly() =>
             Assert.That(SourceLiveLink.Status(new SourceLink { id = "x", noSync = true }), Is.EqualTo("Linked for navigation only (live sync off)"));
+
+        [Test] public void OpenWithLiveLinkEnablesOnlyTheSelectedConnectionBeforeLaunching()
+        {
+            var field = typeof(AssetSources).GetField("registry", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            var previous = field.GetValue(null);
+            string asset = "Assets/AssetSourcesOpenTest-" + Guid.NewGuid().ToString("N") + ".txt";
+            var registry = new SourceRegistry(Path.Combine(folder, "Project"));
+            string library = Path.Combine(folder, "Library"), executable = Path.Combine(folder, "missing.exe");
+            Directory.CreateDirectory(library);
+            File.WriteAllText(Path.Combine(library, "master.blend"), "test");
+            File.WriteAllText(executable, "test");
+            registry.DefineLibrary("art"); registry.SetLibraryRoot("art", library);
+            registry.SetApplication("blender", executable); File.Delete(executable);
+            try
+            {
+                field.SetValue(null, registry);
+                File.WriteAllText(asset, "test"); AssetDatabase.ImportAsset(asset);
+                foreach (string id in new[] { "model", "other" }) AssetSources.Link(asset, "art", "master.blend", "blender", id, noSync: true);
+                string configured = registry.GetLocalSettings().applications.Single(x => x.id == "blender").path;
+                UnityEngine.TestTools.LogAssert.Expect(LogType.Error, "[Asset Sources] Application executable is missing: " + configured + ". Relink it in Asset Sources > Applications.");
+                Assert.Throws<FileNotFoundException>(() => AssetSources.OpenWithLiveLink(asset, "model"));
+                Assert.That(AssetSources.Get(asset).sources.Single(x => x.id == "model").noSync, Is.False);
+                Assert.That(AssetSources.Get(asset).sources.Single(x => x.id == "other").noSync, Is.True);
+            }
+            finally { field.SetValue(null, previous); AssetDatabase.DeleteAsset(asset); }
+        }
 
         [TestCase("Chair_BaseColor", "basecolor")]
         [TestCase("Chair_Normal", "normal")]
@@ -87,6 +114,40 @@ namespace Gigaduck.AssetSources.Tests
                 "{\"results\":[{\"guid\":\"test\",\"assetPath\":\"Assets/test.fbx\",\"output\":\"escape.fbx\"}]}");
             Assert.Throws<InvalidDataException>(() => connection.Receive());
             connection.Stop();
+        }
+
+        [Test] public void BlenderSaveFramesRetainTheForcedImportFlag()
+        {
+            var connection = new BlenderLiveConnection(Path.Combine(folder, "master.blend"), folder);
+            connection.Configure(new List<SourceExport.Job> { new SourceExport.Job { guid = "test", assetPath = "Assets/test.fbx", target = Path.Combine(folder, "test.fbx") } });
+            string frame = Path.Combine(Path.GetDirectoryName(connection.Config), "frame-test");
+            Directory.CreateDirectory(frame);
+            string output = Path.Combine(frame, "output.fbx");
+            File.WriteAllText(Path.Combine(Path.GetDirectoryName(connection.Config), "ready.json"),
+                "{\"results\":[" + JsonUtility.ToJson(new TestFrame { guid = "test", assetPath = "Assets/test.fbx", forceImport = true, output = output }) + "]}");
+            var results = connection.Receive();
+            Assert.That(results.Single().forceImport, Is.True);
+            results.Single().Dispose(); connection.Stop();
+        }
+
+        [Serializable] private sealed class TestFrame { public string guid, assetPath, output; public bool forceImport; }
+
+        [Test] public void BlenderStaticMeshImportsUprightAtUnitScale()
+        {
+            string fixture = Environment.GetEnvironmentVariable("ASSET_SOURCES_BLENDER_TEST_ROOT");
+            if (string.IsNullOrEmpty(fixture)) Assert.Ignore("Generate test_blender_live.py fixtures and set ASSET_SOURCES_BLENDER_TEST_ROOT to run the native FBX import check.");
+            string asset = "Assets/AssetSourcesAxisTest-" + Guid.NewGuid().ToString("N") + ".fbx";
+            try
+            {
+                File.Copy(Path.Combine(fixture, "LiveCube.fbx"), asset);
+                AssetDatabase.ImportAsset(asset, ImportAssetOptions.ForceSynchronousImport);
+                var model = AssetDatabase.LoadAssetAtPath<GameObject>(asset);
+                var mesh = AssetDatabase.LoadAllAssetsAtPath(asset).OfType<Mesh>().Single();
+                Assert.That(Quaternion.Angle(model.transform.localRotation, Quaternion.identity), Is.LessThan(.01f));
+                Assert.That(Vector3.Distance(model.transform.localScale, Vector3.one), Is.LessThan(.001f));
+                Assert.That(Vector3.Distance(mesh.bounds.size, new Vector3(2, 6, 4)), Is.LessThan(.001f), "Mesh data used directly by a prefab must also use Unity Y-up axes and metre scale.");
+            }
+            finally { AssetDatabase.DeleteAsset(asset); }
         }
 
         [Test] public void DeepResourcePathsCanWriteHandshakeAndExportFiles()

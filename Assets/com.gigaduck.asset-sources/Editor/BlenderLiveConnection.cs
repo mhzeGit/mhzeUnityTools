@@ -14,7 +14,7 @@ namespace Gigaduck.AssetSources
     {
         [Serializable] private sealed class Request { public string source; public List<SourceExport.Job> jobs; }
         [Serializable] private sealed class Response { public List<Frame> results; }
-        [Serializable] private sealed class Frame { public string guid, assetPath, output, previousHash, error; }
+        [Serializable] private sealed class Frame { public string guid, assetPath, output, previousHash, error; public bool forceImport; }
         private readonly string source, directory;
         private List<SourceExport.Job> jobs = new List<SourceExport.Job>();
         private string requestJson;
@@ -30,7 +30,7 @@ namespace Gigaduck.AssetSources
             if (token.Length == 0) { token = Guid.NewGuid().ToString("N"); SessionState.SetString("Gigaduck.AssetSources.BlenderSession", token); }
             string project;
             using (var hash = SHA256.Create()) project = BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(projectRoot + "\n" + source))).Replace("-", "").Substring(0, 16);
-            directory = SourceExport.WorkDirectory(source, project + "-" + token);
+            directory = SourceExport.WorkDirectory(source, project + "-v2-" + token);
             Directory.CreateDirectory(directory);
             Pulse();
             if (!File.Exists(Config)) Configure(new List<SourceExport.Job>());
@@ -76,7 +76,7 @@ namespace Gigaduck.AssetSources
                     Path.GetExtension(output) != Path.GetExtension(job.target))
                     throw new InvalidDataException("Blender returned an output outside its live export folder.");
                 results.Add(new SourceExport.Result { guid = frame.guid, assetPath = frame.assetPath, output = output,
-                    previousHash = frame.previousHash, error = frame.error, directory = Path.GetDirectoryName(output) });
+                    previousHash = frame.previousHash, error = frame.error, forceImport = frame.forceImport, directory = Path.GetDirectoryName(output) });
             }
             File.Delete(ready);
             return results;

@@ -27,6 +27,8 @@ For a reproducible installation append `#<full commit SHA>`. The manifest depend
 
 Opening a source through the package (window button, context menu or `AssetSources.Open`) starts a live link for that master. **Blender FBX/OBJ/GLB targets update without Ctrl+S**: transforms, mesh edits (including Edit Mode), modifier changes and undo/redo queue an export after a 0.35-second editing pause. Only affected linked meshes are exported. The window reports **Blender connected (no save needed)** after the handshake. Export and Unity import time add to that delay, especially for large or animated assets.
 
+**Every Blender save also forces a fresh export and Unity import of all enabled linked meshes**, even without scene changes. Saves bypass the editing debounce; exporter/importer time still applies. **Open Blender Source** in the context menu and **Open + Live Link** in the window explicitly enable the selected connection before opening. The generic **Open Source...** menu and `AssetSources.Open` continue to respect navigation-only links. Automation can call `AssetSources.OpenWithLiveLink(assetPath, sourceId)` for the explicit enable-and-connect action.
+
 The package launches Blender with its bundled Python bridge; no add-on installation or network listener is needed. Reopen the source through the package once after upgrading: a Blender instance opened before this version has no bridge. An already connected source reuses its session. The bridge never saves the `.blend` and restores selection, active object, visibility, timeline frame and Edit Mode after exporting. Changing to another Blender file disconnects that session. **Stop Live Links** disconnects without closing Blender; reopen through the package to reconnect. Unity script reloads preserve the connection.
 
 Saving a master in Blender, Graphmat, Painter or Photoshop still queues a background export for other supported targets. Blender embedded-image targets currently use this save-based path. A disconnected Blender mesh link also retains the save-based fallback. The source picker stays responsive: the Unity editor does not wait for native background exporters.
@@ -44,7 +46,7 @@ Automatic export supports:
 
 | Master | Unity target | Notes |
 | --- | --- | --- |
-| Blender `.blend` | `.fbx`, `.obj`, `.glb` | Exports the meshes named like the Unity asset, using Unity's `-Z` forward / `Y` up axes. A target with custom global scale or axis settings should keep a manual export recipe. |
+| Blender `.blend` | `.fbx`, `.obj`, `.glb` | Exports the confirmed mesh names, using `-Z` forward / `Y` up axes. Static FBX exports bake the axis conversion into geometry and store units in FBX metadata so direct mesh references stay upright at metre scale. Rigged/animated FBX exports retain their hierarchy conversion because Blender's experimental transform baking does not support them reliably. Custom export recipes still need their own pipeline. |
 | Blender `.blend` | image | Exports the embedded image whose name matches the Unity asset. |
 | Graphmat `.gmat` | `.png` | Exports the channel implied by the texture name; refuses packed or ambiguous names. Automatic normal export requires an OpenGL normal convention. |
 | Painter `.spp` | `.png` | Requires the master to be the open project with a single texture set, and Painter launched with remote scripting (the package adds the switch). |
@@ -172,3 +174,5 @@ Blender integration checks (use an external scratch folder, never a production m
 ```text
 blender --background --factory-startup --python-exit-code 1 --python "<package>/Tools~/test_blender_live.py" -- "<external-work-folder>"
 ```
+
+Set `ASSET_SOURCES_BLENDER_TEST_ROOT` to that external folder when running the Edit Mode tests to include the native asymmetric FBX import check. It verifies both the imported root transform and the mesh data used directly by prefabs.

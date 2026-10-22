@@ -30,6 +30,7 @@ class LiveLink:
         self.exporting = False
         self.config_stamp = None
         self.failed = None
+        self.save_requested = False
 
     def changed_data(self, scene, depsgraph):
         if self.exporting:
@@ -65,9 +66,14 @@ class LiveLink:
             self.pending.update(job["guid"] for job in self.jobs)
             self.changed = time.monotonic()
 
+    def saved(self, *_):
+        self.save_requested = True
+        self.changed = 0
+
     def stop(self):
         for handlers, callback in ((bpy.app.handlers.depsgraph_update_post, self.changed_data),
-                                   (bpy.app.handlers.undo_post, self.undo), (bpy.app.handlers.redo_post, self.undo)):
+                                   (bpy.app.handlers.undo_post, self.undo), (bpy.app.handlers.redo_post, self.undo),
+                                   (bpy.app.handlers.save_post, self.saved)):
             if callback in handlers:
                 handlers.remove(callback)
         shutil.rmtree(self.directory, ignore_errors=True)
@@ -88,6 +94,8 @@ class LiveLink:
             if stamp != self.config_stamp:
                 self.jobs = data["jobs"]
                 self.config_stamp = stamp
+            if self.save_requested:
+                self.pending.update(job["guid"] for job in self.jobs)
             ready = self.directory / "ready.json"
             # Operators must run on the main thread, after a gesture has finished.
             if not self.pending or ready.exists() or time.monotonic() - self.changed < .35:
@@ -95,6 +103,7 @@ class LiveLink:
             if bpy.context.window and bpy.context.window.modal_operators:
                 return .2
             pending, self.pending = self.pending, set()
+            force_import, self.save_requested = self.save_requested, False
             results = []
             self.exporting = True
             try:
@@ -104,7 +113,7 @@ class LiveLink:
                     directory = self.directory / ("frame-" + uuid.uuid4().hex)
                     directory.mkdir()
                     output = directory / ("output" + Path(job["target"]).suffix)
-                    frame = dict(guid=job["guid"], assetPath=job["assetPath"], output=str(output))
+                    frame = dict(guid=job["guid"], assetPath=job["assetPath"], output=str(output), forceImport=force_import)
                     try:
                         frame["previousHash"] = base64.b64encode(hashlib.sha256(Path(job["target"]).read_bytes()).digest()).decode()
                         self.export(dict(job, output=str(output)))
@@ -129,6 +138,7 @@ class LiveLink:
         bpy.app.handlers.depsgraph_update_post.append(self.changed_data)
         bpy.app.handlers.undo_post.append(self.undo)
         bpy.app.handlers.redo_post.append(self.undo)
+        bpy.app.handlers.save_post.append(self.saved)
         bpy.app.timers.register(self.tick, first_interval=.2)
         print("[Asset Sources] Connected to Unity; linked meshes update after editing pauses (no save needed)")
 

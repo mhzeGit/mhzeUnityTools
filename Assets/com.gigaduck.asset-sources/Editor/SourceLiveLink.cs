@@ -216,7 +216,7 @@ namespace Gigaduck.AssetSources
                         string fullTarget = Path.Combine(AssetSources.Registry.ProjectRoot, target);
                         if (SourceExport.Hash(fullTarget) != result.previousHash)
                         { errors.Add(target + " changed during export; edit the source again to retry."); continue; }
-                        if (!SourceExport.Publish(result.output, fullTarget)) continue;
+                        if (!SourceExport.Publish(result.output, fullTarget) && !result.forceImport) continue;
                         AssetDatabase.ImportAsset(target, ImportAssetOptions.ForceUpdate);
                         updated++;
                     }
@@ -284,7 +284,12 @@ namespace Gigaduck.AssetSources
                 return;
             }
             session.status = "Exporting in background...";
-            session.export = Task.Run(() => SourceExport.ExportMany(jobs));
+            session.export = Task.Run(() =>
+            {
+                var results = SourceExport.ExportMany(jobs);
+                foreach (var result in results) result.forceImport = true;
+                return results;
+            });
         }
     }
 }

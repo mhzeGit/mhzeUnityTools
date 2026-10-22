@@ -75,9 +75,10 @@ def _export(job):
             parent = parent.parent
     bpy.context.view_layer.objects.active = meshes[0]
     if extension == ".fbx":
+        animated = any(obj.type == "ARMATURE" or obj.animation_data for obj in bpy.context.selected_objects)
         bpy.ops.export_scene.fbx(filepath=output, use_selection=True, object_types={"MESH", "ARMATURE", "EMPTY"},
                                  add_leaf_bones=False, axis_forward="-Z", axis_up="Y", path_mode="STRIP",
-                                 bake_anim=any(obj.type == "ARMATURE" or obj.animation_data for obj in bpy.context.selected_objects))
+                                 bake_space_transform=not animated, apply_scale_options="FBX_SCALE_UNITS", bake_anim=animated)
     elif extension == ".obj":
         bpy.ops.wm.obj_export(filepath=output, export_selected_objects=True, export_materials=False)
     elif extension in {".glb", ".gltf"}:

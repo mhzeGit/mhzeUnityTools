@@ -19,6 +19,9 @@ def main(folder):
     bpy.ops.mesh.primitive_cube_add()
     cube = bpy.context.object
     cube.name = cube.data.name = "LiveCube"
+    for vertex in cube.data.vertices:
+        vertex.co.y *= 2
+        vertex.co.z *= 3
     master, target = folder / "LiveCube.blend", folder / "LiveCube.fbx"
     bpy.ops.wm.save_as_mainfile(filepath=str(master))
     master_hash = hashlib.sha256(master.read_bytes()).hexdigest()
@@ -67,6 +70,20 @@ def main(folder):
     assert not link.pending, "Restoring edit mode generated a feedback loop"
     ready.unlink()
 
+    # Every actual save must export all linked meshes, including two unchanged saves.
+    for _ in range(2):
+        bpy.ops.wm.save_as_mainfile(filepath=str(master))
+        master_hash = hashlib.sha256(master.read_bytes()).hexdigest()
+        assert link.save_requested, "A successful save did not reach the bridge"
+        assert link.changed == 0, "Save refresh must bypass the editing debounce"
+        link.tick()
+        frame = json.loads(ready.read_text())["results"][0]
+        assert not frame.get("error"), frame
+        assert frame["forceImport"], "Unchanged saves must force a Unity import"
+        assert cube.mode == "EDIT" and cube.select_get()
+        assert hashlib.sha256(master.read_bytes()).hexdigest() == master_hash
+        ready.unlink()
+
     # Failed mapping must leave the target/master intact and restore editing state.
     bad = dict(job, meshes=["UnknownMesh"], output=str(folder / "should-not-exist.fbx"))
     try:
@@ -81,6 +98,7 @@ def main(folder):
     assert "cube" in link.pending
     config.unlink()
     assert link.tick() is None and not session.exists()
+    assert link.saved not in bpy.app.handlers.save_post
     print("ASSET_SOURCES_BLENDER_TESTS_PASSED")
 
 

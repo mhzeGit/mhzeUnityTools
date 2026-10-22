@@ -80,7 +80,7 @@ namespace Gigaduck.AssetSources
                 EditorGUILayout.BeginHorizontal();
                 using (new EditorGUI.DisabledScope(!exists))
                 {
-                    if (GUILayout.Button("Open + Live Link")) Act(() => AssetSources.Open(source));
+                    if (GUILayout.Button("Open + Live Link")) Act(() => AssetSources.OpenWithLiveLink(assetPath, source.id));
                     if (GUILayout.Button("Reveal")) Act(() => AssetSources.Reveal(source));
                     if (GUILayout.Button(source.noSync ? "Enable Live Sync" : "Disable Live Sync")) Act(() =>
                     {

@@ -28,6 +28,7 @@ namespace Gigaduck.AssetSources
         internal sealed class Result : IDisposable
         {
             public string guid, assetPath, output, previousHash, error, directory;
+            public bool forceImport;
             public void Dispose() { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
         }
         [Serializable] private sealed class JobList { public List<Job> jobs; }

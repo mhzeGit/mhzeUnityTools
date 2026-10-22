@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.3
+
+- Make Open Blender Source and Open + Live Link explicitly enable the selected connection before launching, without enabling other disabled targets.
+- Export every linked mesh on each Blender save, including unchanged saves, and force Unity to import the result even when its bytes match.
+- Bake static FBX axis conversion into mesh data and store unit scaling in FBX metadata, avoiding the -90-degree root correction and 100x object scale when meshes are used directly by prefabs.
+- Isolate the revised bridge protocol from older running Blender connections.
+- Cover unchanged saves, forced-import messages, explicit connection enabling and asymmetric FBX orientation/scale in regression checks.
+
 ## 1.4.2
 
 - Use Windows extended filesystem paths for live handshake files and staged exports in deeply nested external resource libraries.
