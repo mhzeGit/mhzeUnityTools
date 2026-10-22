@@ -30,7 +30,7 @@ namespace Gigaduck.AssetSources
             if (token.Length == 0) { token = Guid.NewGuid().ToString("N"); SessionState.SetString("Gigaduck.AssetSources.BlenderSession", token); }
             string project;
             using (var hash = SHA256.Create()) project = BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(projectRoot + "\n" + source))).Replace("-", "").Substring(0, 16);
-            directory = Path.Combine(Path.GetDirectoryName(source), "Work", "asset-sources-live", project + "-" + token);
+            directory = SourceExport.WorkDirectory(source, project + "-" + token);
             Directory.CreateDirectory(directory);
             Pulse();
             if (!File.Exists(Config)) Configure(new List<SourceExport.Job>());

@@ -132,7 +132,7 @@ namespace Gigaduck.AssetSources
         private static Result Stage(Job job)
         {
             var result = new Result { guid = job.guid, assetPath = job.assetPath };
-            result.directory = Path.Combine(Path.GetDirectoryName(job.source), "Work", "asset-sources-live", Guid.NewGuid().ToString("N"));
+            result.directory = WorkDirectory(job.source, Guid.NewGuid().ToString("N"));
             try
             {
                 Directory.CreateDirectory(result.directory);
@@ -147,7 +147,7 @@ namespace Gigaduck.AssetSources
         {
             var result = new Result { guid = job.guid, assetPath = job.assetPath };
             // Production work stays beside the external master, never in Assets or the Unity project.
-            result.directory = Path.Combine(Path.GetDirectoryName(job.source), "Work", "asset-sources-live", Guid.NewGuid().ToString("N"));
+            result.directory = WorkDirectory(job.source, Guid.NewGuid().ToString("N"));
             try
             {
                 Directory.CreateDirectory(result.directory);
@@ -196,6 +196,15 @@ namespace Gigaduck.AssetSources
         {
             using (var stream = File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var hash = SHA256.Create()) return Convert.ToBase64String(hash.ComputeHash(stream));
+        }
+
+        internal static string WorkDirectory(string source, string id)
+        {
+            string path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(source), "Work", "asset-sources-live", id));
+            // Unity's Mono file APIs still hit MAX_PATH in deeply nested external resource libraries.
+            if (Platform == RuntimePlatform.WindowsEditor && !path.StartsWith(@"\\?\", StringComparison.Ordinal))
+                return path.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + path.Substring(2) : @"\\?\" + path;
+            return path;
         }
 
         internal static bool Publish(string output, string target)

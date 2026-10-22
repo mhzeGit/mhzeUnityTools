@@ -89,6 +89,17 @@ namespace Gigaduck.AssetSources.Tests
             connection.Stop();
         }
 
+        [Test] public void DeepResourcePathsCanWriteHandshakeAndExportFiles()
+        {
+            string source = Path.Combine(folder, new string('a', 90), new string('b', 90), "master.blend");
+            string work = SourceExport.WorkDirectory(source, "long-path-check");
+            Directory.CreateDirectory(work);
+            string file = Path.Combine(work, "request.json.tmp");
+            File.WriteAllText(file, "verified");
+            Assert.That(File.ReadAllText(file), Is.EqualTo("verified"));
+            Directory.Delete(work, true);
+        }
+
         [Test] public void PublicationPreservesMetadataAndSkipsIdenticalBytes()
         {
             string source = Path.Combine(folder, "source.txt"), target = Path.Combine(folder, "target.txt");

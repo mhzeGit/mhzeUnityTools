@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.2
+
+- Use Windows extended filesystem paths for live handshake files and staged exports in deeply nested external resource libraries.
+- Add a regression check writing handshake files beyond Windows' legacy 260-character limit.
+
 ## 1.4.1
 
 - Publish the initial Blender handshake before its asynchronous target scan completes, preventing a startup race on fast launches.

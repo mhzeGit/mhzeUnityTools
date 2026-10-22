@@ -30,7 +30,8 @@ def main(folder):
     config = session / "request.json"
     config.write_text(json.dumps(dict(source=str(master), jobs=[job])), encoding="utf-8")
     (session / "unity.alive").touch()
-    link = live_type(config)
+    live_config = "\\\\?\\" + str(config.resolve()) if os.name == "nt" else str(config)
+    link = live_type(live_config)
     link.start()
     link.tick()
     assert not (session / "ready.json").exists(), "Opening must not publish unchanged files"
