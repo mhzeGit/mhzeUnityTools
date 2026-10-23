@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Gigaduck.AssetSources
 {
-    /// <summary>Draws source-opening and reveal buttons at the right edge of linked assets in Project list rows.</summary>
+    /// <summary>Draws source-opening and reveal buttons at the right edge of selected linked assets in Project list rows.</summary>
     [InitializeOnLoad]
     internal static class SourceProjectRows
     {
@@ -40,12 +40,15 @@ namespace Gigaduck.AssetSources
 #if UNITY_6000_0_OR_NEWER
         private static void Draw(EntityId entityId, Rect row)
         {
-            if (row.height > 22 || row.width < 100) return;
+            if (!Selection.Contains(entityId) || row.height > 22 || row.width < 100) return;
             Draw(AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(entityId)), row);
         }
 #endif
         private static void Draw(string guid, Rect row)
         {
+#if !UNITY_6000_0_OR_NEWER
+            if (!Selection.assetGUIDs.Contains(guid)) return;
+#endif
             if (string.IsNullOrEmpty(guid) || row.height > 22 || row.width < 100) return;
             if (!rows.TryGetValue(guid, out var cached) || cached.expires < EditorApplication.timeSinceStartup)
             {

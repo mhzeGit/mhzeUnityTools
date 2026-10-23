@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.4
+
+- Show source and folder shortcuts only on selected Project rows, including multiple selected assets. On Unity 6, selecting a subasset does not show shortcuts on its unselected parent row.
+- Skip source-record reads for unselected rows.
+
 ## 1.5.3
 
 - Import the application PNGs as full-color, uncompressed RGBA textures. Incomplete importer metadata previously triggered Unity's legacy alpha-only migration and displayed black silhouettes.
