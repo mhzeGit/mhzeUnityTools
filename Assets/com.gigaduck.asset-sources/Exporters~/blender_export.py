@@ -5,18 +5,39 @@ import sys
 import bpy
 
 
+def mesh_objects(job, scene=None):
+    objects = [obj for obj in (scene or bpy.context.scene).objects if obj.type == "MESH"]
+    names = set(job["meshes"])
+    # A confirmed one-mesh source/target pair remains unambiguous after a rename.
+    if len(names) == 1 and len(objects) == 1:
+        return objects
+    meshes = [obj for obj in objects if obj.name in names or obj.data.name in names]
+    found = {name for name in names if any(obj.name == name or obj.data.name == name for obj in meshes)}
+    if not names or found != names:
+        raise ValueError("Linked export mesh names do not uniquely identify this master's objects: "
+                         + ", ".join(sorted(names - found)))
+    for name in names:
+        if sum(obj.name == name or obj.data.name == name for obj in meshes) != 1:
+            raise ValueError("Ambiguous Blender mesh: " + name)
+    return meshes
+
+
 def export(job):
     active = bpy.context.view_layer.objects.active
     mode = active.mode if active else "OBJECT"
-    state = [(obj, obj.select_get(), obj.hide_get(), obj.hide_viewport, obj.hide_select)
+    state = [(obj, obj.name, obj.select_get(), obj.hide_get(), obj.hide_viewport, obj.hide_select)
              for obj in bpy.context.view_layer.objects]
     frame = bpy.context.scene.frame_current
+    mesh_names = [(mesh, mesh.name) for mesh in bpy.data.meshes]
     try:
         _export(job)
     finally:
+        for mesh, name in mesh_names:
+            mesh.name = name
         if bpy.context.object and bpy.context.object.mode != "OBJECT":
             bpy.ops.object.mode_set(mode="OBJECT")
-        for obj, selected, hidden, viewport, locked in state:
+        for obj, name, selected, hidden, viewport, locked in state:
+            obj.name = name
             obj.hide_viewport = viewport
             obj.hide_select = locked
             obj.hide_set(hidden)
@@ -47,15 +68,7 @@ def _export(job):
         return
 
     names = set(job["meshes"])
-    meshes = [obj for obj in bpy.context.scene.objects
-              if obj.type == "MESH" and (obj.name in names or obj.data.name in names)]
-    found = {name for name in names if any(obj.name == name or obj.data.name == name for obj in meshes)}
-    if not names or found != names:
-        raise ValueError("Linked export mesh names do not uniquely identify this master's objects: "
-                         + ", ".join(sorted(names - found)))
-    for name in names:
-        if sum(obj.name == name or obj.data.name == name for obj in meshes) != 1:
-            raise ValueError("Ambiguous Blender mesh: " + name)
+    meshes = mesh_objects(job)
     if bpy.context.object and bpy.context.object.mode != "OBJECT":
         bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.object.select_all(action="DESELECT")
@@ -74,6 +87,11 @@ def _export(job):
             parent.select_set(True)
             parent = parent.parent
     bpy.context.view_layer.objects.active = meshes[0]
+    if len(names) == 1 and len(meshes) == 1:
+        # Retain Unity's mesh subasset identity without renaming the editable master.
+        meshes[0].name = meshes[0].data.name = next(iter(names))
+        if meshes[0].name not in names or meshes[0].data.name not in names:
+            raise ValueError("Unity mesh name is already used by another Blender object or datablock")
     if extension == ".fbx":
         animated = any(obj.type == "ARMATURE" or obj.animation_data for obj in bpy.context.selected_objects)
         bpy.ops.export_scene.fbx(filepath=output, use_selection=True, object_types={"MESH", "ARMATURE", "EMPTY"},

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.4
+
+- Keep automatic Blender exports working when a confirmed single-mesh master has a different object or mesh name from the linked Unity mesh.
+- Use the same mapping for live edits and save exports, preserving the Unity mesh name and restoring the Blender master names after export.
+- Continue rejecting ambiguous multi-mesh mappings; cover renamed edits, repeated saves and exported mesh identity in native Blender checks.
+
 ## 1.4.3
 
 - Make Open Blender Source and Open + Live Link explicitly enable the selected connection before launching, without enabling other disabled targets.

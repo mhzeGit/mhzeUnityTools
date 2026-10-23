@@ -23,7 +23,9 @@ class LiveLink:
     def __init__(self, config):
         self.config = Path(config)
         self.directory = self.config.parent
-        self.export = runpy.run_path(str(Path(__file__).with_name("blender_export.py")))["export"]
+        exporter = runpy.run_path(str(Path(__file__).with_name("blender_export.py")))
+        self.export = exporter["export"]
+        self.mesh_objects = exporter["mesh_objects"]
         self.jobs = []
         self.pending = set()
         self.changed = 0
@@ -41,8 +43,10 @@ class LiveLink:
         names = {u.id.original.name for u in updates}
         broad = any(not isinstance(u.id.original, (bpy.types.Object, bpy.types.Mesh)) for u in updates)
         for job in self.jobs:
-            objects = [o for o in scene.objects if o.type == "MESH" and
-                       (o.name in job["meshes"] or o.data.name in job["meshes"])]
+            try:
+                objects = self.mesh_objects(job, scene)
+            except ValueError:
+                continue
             dependencies = set(job["meshes"])
             for obj in objects:
                 dependencies.update((obj.name, obj.data.name))

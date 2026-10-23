@@ -150,6 +150,28 @@ namespace Gigaduck.AssetSources.Tests
             finally { AssetDatabase.DeleteAsset(asset); }
         }
 
+        [Test] public void RenamedBlenderMeshKeepsUnitySubassetIdentity()
+        {
+            string fixture = Environment.GetEnvironmentVariable("ASSET_SOURCES_BLENDER_TEST_ROOT");
+            if (string.IsNullOrEmpty(fixture)) Assert.Ignore("Generate test_blender_live.py fixtures and set ASSET_SOURCES_BLENDER_TEST_ROOT to run the native FBX import check.");
+            string asset = "Assets/AssetSourcesRenameTest-" + Guid.NewGuid().ToString("N") + ".fbx";
+            try
+            {
+                File.Copy(Path.Combine(fixture, "LiveCube.fbx"), asset);
+                AssetDatabase.ImportAsset(asset, ImportAssetOptions.ForceSynchronousImport);
+                var before = AssetDatabase.LoadAllAssetsAtPath(asset).OfType<Mesh>().Single();
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(before, out string guid, out long fileId);
+                File.Copy(Path.Combine(fixture, "RenamedCube.fbx"), asset, true);
+                AssetDatabase.ImportAsset(asset, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                var after = AssetDatabase.LoadAllAssetsAtPath(asset).OfType<Mesh>().Single();
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(after, out string afterGuid, out long afterId);
+                Assert.That(after.name, Is.EqualTo("LiveCube"));
+                Assert.That(afterGuid, Is.EqualTo(guid));
+                Assert.That(afterId, Is.EqualTo(fileId), "Direct prefab mesh references must survive source renames.");
+            }
+            finally { AssetDatabase.DeleteAsset(asset); }
+        }
+
         [Test] public void DeepResourcePathsCanWriteHandshakeAndExportFiles()
         {
             string source = Path.Combine(folder, new string('a', 90), new string('b', 90), "master.blend");

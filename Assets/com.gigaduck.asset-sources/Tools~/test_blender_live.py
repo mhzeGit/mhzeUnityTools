@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shutil
 import sys
 
 import bmesh
@@ -70,6 +71,20 @@ def main(folder):
     assert not link.pending, "Restoring edit mode generated a feedback loop"
     ready.unlink()
 
+    # A renamed single mesh is still the confirmed source, with the old Unity mesh identity.
+    cube.name, cube.data.name = "RenamedObject", "RenamedMesh"
+    cube.location.y += 1
+    bpy.context.view_layer.update()
+    assert "cube" in link.pending, "Renamed source mesh no longer triggers live edits"
+    link.changed = 0
+    link.tick()
+    frame = json.loads(ready.read_text())["results"][0]
+    assert not frame.get("error"), frame
+    assert (cube.name, cube.data.name) == ("RenamedObject", "RenamedMesh")
+    renamed_target = folder / "RenamedCube.fbx"
+    shutil.copyfile(frame["output"], renamed_target)
+    ready.unlink()
+
     # Every actual save must export all linked meshes, including two unchanged saves.
     for _ in range(2):
         bpy.ops.wm.save_as_mainfile(filepath=str(master))
@@ -81,10 +96,13 @@ def main(folder):
         assert not frame.get("error"), frame
         assert frame["forceImport"], "Unchanged saves must force a Unity import"
         assert cube.mode == "EDIT" and cube.select_get()
+        assert (cube.name, cube.data.name) == ("RenamedObject", "RenamedMesh")
         assert hashlib.sha256(master.read_bytes()).hexdigest() == master_hash
         ready.unlink()
 
     # Failed mapping must leave the target/master intact and restore editing state.
+    other = bpy.data.objects.new("OtherObject", cube.data.copy())
+    bpy.context.collection.objects.link(other)
     bad = dict(job, meshes=["UnknownMesh"], output=str(folder / "should-not-exist.fbx"))
     try:
         export(bad)
@@ -99,6 +117,12 @@ def main(folder):
     config.unlink()
     assert link.tick() is None and not session.exists()
     assert link.saved not in bpy.app.handlers.save_post
+    bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.delete()
+    bpy.ops.import_scene.fbx(filepath=str(renamed_target))
+    imported = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
+    assert len(imported) == 1 and imported[0].data.name == "LiveCube", "Renames changed Unity's mesh identity"
     print("ASSET_SOURCES_BLENDER_TESTS_PASSED")
 
 

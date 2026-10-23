@@ -44,6 +44,8 @@ Saving a master in Blender, Graphmat, Painter or Photoshop still queues a backgr
 
 Automatic export supports:
 
+For a confirmed link with exactly one mesh in both the Blender scene and Unity target, object/mesh renames do not interrupt syncing. Exports retain the Unity mesh name and restore the source's names afterward. Multi-mesh masters still require unambiguous matching names; the package never guesses a subset of a kit.
+
 | Master | Unity target | Notes |
 | --- | --- | --- |
 | Blender `.blend` | `.fbx`, `.obj`, `.glb` | Exports the confirmed mesh names, using `-Z` forward / `Y` up axes. Static FBX exports bake the axis conversion into geometry and store units in FBX metadata so direct mesh references stay upright at metre scale. Rigged/animated FBX exports retain their hierarchy conversion because Blender's experimental transform baking does not support them reliably. Custom export recipes still need their own pipeline. |
