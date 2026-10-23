@@ -210,7 +210,7 @@ namespace Gigaduck.AssetSources
                 if (sources.Length == 1)
                 {
                     if (!Exists(sources[0])) throw new FileNotFoundException("Source file is missing; use Setup or Relink Sources to reconnect it.", sources[0].relativePath);
-                    if (reveal) Reveal(sources[0]); else if (connect) OpenWithLiveLink(assetPath, sources[0].id); else Open(sources[0]);
+                    OpenChoice(assetPath, sources[0], reveal, connect);
                     return;
                 }
                 var menu = new GenericMenu();
@@ -219,11 +219,18 @@ namespace Gigaduck.AssetSources
                     var source = item;
                     bool exists = Exists(source);
                     var content = new GUIContent((string.IsNullOrEmpty(source.label) ? source.id : source.label).Replace('/', ' ') + " (" + Path.GetFileName(source.relativePath) + ")" + (exists ? "" : " - missing"));
-                    if (exists) menu.AddItem(content, false, () => Run(() => { if (reveal) Reveal(source); else if (connect) OpenWithLiveLink(assetPath, source.id); else Open(source); }));
+                    if (exists) menu.AddItem(content, false, () => Run(() => OpenChoice(assetPath, source, reveal, connect)));
                     else menu.AddDisabledItem(content);
                 }
                 menu.ShowAsContext();
             });
+        }
+
+        internal static void OpenChoice(string assetPath, SourceLink source, bool reveal, bool connect)
+        {
+            if (reveal) Reveal(source);
+            else if (connect) OpenWithLiveLink(assetPath, source.id);
+            else Open(source);
         }
 
         internal static void Run(Action action)

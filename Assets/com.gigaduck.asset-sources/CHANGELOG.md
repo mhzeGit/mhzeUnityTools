@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1
+
+- Reuse the folder icon content while repainting Project rows.
+- Verify every application badge, the native folder icon and the shared source-choice action that enables only the clicked link before launching, without controlling desktop applications.
+
 ## 1.5.0
 
 - Add compact application badges at the far right of linked assets in Project list rows. Clicking a badge opens the source and enables its live sync; multiple sources for an application show a chooser.

@@ -21,6 +21,10 @@ namespace Gigaduck.AssetSources
         private sealed class CachedRow { internal double expires; internal Group[] groups; }
         private static readonly Dictionary<string, CachedRow> rows = new Dictionary<string, CachedRow>();
         private static GUIStyle badgeStyle;
+        private static GUIContent folderContent;
+        internal static GUIContent FolderContent => folderContent ?? (folderContent = new GUIContent(
+            EditorGUIUtility.IconContent("Folder Icon").image,
+            "Show linked source in Explorer (choose a file when several are linked)"));
         private const float ButtonWidth = 22;
 
         static SourceProjectRows()
@@ -60,8 +64,7 @@ namespace Gigaduck.AssetSources
                     alignment = TextAnchor.MiddleCenter, padding = new RectOffset(0, 0, 0, 0) };
             var folder = ButtonRect(row, 0);
             using (new EditorGUI.DisabledScope(!groups.Any(x => x.available)))
-                if (GUI.Button(folder, new GUIContent(EditorGUIUtility.IconContent("Folder Icon").image,
-                    "Show linked source in Explorer (choose a file when several are linked)"), badgeStyle))
+                if (GUI.Button(folder, FolderContent, badgeStyle))
                     AssetSources.ChooseSource(assetPath, null, reveal: true);
             for (int i = 0; i < groups.Length; i++)
             {

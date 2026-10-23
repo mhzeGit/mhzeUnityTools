@@ -25,7 +25,9 @@ namespace Gigaduck.AssetSources.Tests
         [Test] public void NoSyncLinksAreNavigationOnly() =>
             Assert.That(SourceLiveLink.Status(new SourceLink { id = "x", noSync = true }), Is.EqualTo("Linked for navigation only (live sync off)"));
 
-        [Test] public void OpenWithLiveLinkEnablesOnlyTheSelectedConnectionBeforeLaunching()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void OpenWithLiveLinkEnablesOnlyTheSelectedConnectionBeforeLaunching(bool fromRowChoice)
         {
             var field = typeof(AssetSources).GetField("registry", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
             var previous = field.GetValue(null);
@@ -44,7 +46,10 @@ namespace Gigaduck.AssetSources.Tests
                 foreach (string id in new[] { "model", "other" }) AssetSources.Link(asset, "art", "master.blend", "blender", id, noSync: true);
                 string configured = registry.GetLocalSettings().applications.Single(x => x.id == "blender").path;
                 UnityEngine.TestTools.LogAssert.Expect(LogType.Error, "[Asset Sources] Application executable is missing: " + configured + ". Relink it in Asset Sources > Applications.");
-                Assert.Throws<FileNotFoundException>(() => AssetSources.OpenWithLiveLink(asset, "model"));
+                if (fromRowChoice)
+                    Assert.Throws<FileNotFoundException>(() => AssetSources.OpenChoice(asset,
+                        registry.GetRecord(AssetSources.GuidForAsset(asset)).sources.Single(x => x.id == "model"), false, true));
+                else Assert.Throws<FileNotFoundException>(() => AssetSources.OpenWithLiveLink(asset, "model"));
                 Assert.That(AssetSources.Get(asset).sources.Single(x => x.id == "model").noSync, Is.False);
                 Assert.That(AssetSources.Get(asset).sources.Single(x => x.id == "other").noSync, Is.True);
             }

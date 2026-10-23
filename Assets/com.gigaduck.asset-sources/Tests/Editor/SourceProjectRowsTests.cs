@@ -49,5 +49,39 @@ namespace Gigaduck.AssetSources.Tests
             Assert.That(source.xMax, Is.LessThan(folder.xMin));
             Assert.That(folder.center.y, Is.EqualTo(row.center.y));
         }
+
+        [TestCase("blender", "Bl")]
+        [TestCase("graphmat", "Gm")]
+        [TestCase("painter", "Pt")]
+        [TestCase("designer", "Ds")]
+        [TestCase("photoshop", "Ps")]
+        [TestCase("affinity", "Af")]
+        [TestCase("code", "co")]
+        [TestCase("x", "x")]
+        public void ApplicationBadgesHaveDistinctLabelsAndActionTooltips(string application, string label)
+        {
+            string folder = Path.Combine(Path.GetTempPath(), "SourceBadge-" + Guid.NewGuid().ToString("N"));
+            var registry = new SourceRegistry(Path.Combine(folder, "Project"));
+            const string guid = "11111111111111111111111111111111";
+            try
+            {
+                string library = Path.Combine(folder, "Art");
+                Directory.CreateDirectory(library);
+                registry.DefineLibrary("art"); registry.SetLibraryRoot("art", library);
+                registry.Link(guid, new SourceLink { id = "source", libraryId = "art", relativePath = "missing.source", applicationId = application }, false);
+                var badge = SourceProjectRows.ReadGroups(registry, guid).Single();
+                Assert.That(badge.content.text, Is.EqualTo(label));
+                Assert.That(badge.content.tooltip, Does.Contain(application).And.Contain("enable live sync"));
+                Assert.That(badge.available, Is.False);
+            }
+            finally { if (Directory.Exists(folder)) Directory.Delete(folder, true); }
+        }
+
+        [Test] public void FolderButtonUsesAnExistingNativeIcon()
+        {
+            Assert.That(SourceProjectRows.FolderContent.image, Is.Not.Null);
+            Assert.That(SourceProjectRows.FolderContent.image.width, Is.GreaterThan(0));
+            Assert.That(SourceProjectRows.FolderContent.tooltip, Does.Contain("Show linked source"));
+        }
     }
 }
