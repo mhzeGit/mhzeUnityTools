@@ -1,0 +1,2 @@
+# UPM must receive these tiny GUI textures without requiring a Git LFS client.
+*.png -filter -diff -merge -text
