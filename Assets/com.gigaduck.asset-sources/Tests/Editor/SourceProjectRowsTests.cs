@@ -86,6 +86,8 @@ namespace Gigaduck.AssetSources.Tests
             var icon = SourceProjectRows.ApplicationIcon(application);
             Assert.That(icon.name, Is.EqualTo(application), "Must load the application artwork, not a generic fallback.");
             Assert.That(icon.width, Is.GreaterThanOrEqualTo(32));
+            Assert.That(((Texture2D)icon).format, Is.EqualTo(TextureFormat.RGBA32),
+                "Alpha-only imports erase application colors and render black silhouettes.");
             Assert.That(SourceProjectRows.ApplicationIcon(application), Is.SameAs(icon));
             var button = SourceProjectRows.ButtonRect(new Rect(0, 0, 300, 16), 1);
             var image = SourceProjectRows.IconRect(button);

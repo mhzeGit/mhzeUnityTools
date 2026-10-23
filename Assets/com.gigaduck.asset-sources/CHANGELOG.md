@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.3
+
+- Import the application PNGs as full-color, uncompressed RGBA textures. Incomplete importer metadata previously triggered Unity's legacy alpha-only migration and displayed black silhouettes.
+- Verify the imported RGBA format for every bundled icon in regression tests.
+
 ## 1.5.2
 
 - Replace text badges with actual Blender, Graphmat and Affinity application icons, and a native source-file icon for applications without bundled artwork.
