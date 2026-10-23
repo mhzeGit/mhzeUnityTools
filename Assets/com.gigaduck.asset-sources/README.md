@@ -25,6 +25,12 @@ For a reproducible installation append `#<full commit SHA>`. The manifest depend
 
 ## Live link
 
+### Project row buttons
+
+Linked assets show application badges at the **far right of each Project list row**, with a folder icon furthest right. Click a badge to open that application's source and enable live sync. Multiple sources for the same application show a chooser. Hover for the application and linked file paths. Missing/unavailable sources are disabled; the folder button reveals a source without enabling sync.
+
+Badges use compact application initials: **Bl** (Blender), **Gm** (Graphmat), **Pt** (Painter), **Ds** (Designer), **Ps** (Photoshop), **Af** (Affinity), or the first two letters of a custom application ID. Unlinked assets and folders have no buttons. Buttons appear in list/tree rows with room for the filename, rather than thumbnail grid tiles. Only visible rows are inspected and cached for two seconds; no resource-library scan runs while scrolling.
+
 Opening a source through the package (window button, context menu or `AssetSources.Open`) starts a live link for that master. **Blender FBX/OBJ/GLB targets update without Ctrl+S**: transforms, mesh edits (including Edit Mode), modifier changes and undo/redo queue an export after a 0.35-second editing pause. Only affected linked meshes are exported. The window reports **Blender connected (no save needed)** after the handshake. Export and Unity import time add to that delay, especially for large or animated assets.
 
 **Every Blender save also forces a fresh export and Unity import of all enabled linked meshes**, even without scene changes. Saves bypass the editing debounce; exporter/importer time still applies. **Open Blender Source** in the context menu and **Open + Live Link** in the window explicitly enable the selected connection before opening. The generic **Open Source...** menu and `AssetSources.Open` continue to respect navigation-only links. Automation can call `AssetSources.OpenWithLiveLink(assetPath, sourceId)` for the explicit enable-and-connect action.

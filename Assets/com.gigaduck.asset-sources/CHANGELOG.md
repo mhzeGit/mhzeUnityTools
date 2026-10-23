@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0
+
+- Add compact application badges at the far right of linked assets in Project list rows. Clicking a badge opens the source and enables its live sync; multiple sources for an application show a chooser.
+- Add a folder button at the rightmost edge to reveal linked sources without changing sync settings.
+- Cache visible-row source availability, disable unavailable sources, and keep unlinked assets and thumbnail grid tiles clear.
+
 ## 1.4.4
 
 - Keep automatic Blender exports working when a confirmed single-mesh master has a different object or mesh name from the linked Unity mesh.

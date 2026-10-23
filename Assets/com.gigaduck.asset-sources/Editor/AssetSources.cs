@@ -199,10 +199,12 @@ namespace Gigaduck.AssetSources
         private static void OpenApplication(string application) => ChooseSource(application);
 
         private static void ChooseSource(string application, bool reveal = false, bool connect = false)
+            => ChooseSource(SelectedAssetPath(), application, reveal, connect);
+
+        internal static void ChooseSource(string assetPath, string application, bool reveal = false, bool connect = false)
         {
             Run(() =>
             {
-                string assetPath = SelectedAssetPath();
                 var sources = Get(assetPath).sources.Where(x => application == null || x.applicationId == application).ToArray();
                 if (sources.Length == 0) throw new InvalidOperationException("Link a source first using Setup or Relink Sources.");
                 if (sources.Length == 1)
