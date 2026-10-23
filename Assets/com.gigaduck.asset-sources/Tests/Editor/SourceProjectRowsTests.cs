@@ -50,15 +50,15 @@ namespace Gigaduck.AssetSources.Tests
             Assert.That(folder.center.y, Is.EqualTo(row.center.y));
         }
 
-        [TestCase("blender", "Bl")]
-        [TestCase("graphmat", "Gm")]
-        [TestCase("painter", "Pt")]
-        [TestCase("designer", "Ds")]
-        [TestCase("photoshop", "Ps")]
-        [TestCase("affinity", "Af")]
-        [TestCase("code", "co")]
-        [TestCase("x", "x")]
-        public void ApplicationBadgesHaveDistinctLabelsAndActionTooltips(string application, string label)
+        [TestCase("blender")]
+        [TestCase("graphmat")]
+        [TestCase("painter")]
+        [TestCase("designer")]
+        [TestCase("photoshop")]
+        [TestCase("affinity")]
+        [TestCase("code")]
+        [TestCase("x")]
+        public void ApplicationIconsContainImagesInsteadOfInitials(string application)
         {
             string folder = Path.Combine(Path.GetTempPath(), "SourceBadge-" + Guid.NewGuid().ToString("N"));
             var registry = new SourceRegistry(Path.Combine(folder, "Project"));
@@ -70,11 +70,27 @@ namespace Gigaduck.AssetSources.Tests
                 registry.DefineLibrary("art"); registry.SetLibraryRoot("art", library);
                 registry.Link(guid, new SourceLink { id = "source", libraryId = "art", relativePath = "missing.source", applicationId = application }, false);
                 var badge = SourceProjectRows.ReadGroups(registry, guid).Single();
-                Assert.That(badge.content.text, Is.EqualTo(label));
+                Assert.That(badge.content.text, Is.Empty);
+                Assert.That(badge.content.image, Is.Not.Null);
                 Assert.That(badge.content.tooltip, Does.Contain(application).And.Contain("enable live sync"));
                 Assert.That(badge.available, Is.False);
             }
             finally { if (Directory.Exists(folder)) Directory.Delete(folder, true); }
+        }
+
+        [TestCase("blender")]
+        [TestCase("graphmat")]
+        [TestCase("affinity")]
+        public void BundledApplicationArtworkLoadsAndFitsInsideTheButton(string application)
+        {
+            var icon = SourceProjectRows.ApplicationIcon(application);
+            Assert.That(icon.name, Is.EqualTo(application), "Must load the application artwork, not a generic fallback.");
+            Assert.That(icon.width, Is.GreaterThanOrEqualTo(32));
+            Assert.That(SourceProjectRows.ApplicationIcon(application), Is.SameAs(icon));
+            var button = SourceProjectRows.ButtonRect(new Rect(0, 0, 300, 16), 1);
+            var image = SourceProjectRows.IconRect(button);
+            Assert.That(image.size, Is.EqualTo(new Vector2(16, 16)));
+            Assert.That(button.Contains(image.min) && image.xMax <= button.xMax && image.yMax <= button.yMax, Is.True);
         }
 
         [Test] public void FolderButtonUsesAnExistingNativeIcon()

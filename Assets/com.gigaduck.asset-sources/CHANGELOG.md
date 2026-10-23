@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2
+
+- Replace text badges with actual Blender, Graphmat and Affinity application icons, and a native source-file icon for applications without bundled artwork.
+- Draw icon-only shortcuts at 16 pixels with a hover highlight, preserving right alignment, tooltips and live-sync actions.
+- Verify that row contents contain images and no initials, bundled artwork loads in the source project and package, and the image fits its button.
+
 ## 1.5.1
 
 - Reuse the folder icon content while repainting Project rows.

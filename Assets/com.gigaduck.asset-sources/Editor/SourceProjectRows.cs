@@ -16,11 +16,11 @@ namespace Gigaduck.AssetSources
             internal string application;
             internal bool available;
             internal GUIContent content;
-            internal Color color;
         }
         private sealed class CachedRow { internal double expires; internal Group[] groups; }
         private static readonly Dictionary<string, CachedRow> rows = new Dictionary<string, CachedRow>();
-        private static GUIStyle badgeStyle;
+        private static GUIStyle iconButtonStyle;
+        private static readonly Dictionary<string, Texture> icons = new Dictionary<string, Texture>();
         private static GUIContent folderContent;
         internal static GUIContent FolderContent => folderContent ?? (folderContent = new GUIContent(
             EditorGUIUtility.IconContent("Folder Icon").image,
@@ -59,27 +59,52 @@ namespace Gigaduck.AssetSources
             if (groups.Length == 0 || row.width < (groups.Length + 1) * ButtonWidth + 60) return;
             string assetPath = AssetDatabase.GUIDToAssetPath(guid);
             if (AssetDatabase.IsValidFolder(assetPath)) return;
-            if (badgeStyle == null)
-                badgeStyle = new GUIStyle(EditorStyles.miniButton) { fontSize = 9, fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter, padding = new RectOffset(0, 0, 0, 0) };
             var folder = ButtonRect(row, 0);
             using (new EditorGUI.DisabledScope(!groups.Any(x => x.available)))
-                if (GUI.Button(folder, FolderContent, badgeStyle))
+                if (IconButton(folder, FolderContent))
                     AssetSources.ChooseSource(assetPath, null, reveal: true);
             for (int i = 0; i < groups.Length; i++)
             {
                 var group = groups[i];
-                Color previous = GUI.backgroundColor;
-                GUI.backgroundColor = group.color;
                 using (new EditorGUI.DisabledScope(!group.available))
-                    if (GUI.Button(ButtonRect(row, groups.Length - i), group.content, badgeStyle))
+                    if (IconButton(ButtonRect(row, groups.Length - i), group.content))
                         AssetSources.ChooseSource(assetPath, group.application, connect: true);
-                GUI.backgroundColor = previous;
             }
         }
 
         internal static Rect ButtonRect(Rect row, int fromRight)
             => new Rect(row.xMax - 2 - (fromRight + 1) * ButtonWidth, row.y + (row.height - 16) / 2, ButtonWidth - 2, 16);
+
+        internal static Rect IconRect(Rect button) => new Rect(button.center.x - 8, button.center.y - 8, 16, 16);
+
+        private static bool IconButton(Rect rect, GUIContent content)
+        {
+            if (iconButtonStyle == null) iconButtonStyle = new GUIStyle(GUIStyle.none) { imagePosition = ImagePosition.TextOnly };
+            bool clicked = GUI.Button(rect, content, iconButtonStyle);
+            if (Event.current.type == EventType.Repaint)
+            {
+                if (GUI.enabled && rect.Contains(Event.current.mousePosition))
+                    EditorGUI.DrawRect(rect, new Color(1, 1, 1, .12f));
+                Color previous = GUI.color;
+                if (!GUI.enabled) GUI.color = new Color(previous.r, previous.g, previous.b, previous.a * .35f);
+                GUI.DrawTexture(IconRect(rect), content.image, ScaleMode.ScaleToFit, true);
+                GUI.color = previous;
+            }
+            return clicked;
+        }
+
+        internal static Texture ApplicationIcon(string application)
+        {
+            if (!icons.TryGetValue(application, out var icon))
+            {
+                var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(AssetSources).Assembly);
+                string root = package != null ? package.assetPath : "Assets/com.gigaduck.asset-sources";
+                icon = AssetDatabase.LoadAssetAtPath<Texture2D>(root + "/Editor/Icons/" + application + ".png");
+                if (icon == null) icon = EditorGUIUtility.IconContent("DefaultAsset Icon").image;
+                icons[application] = icon;
+            }
+            return icon;
+        }
 
         internal static Group[] ReadGroups(SourceRegistry registry, string guid)
         {
@@ -91,22 +116,10 @@ namespace Gigaduck.AssetSources
                         try { return File.Exists(registry.Resolve(source, false)); }
                         catch { return false; }
                     });
-                    string label;
-                    Color color;
-                    switch (group.Key)
-                    {
-                        case "blender": label = "Bl"; color = new Color(1, .58f, .22f); break;
-                        case "graphmat": label = "Gm"; color = new Color(.72f, .48f, 1); break;
-                        case "painter": label = "Pt"; color = new Color(.36f, .9f, .68f); break;
-                        case "designer": label = "Ds"; color = new Color(.6f, .9f, .35f); break;
-                        case "photoshop": label = "Ps"; color = new Color(.3f, .72f, 1); break;
-                        case "affinity": label = "Af"; color = new Color(.95f, .48f, .7f); break;
-                        default: label = group.Key.Substring(0, Math.Min(2, group.Key.Length)); color = Color.white; break;
-                    }
                     string tooltip = "Open " + group.Key + " source + enable live sync\n" +
                         string.Join("\n", group.Select(x => x.relativePath)) + (available ? "" : "\nSource unavailable; use Setup or Relink Sources.");
-                    return new Group { application = group.Key, available = available, color = color,
-                        content = new GUIContent(label, tooltip) };
+                    return new Group { application = group.Key, available = available,
+                        content = new GUIContent(ApplicationIcon(group.Key), tooltip) };
                 }).ToArray();
         }
     }
