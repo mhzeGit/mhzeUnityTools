@@ -70,7 +70,10 @@ For a confirmed link with exactly one mesh in both the Blender scene and Unity t
 | Painter `.spp` | `.png` | Requires the master to be the open project with a single texture set, and Painter launched with remote scripting (the package adds the switch). |
 | Photoshop `.psd`/`.psb` | image | Windows only, through Photoshop automation; exports a private copy of the open document. |
 | Designer `.sbs` | `.sbsar`, `.png` | Uses Substance Automation Toolkit's `sbscooker` and `sbsrender`. |
+| Audacity `.aup3` | `.wav`, `.ogg`, `.mp3`, `.flac`, `.aif` | Renders the saved project with the bundled `Exporters~/audacity_project.py` (Python 3 and ffmpeg on PATH, or `FFMPEG`). A lossy target keeps the codec and bitrate of the file it replaces; a WAV keeps its PCM format. Projects with real-time effects need Audacity itself, see below. |
 | Image or other same-extension pair | same extension | Copies the saved file directly. |
+
+**Audacity.** Open the source with **Open Audacity Source**; every Audacity save then rewrites the linked audio. Audacity only applies real-time effects when it exports, so for a project that has them the exporter asks a running Audacity to export through its script pipe: enable **Edit > Preferences > Modules > mod-script-pipe**, restart Audacity and keep the project open (the exporter checks that the open project has the same track names). Otherwise it reports the reason and leaves the Unity asset unchanged. Clip stretching, pitch shifting and envelopes are not rendered (the asset stays unchanged); 24-bit integer projects are not read. The CLI: `python Exporters~/audacity_project.py create|verify|render|inspect ...` creates a project from an audio file (never overwriting one), proves it holds the same samples, and renders it.
 
 Affinity has no scripting API, so a `.afphoto`/`.afdesign` master cannot be exported automatically. Link the editor's exported image instead; it syncs on save. The same applies to any pair without an exporter: the package reports it and changes nothing.
 
