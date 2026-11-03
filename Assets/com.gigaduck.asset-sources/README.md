@@ -1,6 +1,6 @@
 # Asset Sources
 
-Link a Unity asset to its external Blender, Graphmat, Painter or other editable masters once. Then right-click it and choose **Asset Sources > Open Blender Source**, **Open Graphmat Source**, **Open Painter Source**, or **Open Source...** for any other application. Multiple masters for one application produce a source chooser. **Show Source in Explorer** reveals the linked file. Opening a source also arms a live link: after you save the master, the package exports it in the background and replaces the linked Unity file, keeping its GUID and importer settings.
+Link a Unity asset to its external Blender, Graphmat, Painter or other editable masters once. Then right-click it and choose **Asset Sources > Open Blender Source**, **Open Graphmat Source**, **Open Painter Source**, or **Open Source...** for any other application. Multiple masters for one application produce a source chooser. **Show Source in Explorer** reveals the linked file. Opening Blender connects its editor to Unity: every Blender save updates the linked meshes at once, with nothing running while you edit or pose. Other source types export after saving. Unity files keep their GUIDs and importer settings.
 
 This is a standalone editor-only package with no dependencies, runtime components, project-specific paths, import hooks or background source scans. It never changes a master file and never creates or deletes Unity assets. Supports Unity 2022.3 and newer; verified in Unity 6.
 
@@ -25,9 +25,31 @@ For a reproducible installation append `#<full commit SHA>`. The manifest depend
 
 ## Live link
 
-Opening a source through the package (window button, context menu or `AssetSources.Open`) starts a live link for that master. Saving it in Blender, Graphmat, Painter or Photoshop queues a background export, and the confirmed linked Unity assets are updated in place. The source picker stays responsive: the editor does not wait for the exporter.
+### Project row buttons
 
-- Links are explicit. Only assets already connected to that exact master are updated; one master can update several assets.
+Selected linked assets show application icons at the **far right of their Project list rows**, with a folder icon furthest right. Unselected rows show no source or folder buttons; selecting several assets shows buttons on each selected row. Click an icon to open that application's source and enable live sync. Multiple sources for the same application show a chooser. Hover for the application and linked file paths. Missing/unavailable sources are disabled; the folder button reveals a source without enabling sync.
+
+Blender, Graphmat and Affinity use bundled application artwork. Applications without bundled artwork use a native source-file icon, with their application name in the tooltip. Icons are rendered at 16 pixels without text badges or permanent button backgrounds. Unlinked assets and folders have no buttons. Buttons appear in list/tree rows with room for the filename, rather than thumbnail grid tiles. Only selected visible rows are inspected and cached for two seconds; no resource-library scan runs while scrolling.
+
+Opening a source through the package (window button, context menu or `AssetSources.Open`) starts a live link for that master. **Blender FBX/OBJ/GLB targets update on every save (Ctrl+S)**, and only then. The bridge installs no depsgraph, undo or redo handler, so transforms, posing, sculpting and Edit Mode cost nothing while you work, and nothing is exported until you save. The window reports **Blender connected (updates on save)** after the handshake.
+
+**Every Blender save forces a fresh export and Unity import of all enabled linked meshes**, even without scene changes. Exporter/importer time still applies, especially for large or animated assets.
+
+**Un-keyed poses are safe.** Exporting changes the timeline frame, which makes Blender re-evaluate every action and overwrite bones you posed but did not key. The exporter records object, pose-bone and shape-key values and the assigned action before it runs and puts them back afterwards, so a manual pose is never reset by a save. An FBX carries only keyed animation, so an un-keyed pose stays in the `.blend`; key it into an action to ship it to Unity.
+
+**Per-master export options.** A sidecar next to the master, `<master name>.assetsources.json`, overrides the FBX exporter for its Unity targets. Keys are the target file name (any case) or `"*"`; `"fbx"` holds `bpy.ops.export_scene.fbx` keyword arguments. For example a rig whose prefab expects metre units:
+
+```json
+{ "PlayerArm2.fbx": { "fbx": { "apply_unit_scale": false, "bake_anim_use_all_actions": true } } }
+```
+
+`apply_unit_scale: false` also drops the default `FBX_SCALE_UNITS` option, which would otherwise force centimetre units. Empty objects parented to an exported armature (for example a bone-attached contact or socket marker) are exported with it so Unity can find them by name. **Open Blender Source** in the context menu and **Open + Live Link** in the window explicitly enable the selected connection before opening. The generic **Open Source...** menu and `AssetSources.Open` continue to respect navigation-only links. Automation can call `AssetSources.OpenWithLiveLink(assetPath, sourceId)` for the explicit enable-and-connect action.
+
+The package launches Blender with its bundled Python bridge; no add-on installation or network listener is needed. Reopen the source through the package once after upgrading: a Blender instance opened before this version has no bridge. An already connected source reuses its session. The bridge never saves the `.blend` and restores selection, active object, visibility, timeline frame, un-keyed poses and Edit Mode after exporting. Changing to another Blender file disconnects that session. **Stop Live Links** disconnects without closing Blender; reopen through the package to reconnect. Unity script reloads preserve the connection.
+
+Saving a master in Blender, Graphmat, Painter or Photoshop still queues a background export for other supported targets. Blender embedded-image targets currently use this save-based path. A disconnected Blender mesh link also retains the save-based fallback. The source picker stays responsive: the Unity editor does not wait for native background exporters.
+
+- Links are explicit. Only assets already connected to that exact master with live sync enabled are updated; one master can update several assets. Disabling or unlinking an asset prevents publication even if an export was already running.
 - A link that exists for navigation is reported as navigation only. That includes a Graphmat project linked to a material or prefab whose texture is a shared atlas: link the exported texture (or run the atlas pipeline) to update Unity from that master.
 - The editor file is replaced atomically and its `.meta` is untouched, so GUID, references and importer settings survive.
 - If an exporter fails or its output is ambiguous, the current Unity asset is left as it is and the status line shows the reason.
@@ -38,9 +60,11 @@ Opening a source through the package (window button, context menu or `AssetSourc
 
 Automatic export supports:
 
+For a confirmed link with exactly one mesh in both the Blender scene and Unity target, object/mesh renames do not interrupt syncing. Exports retain the Unity mesh name and restore the source's names afterward. Multi-mesh masters still require unambiguous matching names; the package never guesses a subset of a kit.
+
 | Master | Unity target | Notes |
 | --- | --- | --- |
-| Blender `.blend` | `.fbx`, `.obj`, `.glb` | Exports the meshes named like the Unity asset, using Unity's `-Z` forward / `Y` up axes. A target with custom global scale or axis settings should keep a manual export recipe. |
+| Blender `.blend` | `.fbx`, `.obj`, `.glb` | Exports the confirmed mesh names, using `-Z` forward / `Y` up axes. Static FBX exports bake the axis conversion into geometry and store units in FBX metadata so direct mesh references stay upright at metre scale. Rigged/animated FBX exports retain their hierarchy conversion because Blender's experimental transform baking does not support them reliably. Custom export recipes still need their own pipeline. |
 | Blender `.blend` | image | Exports the embedded image whose name matches the Unity asset. |
 | Graphmat `.gmat` | `.png` | Exports the channel implied by the texture name; refuses packed or ambiguous names. Automatic normal export requires an OpenGL normal convention. |
 | Painter `.spp` | `.png` | Requires the master to be the open project with a single texture set, and Painter launched with remote scripting (the package adds the switch). |
@@ -50,7 +74,7 @@ Automatic export supports:
 
 Affinity has no scripting API, so a `.afphoto`/`.afdesign` master cannot be exported automatically. Link the editor's exported image instead; it syncs on save. The same applies to any pair without an exporter: the package reports it and changes nothing.
 
-Temporary export work goes to `Work/asset-sources-live/` beside the master, matching the resource-library convention, and is removed after publication.
+Temporary export work goes to `Work/asset-sources-live/` beside the master, matching the resource-library convention. Published frames are removed after publication; the private connection folder is removed when Blender observes disconnection. A Unity heartbeat lets Blender stop after the editor exits or crashes. Each project, master and editor session has its own folder.
 
 The window follows selection. You can also drag a Unity asset into its asset field. For a selected scene object, the commands can resolve its first skinned mesh or mesh filter. For a prefab selected in the Project window, links belong to that prefab itself; links are not inferred from its children.
 
@@ -162,3 +186,11 @@ CLI tests:
 ```text
 python -B -m unittest discover -s "<package>/Tools~" -p test_asset_sources.py -v
 ```
+
+Blender integration checks (use an external scratch folder, never a production master):
+
+```text
+blender --background --factory-startup --python-exit-code 1 --python "<package>/Tools~/test_blender_live.py" -- "<external-work-folder>"
+```
+
+Set `ASSET_SOURCES_BLENDER_TEST_ROOT` to that external folder when running the Edit Mode tests to include the native asymmetric FBX import check. It verifies both the imported root transform and the mesh data used directly by prefabs.

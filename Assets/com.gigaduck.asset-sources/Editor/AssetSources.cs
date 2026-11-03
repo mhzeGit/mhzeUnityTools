@@ -29,9 +29,14 @@ namespace Gigaduck.AssetSources
         {
             Registry.Link(GuidForAsset(assetPath), new SourceLink
             { id = sourceId, libraryId = libraryId, relativePath = relativePath, applicationId = applicationId, label = label, noSync = noSync });
+            SourceLiveLink.Refresh();
         }
 
-        public static void Unlink(string assetPath, string sourceId) => Registry.Unlink(GuidForAsset(assetPath), sourceId);
+        public static void Unlink(string assetPath, string sourceId)
+        {
+            Registry.Unlink(GuidForAsset(assetPath), sourceId);
+            SourceLiveLink.Refresh();
+        }
         public static string[] ValidateAll() => Registry.ValidateAll(guid => !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(guid))).ToArray();
 
         public static string ApplicationForPath(string path)
@@ -59,6 +64,19 @@ namespace Gigaduck.AssetSources
             Open(source);
         }
 
+        /// <summary>Explicitly enables the selected source's live link and opens its editor in one action.</summary>
+        public static void OpenWithLiveLink(string assetPath, string sourceId)
+        {
+            var source = Get(assetPath).sources.FirstOrDefault(x => x.id == sourceId)
+                ?? throw new InvalidOperationException("No source '" + sourceId + "'. Use Setup / Relink Sources first.");
+            if (source.noSync)
+            {
+                Link(assetPath, source.libraryId, source.relativePath, source.applicationId, source.id, source.label, false);
+                source.noSync = false;
+            }
+            Open(source);
+        }
+
         public static void Open(SourceLink source)
         {
             string path;
@@ -83,8 +101,14 @@ namespace Gigaduck.AssetSources
                     throw new FileNotFoundException("Application moved; locate it again in Asset Sources > Applications.", executable);
                 }
                 SourceLiveLink.Start(source);
+                if (SourceLiveLink.BlenderConnected(source))
+                {
+                    Debug.Log("[Asset Sources] Blender is already connected for " + path + ".");
+                    return;
+                }
                 // The executable and source argument are separate. No command shell or editable command template.
-                var info = new ProcessStartInfo { FileName = executable, Arguments = (source.applicationId == "painter" ? "--enable-remote-scripting " : "") + SourceExport.Quote(path), UseShellExecute = false, CreateNoWindow = true };
+                var info = new ProcessStartInfo { FileName = executable, Arguments = (source.applicationId == "painter" ? "--enable-remote-scripting " : "") + SourceExport.Quote(path) +
+                    (Path.GetExtension(path).Equals(".blend", StringComparison.OrdinalIgnoreCase) ? " " + SourceLiveLink.BlenderArguments(source) : ""), UseShellExecute = false, CreateNoWindow = true };
                 try
                 {
                     var process = Process.Start(info);
@@ -136,7 +160,7 @@ namespace Gigaduck.AssetSources
         private static bool CanSetup() => !string.IsNullOrEmpty(SelectedAssetPath());
 
         [MenuItem("Assets/Asset Sources/Open Blender Source", false, 2010)]
-        private static void Blender() => OpenApplication("blender");
+        private static void Blender() => ChooseSource("blender", connect: true);
         [MenuItem("Assets/Asset Sources/Open Blender Source", true)]
         private static bool CanBlender() => HasApplication("blender");
         [MenuItem("Assets/Asset Sources/Open Graphmat Source", false, 2011)]
@@ -174,16 +198,19 @@ namespace Gigaduck.AssetSources
 
         private static void OpenApplication(string application) => ChooseSource(application);
 
-        private static void ChooseSource(string application, bool reveal = false)
+        private static void ChooseSource(string application, bool reveal = false, bool connect = false)
+            => ChooseSource(SelectedAssetPath(), application, reveal, connect);
+
+        internal static void ChooseSource(string assetPath, string application, bool reveal = false, bool connect = false)
         {
             Run(() =>
             {
-                var sources = Get(SelectedAssetPath()).sources.Where(x => application == null || x.applicationId == application).ToArray();
+                var sources = Get(assetPath).sources.Where(x => application == null || x.applicationId == application).ToArray();
                 if (sources.Length == 0) throw new InvalidOperationException("Link a source first using Setup or Relink Sources.");
                 if (sources.Length == 1)
                 {
                     if (!Exists(sources[0])) throw new FileNotFoundException("Source file is missing; use Setup or Relink Sources to reconnect it.", sources[0].relativePath);
-                    if (reveal) Reveal(sources[0]); else Open(sources[0]);
+                    OpenChoice(assetPath, sources[0], reveal, connect);
                     return;
                 }
                 var menu = new GenericMenu();
@@ -192,11 +219,18 @@ namespace Gigaduck.AssetSources
                     var source = item;
                     bool exists = Exists(source);
                     var content = new GUIContent((string.IsNullOrEmpty(source.label) ? source.id : source.label).Replace('/', ' ') + " (" + Path.GetFileName(source.relativePath) + ")" + (exists ? "" : " - missing"));
-                    if (exists) menu.AddItem(content, false, () => Run(() => { if (reveal) Reveal(source); else Open(source); }));
+                    if (exists) menu.AddItem(content, false, () => Run(() => OpenChoice(assetPath, source, reveal, connect)));
                     else menu.AddDisabledItem(content);
                 }
                 menu.ShowAsContext();
             });
+        }
+
+        internal static void OpenChoice(string assetPath, SourceLink source, bool reveal, bool connect)
+        {
+            if (reveal) Reveal(source);
+            else if (connect) OpenWithLiveLink(assetPath, source.id);
+            else Open(source);
         }
 
         internal static void Run(Action action)
