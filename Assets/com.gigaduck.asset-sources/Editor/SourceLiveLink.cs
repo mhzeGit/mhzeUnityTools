@@ -223,7 +223,7 @@ namespace Gigaduck.AssetSources
                     catch (Exception ex) { errors.Add(result.assetPath + ": " + ex.GetBaseException().Message); }
                 }
             session.status = errors.Count == 0
-                ? (live ? "Blender connected (no save needed)" : "Live on save") + "; updated " + updated + " assets"
+                ? (live ? "Blender connected (updates on save)" : "Live on save") + "; updated " + updated + " assets"
                 : string.Join("\n", errors.Distinct());
             if (errors.Count > 0) Debug.LogWarning("Asset Sources live link: " + session.status);
         }
@@ -245,7 +245,7 @@ namespace Gigaduck.AssetSources
                 var frames = session.blender.Receive();
                 if (frames != null) Publish(session, frames, true);
                 else if (session.blender.Connected && !session.connected)
-                    session.status = "Blender connected (no save needed); waiting for edits";
+                    session.status = "Blender connected (updates on save); waiting for a save";
                 else if (!session.blender.Connected && session.connected)
                     session.status = "Blender disconnected; reopen the source to reconnect. Saved changes still sync.";
                 session.connected = session.blender.Connected;

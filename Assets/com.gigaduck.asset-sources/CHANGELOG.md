@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0
+
+- Blender live link now exports on save only. The depsgraph, undo and redo handlers are gone, so editing and posing no longer pay for a scene scan, and no export runs 0.35 s after each edit (the cause of the Blender lag).
+- Never reset an un-keyed pose: the exporter snapshots object, pose-bone and shape-key values and the assigned action, and restores them after its frame change re-evaluates the animation. Previously every export snapped manually posed bones back to the active action.
+- Export empties parented to an exported armature (bone-attached markers) with the rig.
+- Add per-master FBX overrides in `<master>.assetsources.json`; `apply_unit_scale: false` now also drops the forced `FBX_SCALE_UNITS` option.
+- Idle cost: the bridge re-reads its request file only when it changes.
+- Native Blender checks cover save-only export, un-keyed pose preservation, bone-attached empties and sidecar options.
+
 ## 1.5.4
 
 - Show source and folder shortcuts only on selected Project rows, including multiple selected assets. On Unity 6, selecting a subasset does not show shortcuts on its unselected parent row.
