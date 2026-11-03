@@ -10,7 +10,7 @@ import tempfile
 SCHEMA = 1
 APPLICATIONS = {".blend": "blender", ".gmat": "graphmat", ".spp": "painter",
                 ".sbs": "designer", ".psd": "photoshop", ".psb": "photoshop",
-                ".afphoto": "affinity", ".afdesign": "affinity"}
+                ".afphoto": "affinity", ".afdesign": "affinity", ".aup3": "audacity"}
 
 
 def identifier(value):

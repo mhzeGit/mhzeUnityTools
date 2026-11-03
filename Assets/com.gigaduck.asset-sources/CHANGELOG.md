@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0
+
+- Add Audacity: `.aup3` projects link as application `audacity` (**Open Audacity Source** enables live sync) and export to `.wav`, `.ogg`, `.mp3`, `.flac` and `.aif` Unity audio after every Audacity save, with no manual export.
+- Add `Exporters~/audacity_project.py` (standard library plus ffmpeg): `create` builds a project holding the exact decoded samples of an audio file, `verify` proves a project equals an audio file bit for bit, `render` is the exporter. Projects with real-time effects are rendered by a running Audacity through mod-script-pipe, because only Audacity applies them.
+
 ## 1.5.4
 
 - Show source and folder shortcuts only on selected Project rows, including multiple selected assets. On Unity 6, selecting a subasset does not show shortcuts on its unselected parent row.

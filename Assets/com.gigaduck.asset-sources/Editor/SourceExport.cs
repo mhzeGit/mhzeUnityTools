@@ -186,6 +186,8 @@ namespace Gigaduck.AssetSources
                     Designer(job, result.directory);
                 else if (sourceExt == ".spp" && targetExt == ".png")
                     Painter(job);
+                else if (sourceExt == ".aup3" && IsAudio(targetExt))
+                    Run(Python(), Path.Combine(job.scriptDirectory, "audacity_project.py"), "render", job.source, job.output, "--like", job.target);
                 else throw new NotSupportedException("No automatic native exporter for " + sourceExt + " → " + targetExt + ". Link the editor's exported image instead; it will sync on save.");
                 if (!File.Exists(job.output) || new FileInfo(job.output).Length == 0) throw new IOException("Exporter produced no output.");
             }
@@ -246,6 +248,21 @@ namespace Gigaduck.AssetSources
         private static void RequireChannel(Job job)
         { if (job.channel == null) throw new InvalidOperationException("Cannot identify a single PBR channel from this texture's name. Packed or ambiguous textures are left unchanged."); }
         private static bool IsImage(string extension) => new[] { ".png", ".tga", ".jpg", ".jpeg", ".tif", ".tiff", ".exr" }.Contains(extension);
+        internal static bool IsAudio(string extension) => new[] { ".wav", ".ogg", ".mp3", ".flac", ".aif", ".aiff" }.Contains(extension);
+
+        // Audacity projects are rendered by the bundled audacity_project.py; ffmpeg (PATH or FFMPEG) encodes lossy targets.
+        private static string Python()
+        {
+            string configured = AssetSources.Registry.GetLocalSettings().applications.FirstOrDefault(x => x.id == "python")?.path;
+            if (!string.IsNullOrEmpty(configured)) return configured;
+            foreach (string name in new[] { "python", "python3" })
+                foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+                {
+                    string candidate = Path.Combine(directory.Trim('"'), name + (Platform == RuntimePlatform.WindowsEditor ? ".exe" : ""));
+                    if (File.Exists(candidate) && !candidate.Contains("WindowsApps")) return candidate;
+                }
+            throw new FileNotFoundException("Python 3 was not found on PATH. Install it or set the 'python' path in Asset Sources > Applications.");
+        }
 
         // A master can be linked to derived assets (for example a Unity material) that cannot be produced by an exporter.
         internal static bool CanExport(string source, string target)
@@ -261,6 +278,7 @@ namespace Gigaduck.AssetSources
                 case ".sbs": return targetExt == ".sbsar" || targetExt == ".png";
                 case ".psd":
                 case ".psb": return IsImage(targetExt);
+                case ".aup3": return IsAudio(targetExt);
                 default: return false;
             }
         }

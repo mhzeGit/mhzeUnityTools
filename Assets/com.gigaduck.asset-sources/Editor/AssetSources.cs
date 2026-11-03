@@ -49,6 +49,7 @@ namespace Gigaduck.AssetSources
                 case ".sbs": return "designer";
                 case ".psd": case ".psb": return "photoshop";
                 case ".afphoto": case ".afdesign": return "affinity";
+                case ".aup3": return "audacity";
                 default: return "default";
             }
         }
@@ -171,6 +172,10 @@ namespace Gigaduck.AssetSources
         private static void Painter() => OpenApplication("painter");
         [MenuItem("Assets/Asset Sources/Open Painter Source", true)]
         private static bool CanPainter() => HasApplication("painter");
+        [MenuItem("Assets/Asset Sources/Open Audacity Source", false, 2013)]
+        private static void Audacity() => ChooseSource("audacity", connect: true);
+        [MenuItem("Assets/Asset Sources/Open Audacity Source", true)]
+        private static bool CanAudacity() => HasApplication("audacity");
         [MenuItem("Assets/Asset Sources/Open Source...", false, 2020)]
         private static void OpenAny() => ChooseSource(null);
         [MenuItem("Assets/Asset Sources/Open Source...", true)]
