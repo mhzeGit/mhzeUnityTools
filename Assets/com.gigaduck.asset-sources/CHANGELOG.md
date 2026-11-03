@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1
+
+- Show the Audacity application icon on linked `.aup3` Project rows, like Blender and Graphmat (bundled 32-pixel RGBA icon, covered by the artwork tests).
+
 ## 1.7.0
 
 - Add Audacity: `.aup3` projects link as application `audacity` (**Open Audacity Source** enables live sync) and export to `.wav`, `.ogg`, `.mp3`, `.flac` and `.aif` Unity audio after every Audacity save, with no manual export.

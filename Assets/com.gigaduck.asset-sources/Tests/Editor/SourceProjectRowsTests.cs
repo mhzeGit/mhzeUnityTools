@@ -56,6 +56,7 @@ namespace Gigaduck.AssetSources.Tests
         [TestCase("designer")]
         [TestCase("photoshop")]
         [TestCase("affinity")]
+        [TestCase("audacity")]
         [TestCase("code")]
         [TestCase("x")]
         public void ApplicationIconsContainImagesInsteadOfInitials(string application)
@@ -81,6 +82,7 @@ namespace Gigaduck.AssetSources.Tests
         [TestCase("blender")]
         [TestCase("graphmat")]
         [TestCase("affinity")]
+        [TestCase("audacity")]
         public void BundledApplicationArtworkLoadsAndFitsInsideTheButton(string application)
         {
             var icon = SourceProjectRows.ApplicationIcon(application);
