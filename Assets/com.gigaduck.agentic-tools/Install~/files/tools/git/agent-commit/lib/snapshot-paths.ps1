@@ -16,7 +16,7 @@ function Resolve-ListedPath([string]$Raw, [string]$Root, [string]$CwdBase) {
     } elseif ($CwdBase -and -not (Test-SamePath $CwdBase $Root) -and $p -notmatch '(^|/)\.\.(/|$)') {
         # Run from a subfolder: accept paths relative to it when they only exist there.
         $fromRoot = Get-RepoFullPath $p $Root
-        $fromCwd = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($CwdBase, $p.Replace('/', '\')))
+        $fromCwd = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($CwdBase, $p.Replace('/', [string][System.IO.Path]::DirectorySeparatorChar)))
         $existsAtRoot = [System.IO.File]::Exists($fromRoot) -or [System.IO.Directory]::Exists($fromRoot)
         $existsAtCwd = [System.IO.File]::Exists($fromCwd) -or [System.IO.Directory]::Exists($fromCwd)
         $cwdSlash = $fromCwd.Replace('\', '/')

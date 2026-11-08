@@ -45,7 +45,7 @@ function Get-UnclaimedChanges([object[]]$Records, [string]$Root) {
 
 function Get-WorktreeLabel($Record) {
     if (-not $Record.worktree -or (Test-SamePath $Record.worktree $script:RepoRoot)) { return 'this folder' }
-    $root = $script:RepoRoot.TrimEnd('\') + '\'
+    $root = $script:RepoRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
     $full = [System.IO.Path]::GetFullPath($Record.worktree)
     if ($full.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) { return $full.Substring($root.Length).Replace('\', '/') }
     return $full

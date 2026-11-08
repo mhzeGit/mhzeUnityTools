@@ -23,7 +23,8 @@ function Initialize-AgentCommitRepo([string]$StartDirectory) {
 
 function Get-RepoFullPath([string]$RelativePath, [string]$Root) {
     if (-not $Root) { $Root = $script:RepoRoot }
-    return [System.IO.Path]::Combine($Root, $RelativePath.Replace('/', '\'))
+    # The platform's separator: Windows takes either, other systems only '/'.
+    return [System.IO.Path]::Combine($Root, $RelativePath.Replace('/', [string][System.IO.Path]::DirectorySeparatorChar))
 }
 
 function Get-HeadCommit([string]$Root) {
