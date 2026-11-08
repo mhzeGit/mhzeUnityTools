@@ -1,0 +1,4 @@
+interface:
+  display_name: "Concept Art to 3D"
+  short_description: "Build faithful untextured geometry from reference art"
+  default_prompt: "Use $concept-art-to-3d to model this reference faithfully, revise the geometry after visual review, and deliver a verified untextured FBX with clay views. Leave UVs and texturing for model-to-textured-asset."

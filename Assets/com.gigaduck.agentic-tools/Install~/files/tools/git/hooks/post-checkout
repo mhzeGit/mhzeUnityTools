@@ -1,0 +1,55 @@
+#!/bin/sh
+# agent-commit worktree guard. Installed into .git/hooks/post-checkout by
+# tools/git/agent-commit.ps1 from this committed template (see AGENTS.md).
+#
+# The main folder is one shared working tree that Unity, every agent and the
+# user all read. A `git checkout <commit>` there detaches HEAD and silently
+# reverts every Unity scene to that old version. When a detached checkout
+# lands in the main worktree and it is clean, this hook switches it straight
+# back to the branch.
+#
+# Args: <old-head> <new-head> <branch flag>. The flag is 1 for both
+# `git checkout <branch>` and `git checkout <commit>` (detaching), so it is not
+# a useful discriminator here: we guard on HEAD being detached instead.
+# Opt out for one command with KILO_ALLOW_DETACHED=1.
+
+[ -n "$KILO_ALLOW_DETACHED" ] && exit 0
+
+gitdir=$(git rev-parse --absolute-git-dir 2>/dev/null) || exit 0
+commondir=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
+top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+case "$commondir" in
+  /*) ;;
+  *) commondir="$top/$commondir" ;;
+esac
+[ "$gitdir" = "$commondir" ] || exit 0
+git symbolic-ref -q HEAD >/dev/null 2>&1 && exit 0
+
+for marker in rebase-merge rebase-apply MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG; do
+  [ -e "$commondir/$marker" ] && exit 0
+done
+
+branch=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null | sed 's#^origin/##')
+if [ -z "$branch" ] || [ "$branch" = "HEAD" ]; then branch=main; fi
+git show-ref --verify --quiet "refs/heads/$branch" || branch=main
+git show-ref --verify --quiet "refs/heads/$branch" || exit 0
+
+printf '\n'
+printf '############################################################\n'
+printf '# WORKTREE GUARD: this shared checkout was left DETACHED.  #\n'
+printf '# A history checkout here reverts the scenes Unity shows.  #\n'
+dirty=0
+[ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ] && dirty=1
+git switch "$branch" >/dev/null 2>&1
+if [ "$(git symbolic-ref -q --short HEAD 2>/dev/null)" = "$branch" ]; then
+  if [ "$dirty" = "1" ]; then
+    printf '# It is back on %s now (uncommitted changes kept).\n' "$branch"
+  else
+    printf '# It was clean, so it is back on %s now.\n' "$branch"
+  fi
+else
+  printf '# Auto-repair failed (uncommitted changes would conflict).\n'
+  printf '# Fix them, then run:  git switch %s\n' "$branch"
+fi
+printf '############################################################\n\n'
+exit 0

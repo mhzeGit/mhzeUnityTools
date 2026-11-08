@@ -1,0 +1,2 @@
+# Gemini / Antigravity - Project Rules
+

@@ -1,0 +1,11 @@
+{
+    "name": "Gigaduck.AgenticTools.Mcp",
+    "rootNamespace": "Gigaduck.AgenticTools.Mcp",
+    "references": ["MCPForUnity.Editor"],
+    "includePlatforms": ["Editor"],
+    "autoReferenced": false,
+    "defineConstraints": ["AGENTIC_UNITY_MCP"],
+    "versionDefines": [
+        { "name": "com.coplaydev.unity-mcp", "expression": "", "define": "AGENTIC_UNITY_MCP" }
+    ]
+}

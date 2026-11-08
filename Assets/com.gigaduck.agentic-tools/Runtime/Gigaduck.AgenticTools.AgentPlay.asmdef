@@ -1,0 +1,9 @@
+{
+    "name": "Gigaduck.AgenticTools.AgentPlay",
+    "rootNamespace": "Gigaduck.AgenticTools.AgentPlay",
+    "references": ["Unity.InputSystem"],
+    "autoReferenced": true,
+    "versionDefines": [
+        { "name": "com.unity.inputsystem", "expression": "", "define": "AGENTIC_INPUT_SYSTEM" }
+    ]
+}

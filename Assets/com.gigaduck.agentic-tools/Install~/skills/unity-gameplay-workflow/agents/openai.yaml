@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unity Gameplay Workflow"
+  short_description: "Design and verify gameplay in its actual Unity level"
+  default_prompt: "Use $unity-gameplay-workflow to improve this Unity activity and verify its player experience."

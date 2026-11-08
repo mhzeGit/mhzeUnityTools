@@ -1,0 +1,11 @@
+{
+ "_help": "Data for the PrefabColliders op (cs/EnvOps3.cs), passed automatically by bo.py. box = assets that get ONE BoxCollider from their local bounds. cylinder = 'Asset:MeshChild' pairs that get a convex cylinder collider fitted to that mesh child (round props, boilers, pipes). stairs = 'Asset:MeshChild:treadDepthMetres' entries that get a solid wedge under the nose line of the steps (so the CharacterController walks up a ramp instead of tripping on every riser).",
+ "box": [
+  "Wall_Brick_Panel",
+  "Crate_Test"
+ ],
+ "cylinder": [
+  "Pipe_Test:Teal__Tube"
+ ],
+ "stairs": []
+}

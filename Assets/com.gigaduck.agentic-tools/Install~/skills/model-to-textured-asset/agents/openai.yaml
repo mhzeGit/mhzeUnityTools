@@ -1,0 +1,4 @@
+interface:
+  display_name: "Model to Textured Asset"
+  short_description: "Match concept textures with Graphmat UVs and masks"
+  default_prompt: "Use $model-to-textured-asset with this mesh and concept art. Verify up to five generated flat textures, then use Graphmat background CLI for 2K UVs, baking, masks and delivery. Never use Computer Use; use MCP only if I explicitly request it. Report missing CLI capabilities."

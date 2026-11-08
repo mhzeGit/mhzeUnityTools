@@ -1,0 +1,41 @@
+{
+ "_help": "Data for the PrefabColliders op (cs/EnvOps3.cs). box = ONE BoxCollider from local bounds; cylinder = 'Asset:MeshChild' convex cylinder; stairs = 'Asset:MeshChild:treadDepth' solid wedge under the nose line.",
+ "box": [
+  "Wall_Plaster_Panel",
+  "Wall_Brick_Panel",
+  "Floor_Panel_A",
+  "Floor_Panel_B",
+  "Floor_Strip_W",
+  "Floor_Strip_E",
+  "Drain_Grate",
+  "Post_Timber",
+  "Pillar_Entrance",
+  "Brick_Footing",
+  "Landing_Block",
+  "Landing_Deck",
+  "Landing_Rail",
+  "Stair_Handrail",
+  "Crate_Large",
+  "Crate_Xbrace",
+  "Crate_Small",
+  "Crate_Lattice",
+  "Shelf_Table",
+  "Door_Entrance",
+  "Door_Landing",
+  "Bucket",
+  "Beam_Timber"
+ ],
+ "cylinder": [
+  "Boiler_Large:Teal__Shell",
+  "Boiler_Medium:Teal__Shell",
+  "Boiler_Small:Teal__Shell",
+  "Plinth_Large:Brick__Bricks",
+  "Plinth_Medium:Brick__Bricks",
+  "Plinth_Small:Brick__Bricks",
+  "Pipe_Tube_1m:Teal__Tube",
+  "Pipe_BaseFlange:Teal__BaseFlange"
+ ],
+ "stairs": [
+  "Stair_Brick_9:Brick__Bricks:0.2725"
+ ]
+}

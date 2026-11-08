@@ -1,0 +1,22 @@
+# `pip install -e tools/taskboard` puts a `taskboard` command on PATH, so agents in
+# any repository can call it. Standard library only: no dependencies to install.
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-taskboard"
+version = "1.0.0"
+description = "A local kanban board that you and your AI agents share, with live updates"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+taskboard = "taskboard.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["taskboard*"]
+
+[tool.setuptools.package-data]
+taskboard = ["web/*.html", "web/*.css", "web/js/*.js"]

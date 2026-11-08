@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+Install~/tests/cs/bin/
+Install~/tests/cs/obj/

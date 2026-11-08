@@ -8,6 +8,7 @@ Each tool is a self-contained package folder under `Assets/`, ready to be upload
 
 Install any tool in a new project via **Window > Package Manager > + > Add package from git URL** and paste the link below, or add it to `Packages/manifest.json` under `"dependencies"`:
 
+- **Agentic Tools** — rules, virtual commits, agent play testing, MCP tools and skills for AI coding agents, installed into a project from **Tools ▸ Agentic Tools** (see its README) — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.agentic-tools`
 - **Advanced Batch Renamer** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.advanced-batch-renamer`
 - **Editor Custom Commands** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.editor-custom-commands`
 - **Editor Navigator** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.editor-navigator`

@@ -1,0 +1,18 @@
+{
+ "note": "Final flat texture per material. Candidate numbers are the generation order (the later duplicate of a log entry is not always the file its entry names: two generator runs overlapped, so ownership was decided by looking at each image against the concept crop, see generation-log.json).",
+ "generated_total": 21,
+ "approved_budget": 16,
+ "materials": {
+  "teal_iron":    {"candidate": "00_teal_iron",   "why": "only candidate; dusty teal iron with rust flecks, matches the boiler skin"},
+  "red_paint":    {"candidate": "02_red_paint",   "why": "deeper saturated red (mean 138,20,2) than #1 (153,34,26); concept wheel is about 120,20,4"},
+  "brick":        {"candidate": "04_brick",       "why": "closer to the lit concept brick orange (193,81,40 vs 207,92,20) than #3"},
+  "mortar_stone": {"candidate": "05_mortar_stone","why": "mid warm grey-tan like the concept post cap stone; #6/#7 (identical file) is paler than the concept"},
+  "flagstone":    {"candidate": "09_flagstone",   "why": "only brown-grey stone that matches the concept floor; #6 is the pale mortar image that the log entry picked up by mistake"},
+  "dark_oak":     {"candidate": "08_dark_oak",    "why": "slightly more grain contrast than #11 at the same dark brown"},
+  "pine_planks":  {"candidate": "10_pine_planks", "why": "darker honey (145,91,36) matches the concept crates and landing better than the washed-out #13"},
+  "plaster":      {"candidate": "14_plaster",     "why": "warm orange-tan mottle like the concept walls; #12 is a near duplicate"},
+  "black_iron":   {"candidate": "15_black_iron",  "why": "cool charcoal like the concept grate and bucket; #17 has too much rust"},
+  "brass_cream":  {"candidate": "18_brass_cream", "why": "clean cream like the gauge face; #16 is blotchier"},
+  "amber_glass":  {"candidate": "20_amber_glass", "why": "warm yellow-orange lantern glow; #19 is equivalent"}
+ }
+}

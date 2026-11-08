@@ -1,0 +1,8 @@
+{
+  "_help": "Look-dev of the Unity URP/Lit materials per texture group (tex.py). tint multiplies the baked albedo, smooth = smoothness, glow = HDR emission multiplier of the Glow region, glow_groups = groups that own a Glow region (they get a second material <prefix><group>_Glow).",
+  "glow_groups": [],
+  "groups": {
+    "props": {"smooth": "0.12"},
+    "wall_brick": {"smooth": "0.1"}
+  }
+}

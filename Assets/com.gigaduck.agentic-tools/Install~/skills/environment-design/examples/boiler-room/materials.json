@@ -1,0 +1,79 @@
+{
+ "style": "Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism.",
+ "common": "The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else.",
+ "materials": {
+  "teal_iron": {
+   "refs": [
+    "boiler_center_persp.png"
+   ],
+   "text": "ONE seamless square base-color texture of the dusty teal-gray riveted boiler iron from the supplied concept (the skin of the large boiler): muted dark teal-gray iron, broad irregular painted patches that are slightly lighter and darker teal, scattered orange-brown rust flecks and a few soft vertical rust drip streaks, a few small dark pits. No rivets, no seams, no plates, no gauge, no valve."
+  },
+  "red_paint": {
+   "refs": [
+    "wheel_persp.png"
+   ],
+   "text": "ONE seamless square base-color texture of the worn red paint on the valve hand wheels in the concept: deep saturated brick-red enamel with broad darker maroon patches, lighter orange-red worn edges as small scuffs, a few tiny chipped specks showing dark metal. No wheel shape."
+  },
+  "brick": {
+   "refs": [
+    "plinth_large_persp.png",
+    "stairs_landing_persp.png"
+   ],
+   "text": "ONE seamless square base-color texture of a SINGLE fired-clay brick face from the concept (not a wall of bricks): warm orange-red clay with broad painted patches of darker rust-red and lighter orange, a few small chips and soot specks. Uniform brick surface only: no mortar lines, no brick edges, no courses."
+  },
+  "mortar_stone": {
+   "refs": [
+    "postcap_map.png",
+    "plinth_small_persp.png"
+   ],
+   "text": "ONE seamless square base-color texture of the pale gray-beige stone and mortar used for the post caps, door pillars and mortar joints in the concept: soft warm gray stone with broad angular painted patches, tiny dark nicks and a few faint cracks. Uniform surface only, no blocks, no joints."
+  },
+  "flagstone": {
+   "refs": [
+    "floor_persp.png",
+    "floor_map.png"
+   ],
+   "text": "ONE seamless square base-color texture of the large worn flagstone floor slabs in the concept: warm brown-gray stone, broad hand-painted mottled patches, slightly lighter dusty scuffs, a few hairline cracks and chips, subtle darker staining. A single continuous slab surface: no slab joints, no gaps, no grout lines."
+  },
+  "dark_oak": {
+   "refs": [
+    "post_map.png",
+    "left_pipe_crates_persp.png"
+   ],
+   "text": "ONE seamless square base-color texture of the dark oak timber of the posts, beams and rails in the concept: deep warm brown wood with long broad vertical grain stripes painted as angular streaks, sparse knots, slightly lighter worn edges, no planks edges. Grain runs vertically."
+  },
+  "pine_planks": {
+   "refs": [
+    "landing_map.png",
+    "crates_map.png"
+   ],
+   "text": "ONE seamless square base-color texture of the lighter warm pine / ochre-brown board wood of the crates and landing deck in the concept: honey-brown wood, broad painted grain streaks running vertically, a few knots and nail-stain specks, subtle value variation. Wood surface only, no board edges."
+  },
+  "plaster": {
+   "refs": [
+    "stairs_landing_persp.png",
+    "left_pipe_crates_persp.png"
+   ],
+   "text": "ONE seamless square base-color texture of the warm tan-ochre lime plaster of the walls in the concept: mottled orange-tan plaster with broad cloudy patches of lighter cream and darker terracotta, tiny chips and hairline cracks. Uniform plaster surface only, no bricks, no timber."
+  },
+  "black_iron": {
+   "refs": [
+    "grate_persp.png",
+    "crates_map.png"
+   ],
+   "text": "ONE seamless square base-color texture of the dark cast iron of the drain grate, bucket and hardware in the concept: very dark warm charcoal-brown iron with broad painted facets, a few soft rusty orange-brown flecks and lighter worn gray scuffs. Uniform metal surface only."
+  },
+  "brass_cream": {
+   "refs": [
+    "gauge_persp.png"
+   ],
+   "text": "ONE seamless square base-color texture of the cream dial paper and brass trim of the pressure gauges in the concept: warm cream-ivory surface with soft tan staining and a few small darker specks and faint brass-colored patches. Uniform surface only, no numbers, no dial marks, no needle."
+  },
+  "amber_glass": {
+   "refs": [
+    "lantern_map.png"
+   ],
+   "text": "ONE seamless square base-color texture of the warm amber glow glass of the lanterns in the concept: luminous yellow-orange amber with broad painted lighter yellow and deeper orange cloud patches, tiny darker flecks. Uniform surface only, no frame, no bars."
+  }
+ }
+}

@@ -1,0 +1,14 @@
+{
+  "style": "Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. ADAPT THIS SENTENCE to the style of YOUR concept (look at it first).",
+  "common": "The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else.",
+  "materials": {
+    "pine_planks": {
+      "refs": ["crates_persp.png"],
+      "text": "ONE seamless square base-color texture of the honey-brown pine board wood of the crates in the concept: broad painted grain streaks running vertically, a few knots and nail-stain specks, subtle value variation. Wood surface only, no board edges."
+    },
+    "black_iron": {
+      "refs": ["hardware_persp.png"],
+      "text": "ONE seamless square base-color texture of the dark cast iron of the hardware in the concept: very dark warm charcoal-brown iron with broad painted facets, a few soft rusty orange-brown flecks and lighter worn gray scuffs. Uniform metal surface only."
+    }
+  }
+}

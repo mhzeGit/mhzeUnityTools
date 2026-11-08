@@ -1,0 +1,30 @@
+{
+ "_help": "Look-dev of the Unity URP/Lit materials per texture group (tex.py): tint multiplies the baked albedo, smooth = smoothness, glow = HDR emission multiplier of the Glow region.",
+ "glow_groups": [
+  "boiler_large",
+  "smallprops"
+ ],
+ "groups": {
+  "boiler_large": {
+   "tint": "0.85,1.05,1.2",
+   "smooth": "0.12",
+   "glow": "3.9"
+  },
+  "boiler_ms": {
+   "tint": "0.85,1.05,1.2",
+   "smooth": "0.12"
+  },
+  "pipes": {
+   "tint": "0.85,1.05,1.2",
+   "smooth": "0.12"
+  },
+  "smallprops": {
+   "smooth": "0.1",
+   "glow": "3.0"
+  },
+  "floor": {
+   "tint": "0.56,0.55,0.58",
+   "smooth": "0.08"
+  }
+ }
+}

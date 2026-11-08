@@ -1,0 +1,93 @@
+{
+  "vars": {
+    "RULES_DIR": "Docs/rules",
+    "DOCS_DIR": "Docs"
+  },
+  "modules": [
+    {
+      "id": "core",
+      "title": "Agent rules",
+      "description": "Shared rules in AGENTS.md, the pointer files every agent reads (CLAUDE.md, GEMINI.md, Copilot, Cursor, Antigravity), and the rule docs for packages, Unity/MCP pitfalls and keeping these tools in the package.",
+      "required": true,
+      "default": true,
+      "items": [
+        { "kind": "block", "id": "core", "src": "blocks/agents-core.md", "dst": "AGENTS.md", "header": "headers/AGENTS.md" },
+        { "kind": "block", "id": "pointer", "src": "blocks/pointer-claude.md", "dst": "CLAUDE.md", "header": "headers/CLAUDE.md" },
+        { "kind": "block", "id": "pointer", "src": "blocks/pointer-gemini.md", "dst": "GEMINI.md", "header": "headers/GEMINI.md" },
+        { "kind": "block", "id": "pointer", "src": "blocks/pointer-copilot.md", "dst": ".github/copilot-instructions.md", "header": "headers/copilot-instructions.md" },
+        { "kind": "block", "id": "pointer", "src": "blocks/pointer-cursor.md", "dst": ".cursor/rules/agents.mdc", "header": "headers/cursor.mdc" },
+        { "kind": "block", "id": "pointer", "src": "blocks/pointer-antigravity.md", "dst": ".agent/rules/project-rules.md", "header": "headers/antigravity.md" },
+        { "kind": "block", "id": "agentic-tools", "src": "blocks/rules-agentic-tools.md", "dst": "{{RULES_DIR}}/AGENTIC_TOOLS.md" },
+        { "kind": "block", "id": "packages", "src": "blocks/rules-packages.md", "dst": "{{RULES_DIR}}/PACKAGES.md" },
+        { "kind": "block", "id": "unity-pitfalls", "src": "blocks/rules-unity-pitfalls.md", "dst": "{{RULES_DIR}}/UNITY_PITFALLS.md" }
+      ]
+    },
+    {
+      "id": "virtual-commit",
+      "title": "Virtual commits",
+      "description": "Agents never commit: they register a virtual commit (tools/git/agent-commit.ps1) and you commit and push the records you pick with virtual-commit.bat. Includes the worktree guard hook and the index repair script.",
+      "default": true,
+      "items": [
+        { "kind": "copy", "src": "files/tools/git", "dst": "tools/git" },
+        { "kind": "copy", "src": "files/virtual-commit.bat", "dst": "virtual-commit.bat" },
+        { "kind": "block", "id": "git-hooks", "src": "blocks/gitattributes.txt", "dst": ".gitattributes" },
+        { "kind": "block", "id": "git", "src": "blocks/agents-git.md", "dst": "AGENTS.md", "after": "core" },
+        { "kind": "block", "id": "git", "src": "blocks/rules-git.md", "dst": "{{RULES_DIR}}/GIT.md" }
+      ]
+    },
+    {
+      "id": "agent-play",
+      "title": "Agent play testing",
+      "description": "tools/agentplay/agentplay.py: one shared standalone build (script-only changes patched in seconds), one player per agent, driven by commands; the editor Play Mode claim; the testing policy and test deadlines. The player side is this package's AgentPlay harness and AgentPlayBuild.",
+      "default": true,
+      "items": [
+        { "kind": "copy", "src": "files/tools/agentplay", "dst": "tools/agentplay" },
+        { "kind": "block", "id": "testing", "src": "blocks/agents-testing.md", "dst": "AGENTS.md", "after": "git" },
+        { "kind": "block", "id": "testing", "src": "blocks/rules-testing.md", "dst": "{{RULES_DIR}}/TESTING.md" },
+        { "kind": "block", "id": "agent-play", "src": "blocks/docs-agent-play.md", "dst": "{{DOCS_DIR}}/AGENT_PLAY.md" }
+      ]
+    },
+    {
+      "id": "mcp",
+      "title": "Unity MCP setup",
+      "description": "Registers the MCP for Unity server (http://127.0.0.1:8080/mcp) for Claude Code (.mcp.json) and Codex (.codex/config.toml). The fast_play tool and MCP auto-start compile in when com.coplaydev.unity-mcp is installed.",
+      "default": true,
+      "items": [
+        { "kind": "json-merge", "src": "files/mcp.json", "dst": ".mcp.json" },
+        { "kind": "block", "id": "mcp", "src": "blocks/codex-mcp.toml", "dst": ".codex/config.toml" }
+      ]
+    },
+    {
+      "id": "skills",
+      "title": "Agent skills",
+      "description": "Gameplay, environment and asset skills (unity-gameplay-workflow, environment-design, concept-art-to-3d, model-to-textured-asset, game-prop-concept-art) for Claude Code, Codex, Kilo and Antigravity.",
+      "default": true,
+      "items": [
+        { "kind": "copy", "src": "skills", "dst": ".claude/skills" },
+        { "kind": "copy", "src": "skills", "dst": ".agents/skills" },
+        { "kind": "copy", "src": "skills", "dst": ".kilo/skills" },
+        { "kind": "copy", "src": "skills", "dst": ".agent/skills" }
+      ]
+    },
+    {
+      "id": "procedural-animation",
+      "title": "Procedural animation rule",
+      "description": "Motion computed in code always gets an editable curve profile (ScriptableObject) instead of hard-coded easing.",
+      "default": true,
+      "items": [
+        { "kind": "block", "id": "procedural-animation", "src": "blocks/rules-procedural-animation.md", "dst": "{{RULES_DIR}}/PROCEDURAL_ANIMATION.md" }
+      ]
+    },
+    {
+      "id": "taskboard",
+      "title": "Agent Task Board",
+      "description": "A local kanban shared with your agents (tools/taskboard, task-board.bat): agents claim tasks, post progress and send finished work to Review; committing the virtual commit moves it to Done.",
+      "default": false,
+      "items": [
+        { "kind": "copy", "src": "files/tools/taskboard", "dst": "tools/taskboard" },
+        { "kind": "copy", "src": "files/task-board.bat", "dst": "task-board.bat" },
+        { "kind": "block", "id": "taskboard", "src": "blocks/agents-taskboard.md", "dst": "AGENTS.md", "after": "testing" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# The worktree-guard git hook is run by Git's own sh (Git for Windows); a CRLF
+# shebang breaks it, and the installed .git/hooks copy must stay LF too.
+tools/git/hooks/* text eol=lf

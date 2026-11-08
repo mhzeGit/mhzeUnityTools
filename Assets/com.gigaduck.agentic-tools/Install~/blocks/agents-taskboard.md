@@ -1,0 +1,5 @@
+**Task board** (guide: `tools/taskboard/README.md`). The user queues work on the shared local Agent Task Board (`python tools/taskboard/taskboard.py <command>`, or `taskboard <command>` once installed with `pip install -e tools/taskboard`). When the user gives you a task id (`T-12`) or asks you to work the queue:
+- read the protocol first: `taskboard guide`;
+- claim before you start (`taskboard next --agent "<your tool name>"` or `taskboard claim T-12 --agent ...`), add a `note` at each milestone, stay inside the task's `touches`, and finish with `taskboard review T-12 --commit <virtual commit id> -s "<what changed, how verified>"` (a cloud session without a virtual commit passes the commit sha instead), or `block` with one precise question when you need the user;
+- working the queue: repeat `next` until it exits with code 2; stop at a failure you cannot fix and block that task;
+- ideas and follow-ups you notice go to the Inbox with `taskboard add`; never queue work the user did not ask for.

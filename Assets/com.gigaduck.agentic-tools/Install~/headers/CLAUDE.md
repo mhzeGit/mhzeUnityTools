@@ -1,0 +1,2 @@
+# Claude Code - Project Rules
+

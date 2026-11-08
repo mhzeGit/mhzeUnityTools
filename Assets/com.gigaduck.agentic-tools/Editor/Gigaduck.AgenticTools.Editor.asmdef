@@ -1,0 +1,6 @@
+{
+    "name": "Gigaduck.AgenticTools.Editor",
+    "rootNamespace": "Gigaduck.AgenticTools",
+    "includePlatforms": ["Editor"],
+    "autoReferenced": true
+}

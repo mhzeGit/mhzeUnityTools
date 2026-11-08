@@ -1,0 +1,160 @@
+diff --git a/src/GraphMat.Avalonia/Api/GraphMatProjectApi.Authoring.cs b/src/GraphMat.Avalonia/Api/GraphMatProjectApi.Authoring.cs
+index c5fa870e..29ba5c90 100644
+--- a/src/GraphMat.Avalonia/Api/GraphMatProjectApi.Authoring.cs
++++ b/src/GraphMat.Avalonia/Api/GraphMatProjectApi.Authoring.cs
+@@ -245,11 +245,18 @@ public sealed partial class GraphMatProjectApi
+     /// <summary>Connect an imported flat image through the native Mesh
+     /// Triplanar node into the existing Surface layer. Folder Paint is preserved.</summary>
+     public void AssignRegionTexture(string folder, string texture, string projection = "triplanar", float scale = 1, string? material = null,
+-        Vector3Value? rotation = null, Vector3Value? origin = null, Vector3Value? textureRotation = null)
++        Vector3Value? rotation = null, Vector3Value? origin = null, Vector3Value? textureRotation = null, string? mode = null)
+     {
+         if (!_projectTextures.Any(t => t.Name == texture)) throw new ArgumentException($"No embedded texture named '{texture}'.");
+         if (projection is not ("triplanar" or "uv")) throw new ArgumentException("Projection must be triplanar or uv.");
+         if (!float.IsFinite(scale) || scale <= 0) throw new ArgumentException("Projection scale must be positive and finite.");
++        string? triplanarMode = null;
++        if (mode != null)
++        {
++            triplanarMode = MeshTriplanarNode.ModeOptions.FirstOrDefault(m => m.Equals(mode, StringComparison.OrdinalIgnoreCase))
++                ?? throw new ArgumentException($"Projection mode must be one of {string.Join(", ", MeshTriplanarNode.ModeOptions)}.");
++            if (projection != "triplanar") throw new ArgumentException("A projection mode only applies to triplanar projection.");
++        }
+         static bool Finite(Vector3Value? value) => value == null
+             || float.IsFinite(value.X) && float.IsFinite(value.Y) && float.IsFinite(value.Z);
+         if (!Finite(rotation) || !Finite(origin) || !Finite(textureRotation))
+@@ -272,6 +279,7 @@ public sealed partial class GraphMatProjectApi
+             var tri = graph.Nodes.OfType<MeshTriplanarNode>().SingleOrDefault();
+             if (tri == null) { tri = new MeshTriplanarNode(180, 0); graph.AddNode(tri); }
+             tri.SetInputValue(tri.ScalePort, scale);
++            tri.SetInputValue(tri.ModePort, triplanarMode ?? "Box");
+             if (rotation != null) tri.SetInputValue(tri.RotationPort, rotation);
+             if (origin != null) tri.SetInputValue(tri.OriginPort, origin);
+             if (textureRotation != null) tri.SetInputValue(tri.TextureRotationPort, textureRotation);
+@@ -329,6 +337,68 @@ public sealed partial class GraphMatProjectApi
+         IsDirty = true;
+     }
+ 
++    /// <summary>Bake the mesh ambient-occlusion map with the same CPU baker the Bake Map node uses and store it as the
++    /// project's "ao" baked map (UV space, project resolution). Nothing is applied to a layer until <see cref="ApplyRegionAo"/>.</summary>
++    public async Task BakeAoMapAsync(int rays = 64, float radius = 1f, float bias = 0.05f, float strength = 1f,
++        bool denoise = true, int denoiseIterations = 2, CancellationToken cancellationToken = default)
++    {
++        EnsureUsableUvs();
++        if (rays < 4 || rays > 1024) throw new ArgumentException("AO rays must be between 4 and 1024.");
++        if (!float.IsFinite(radius) || radius <= 0) throw new ArgumentException("AO radius must be positive (world units).");
++        if (!float.IsFinite(bias) || bias < 0) throw new ArgumentException("AO bias must be zero or positive.");
++        if (!float.IsFinite(strength) || strength < 0 || strength > 2) throw new ArgumentException("AO strength must be between 0 and 2.");
++        int size = _textureResolution;
++        var mesh = ImportedModel;
++        var ao = await Task.Run(() => BakeAoCore.BakeAoCpu(mesh.Positions, mesh.Uvs, mesh.Indices, size,
++            mesh.Normals.Length > 0 ? mesh.Normals : null, rays, radius, bias, strength,
++            partIds: null, localOnly: false, denoise: denoise, denoiseIterations: Math.Max(1, denoiseIterations),
++            shouldCancel: () => cancellationToken.IsCancellationRequested), cancellationToken);
++        cancellationToken.ThrowIfCancellationRequested();
++        _bakedMaps.Maps["ao"] = BakeAoCore.EncodeAoToRgba8(ao.Ao, ao.Covered, size);
++        _bakedMaps.Artifacts["ao"] = new BakedMapArtifact(size, null, null, null, 0, MeshFingerprint.Of(mesh));
++        _bakeSettings ??= new BakeSettings { Size = size, Padding = 0, Enabled = new MapEnableSettings
++            { Ao = false, Position = false, LocalPosition = false, Thickness = false, Curvature = false, HighPoly = false, WorldNormal = false, Tangent = false, Seam = false } };
++        _bakeSettings.Enabled ??= new MapEnableSettings();
++        _bakeSettings.Enabled.Ao = true;
++        _bakeSettings.Ao = new AoBakeSettingsData { Samples = rays, Radius = radius, Strength = strength, Denoise = denoise, DenoiseIters = Math.Max(1, denoiseIterations) };
++        IsDirty = true;
++    }
++
++    /// <summary>Multiply the baked ambient occlusion over a region's base colour: Bake Map (Ambient Occlusion) is Color A of a
++    /// Multiply Blend node whose Color B is the region's texture colour; the Blend result drives the Surface layer's Base Color.
++    /// Run after <see cref="AssignRegionTexture"/> and <see cref="BakeAoMapAsync"/>; calling it again only updates the strength.</summary>
++    public void ApplyRegionAo(string folder, float strength = 1f, string? material = null)
++    {
++        if (!_bakedMaps.Maps.ContainsKey("ao")) throw new InvalidOperationException("Bake the ambient-occlusion map first (bakeAo).");
++        if (!float.IsFinite(strength) || strength < 0 || strength > 1) throw new ArgumentException("AO strength must be between 0 and 1.");
++        var parent = FindAuthorFolder(folder, material);
++        var layer = parent.Children.SingleOrDefault(l => l.Name == "Surface" && !l.IsFolder)
++            ?? throw new ArgumentException("Folder must have one Surface child layer.");
++        var graph = layer.Graph;
++        var output = graph.Nodes.OfType<OutputNode>().Single();
++        var blend = graph.Nodes.OfType<BlendNode>().SingleOrDefault();
++        if (blend == null)
++        {
++            var wire = graph.Connections.SingleOrDefault(c => c.To.Node == output && c.To.Port == output.Inputs[0])
++                ?? throw new ArgumentException("Assign a texture to the folder before applying AO.");
++            var sourceNode = wire.From.Node;
++            var sourcePort = wire.From.Port;
++            graph.Disconnect(wire);
++            blend = new BlendNode(260, 0);
++            graph.AddNode(blend);
++            var bake = new BakeMapNode(100, 140);
++            graph.AddNode(bake);
++            bake.SetInputValue(bake.MapPort, "Ambient Occlusion");
++            blend.SetInputValue(blend.Inputs[0], "Multiply");
++            if (!graph.Connect(sourceNode, sourcePort, blend, blend.Inputs[3])) throw new InvalidOperationException("Cannot connect the texture to the AO blend (Color B).");
++            if (!graph.Connect(bake, bake.ResultPort, blend, blend.Inputs[2])) throw new InvalidOperationException("Cannot connect Bake Map to the AO blend (Color A).");
++            if (!graph.Connect(blend, blend.Outputs[0], output, output.Inputs[0])) throw new InvalidOperationException("Cannot connect the AO blend to Surface Base Color.");
++        }
++        blend.SetInputValue(blend.Inputs[1], strength);
++        graph.InvalidateAllCaches();
++        IsDirty = true;
++    }
++
+     public async Task EvaluateAsync(CancellationToken cancellationToken = default)
+     {
+         var graphs = _materials.SelectMany(m => AuthorLayers(m.Layers)).Select(l => l.Graph).Distinct().ToArray();
+diff --git a/tools/GraphMat.Cli/Commands/AuthoringCommand.cs b/tools/GraphMat.Cli/Commands/AuthoringCommand.cs
+index f1dbfc13..8087d74e 100644
+--- a/tools/GraphMat.Cli/Commands/AuthoringCommand.cs
++++ b/tools/GraphMat.Cli/Commands/AuthoringCommand.cs
+@@ -34,6 +34,15 @@ internal static partial class Program
+             "material":"Iron", "projection":"triplanar", "scale":0.25,
+             "rotation":[0,90,0], "textureRotation":[0,0,90], "origin":[0,0,0] }, { "op":"evaluate" } ]
+         and export { "albedo":"albedo.png", "material":"Iron" }.
++        "mode" ("box" default, "cylinder" or "sphere") picks the Mesh Triplanar projection: cylinder wraps the texture
++        round the frame's Y axis (a whole number of repeats, so no seam) and projects the caps flat, which suits round
++        masonry; the frame origin defaults to the mesh bounding-box centre unless "origin" is given.
++
++        Ambient occlusion: after UVs and bakeProjectionMaps, { "op":"bakeAo", "rays":64, "radius":0.5,
++        "bias":0.02, "strength":1, "denoise":true } bakes the mesh AO map (the Bake Map node's CPU baker, radius
++        in model units). After assignTexture, { "op":"applyAo", "folder":"Brick", "strength":0.85 } multiplies
++        that AO over the folder's base colour (Bake Map -> Multiply Blend -> Surface Base Color); the albedo
++        extract then contains the AO.
+ 
+         Selection accepts all:true, faces, components, parts, materials and islands.
+         Paths are relative to the job file. Masks are editable native Paint nodes;
+@@ -155,6 +164,15 @@ internal static partial class Program
+                         await api.BakeProjectionMapsAsync(timeout.Token);
+                         results.Add(new { op, maps = new[] { "position", "worldNormal" }, artisticMaps = false });
+                         break;
++                    case "bakeao":
++                        await api.BakeAoMapAsync(Int(operation, "rays", 64), Float(operation, "radius", 1f), Float(operation, "bias", 0.05f),
++                            Float(operation, "strength", 1f), Bool(operation, "denoise", true), Int(operation, "denoiseIterations", 2), timeout.Token);
++                        results.Add(new { op, map = "ao", rays = Int(operation, "rays", 64), radius = Float(operation, "radius", 1f), resolution = api.TextureResolution });
++                        break;
++                    case "applyao":
++                        api.ApplyRegionAo(String(operation, "folder"), Float(operation, "strength", 1f), OptionalString(operation, "material"));
++                        results.Add(new { op, folder = String(operation, "folder"), strength = Float(operation, "strength", 1f) });
++                        break;
+                     case "addregion":
+                         results.Add(api.AddRegion(String(operation, "name"), String(operation, "color"), Selection(operation), OptionalString(operation, "material")));
+                         break;
+@@ -168,7 +186,7 @@ internal static partial class Program
+                     case "assigntexture":
+                         api.AssignRegionTexture(String(operation, "folder"), String(operation, "texture"),
+                             OptionalString(operation, "projection") ?? "triplanar", Float(operation, "scale", 1), OptionalString(operation, "material"),
+-                            Vector(operation, "rotation"), Vector(operation, "origin"), Vector(operation, "textureRotation"));
++                            Vector(operation, "rotation"), Vector(operation, "origin"), Vector(operation, "textureRotation"), OptionalString(operation, "mode"));
+                         results.Add(new { op, folder = String(operation, "folder"), texture = String(operation, "texture") });
+                         break;
+                     case "evaluate":
+@@ -304,10 +322,12 @@ internal static partial class Program
+             "importtexture" => ["op", "name", "path"],
+             "autouv" => ["op", "resolution", "padding", "iterations", "chartCost", "respectHardEdges", "thoroughPacking", "allowSeams", "qualityPack"],
+             "bakeprojectionmaps" or "evaluate" => ["op"],
++            "bakeao" => ["op", "rays", "radius", "bias", "strength", "denoise", "denoiseIterations"],
++            "applyao" => ["op", "folder", "strength", "material"],
+             "addregion" => ["op", "name", "color", "material", "selection"],
+             "updatemask" => ["op", "folder", "material", "selection"],
+             "importmask" => ["op", "folder", "material", "path"],
+-            "assigntexture" => ["op", "folder", "texture", "projection", "scale", "material", "rotation", "origin", "textureRotation"],
++            "assigntexture" => ["op", "folder", "texture", "projection", "scale", "material", "rotation", "origin", "textureRotation", "mode"],
+             _ => ["op"]
+         };
+         CheckFields(operation, allowed);

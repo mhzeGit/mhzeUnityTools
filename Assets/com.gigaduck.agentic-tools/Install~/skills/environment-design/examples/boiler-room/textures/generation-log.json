@@ -1,0 +1,310 @@
+[
+ {
+  "material": "teal_iron",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the dusty teal-gray riveted boiler iron from the supplied concept (the skin of the large boiler): muted dark teal-gray iron, broad irregular painted patches that are slightly lighter and darker teal, scattered orange-brown rust flecks and a few soft vertical rust drip streaks, a few small dark pits. No rivets, no seams, no plates, no gauge, no valve. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "boiler_center_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154ac-06b8-7701-ae30-bf7782ca7b9d\\exec-377e843c-ac44-410f-a73c-f72a4711e034.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\teal_iron_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 65.5
+ },
+ {
+  "material": "red_paint",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the worn red paint on the valve hand wheels in the concept: deep saturated brick-red enamel with broad darker maroon patches, lighter orange-red worn edges as small scuffs, a few tiny chipped specks showing dark metal. No wheel shape. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "wheel_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154ad-4372-7673-b670-f16bd5adc2c9\\exec-3e2add54-496e-4ae9-9984-06d502bd3e45.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\red_paint_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 54.3
+ },
+ {
+  "material": "red_paint",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the worn red paint on the valve hand wheels in the concept: deep saturated brick-red enamel with broad darker maroon patches, lighter orange-red worn edges as small scuffs, a few tiny chipped specks showing dark metal. No wheel shape. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "wheel_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154ad-6bc9-70e0-a996-c1fbeedf3eaa\\exec-43d2ee02-bb58-44b9-b209-f1648755336b.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\red_paint_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 61.5
+ },
+ {
+  "material": "brick",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of a SINGLE fired-clay brick face from the concept (not a wall of bricks): warm orange-red clay with broad painted patches of darker rust-red and lighter orange, a few small chips and soot specks. Uniform brick surface only: no mortar lines, no brick edges, no courses. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "plinth_large_persp.png",
+   "stairs_landing_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154ae-1788-7731-b1ed-22b828ff3f26\\exec-96ac3cab-422b-415e-b8bf-0547ddad9ec4.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\brick_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 58.8
+ },
+ {
+  "material": "brick",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of a SINGLE fired-clay brick face from the concept (not a wall of bricks): warm orange-red clay with broad painted patches of darker rust-red and lighter orange, a few small chips and soot specks. Uniform brick surface only: no mortar lines, no brick edges, no courses. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "plinth_large_persp.png",
+   "stairs_landing_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154ae-5c0b-7011-9ef0-14aa3a89ed24\\exec-3055f64a-8913-4802-926d-36614a8bf2e1.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\brick_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 57.2
+ },
+ {
+  "material": "mortar_stone",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the pale gray-beige stone and mortar used for the post caps, door pillars and mortar joints in the concept: soft warm gray stone with broad angular painted patches, tiny dark nicks and a few faint cracks. Uniform surface only, no blocks, no joints. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "postcap_map.png",
+   "plinth_small_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154ae-fd21-78d2-af21-035ed144c284\\exec-d9936104-3e26-4d39-8199-3592771e4dc7.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\mortar_stone_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 47.2
+ },
+ {
+  "material": "flagstone",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the large worn flagstone floor slabs in the concept: warm brown-gray stone, broad hand-painted mottled patches, slightly lighter dusty scuffs, a few hairline cracks and chips, subtle darker staining. A single continuous slab surface: no slab joints, no gaps, no grout lines. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "floor_persp.png",
+   "floor_map.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154af-3b65-7f21-b231-24b5ca97402a\\exec-df443da4-0e48-4acc-b773-3510757b7b19.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\flagstone_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 59.6
+ },
+ {
+  "material": "mortar_stone",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the pale gray-beige stone and mortar used for the post caps, door pillars and mortar joints in the concept: soft warm gray stone with broad angular painted patches, tiny dark nicks and a few faint cracks. Uniform surface only, no blocks, no joints. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "postcap_map.png",
+   "plinth_small_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154af-3b65-7f21-b231-24b5ca97402a\\exec-df443da4-0e48-4acc-b773-3510757b7b19.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\mortar_stone_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 92.8
+ },
+ {
+  "material": "dark_oak",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the dark oak timber of the posts, beams and rails in the concept: deep warm brown wood with long broad vertical grain stripes painted as angular streaks, sparse knots, slightly lighter worn edges, no planks edges. Grain runs vertically. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "post_map.png",
+   "left_pipe_crates_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b0-9e7a-7a31-89c4-5cfad9348ab6\\exec-ae1d0c33-f5f5-4430-837d-1f2c172f965d.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\dark_oak_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 42.3
+ },
+ {
+  "material": "flagstone",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the large worn flagstone floor slabs in the concept: warm brown-gray stone, broad hand-painted mottled patches, slightly lighter dusty scuffs, a few hairline cracks and chips, subtle darker staining. A single continuous slab surface: no slab joints, no gaps, no grout lines. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "floor_persp.png",
+   "floor_map.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b0-a61e-79e2-a9e1-3d9397f335f2\\exec-ff7e2f6f-6fe9-400a-af71-a9cc320ff5ac.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\flagstone_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 59.6
+ },
+ {
+  "material": "pine_planks",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the lighter warm pine / ochre-brown board wood of the crates and landing deck in the concept: honey-brown wood, broad painted grain streaks running vertically, a few knots and nail-stain specks, subtle value variation. Wood surface only, no board edges. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "landing_map.png",
+   "crates_map.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b1-442c-7242-bb8e-299b5c70b7dc\\exec-376796d8-4920-4f7f-9448-f2b1041ef879.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\pine_planks_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 55.4
+ },
+ {
+  "material": "dark_oak",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the dark oak timber of the posts, beams and rails in the concept: deep warm brown wood with long broad vertical grain stripes painted as angular streaks, sparse knots, slightly lighter worn edges, no planks edges. Grain runs vertically. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "post_map.png",
+   "left_pipe_crates_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b1-8ead-77a2-9607-95a6f0229e99\\exec-1bb94d5f-5486-439e-af05-f44649981332.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\dark_oak_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 43.8
+ },
+ {
+  "material": "plaster",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the warm tan-ochre lime plaster of the walls in the concept: mottled orange-tan plaster with broad cloudy patches of lighter cream and darker terracotta, tiny chips and hairline cracks. Uniform plaster surface only, no bricks, no timber. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "stairs_landing_persp.png",
+   "left_pipe_crates_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b2-1c4f-7f50-a643-8b70b2ec9ddc\\exec-07344fd5-7fe9-48e8-9c42-bb80922667c4.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\plaster_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 50.8
+ },
+ {
+  "material": "pine_planks",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the lighter warm pine / ochre-brown board wood of the crates and landing deck in the concept: honey-brown wood, broad painted grain streaks running vertically, a few knots and nail-stain specks, subtle value variation. Wood surface only, no board edges. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "landing_map.png",
+   "crates_map.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b2-39e5-73d0-934c-e42fb92c9db1\\exec-e1738e92-c61a-47a6-a8e9-9d9048ef407f.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\pine_planks_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 52.2
+ },
+ {
+  "material": "plaster",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the warm tan-ochre lime plaster of the walls in the concept: mottled orange-tan plaster with broad cloudy patches of lighter cream and darker terracotta, tiny chips and hairline cracks. Uniform plaster surface only, no bricks, no timber. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "stairs_landing_persp.png",
+   "left_pipe_crates_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b3-061e-7040-99ab-8cc9bb9f5d3e\\exec-0b0235fa-61c2-4300-bfb4-83267b68758d.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\plaster_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 71.1
+ },
+ {
+  "material": "black_iron",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the dark cast iron of the drain grate, bucket and hardware in the concept: very dark warm charcoal-brown iron with broad painted facets, a few soft rusty orange-brown flecks and lighter worn gray scuffs. Uniform metal surface only. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "grate_persp.png",
+   "crates_map.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b2-e4c5-7ab2-9616-a5cd1a0e5a1e\\exec-01c93af3-caee-4596-a898-19a0f1ca2160.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\black_iron_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 85.4
+ },
+ {
+  "material": "brass_cream",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the cream dial paper and brass trim of the pressure gauges in the concept: warm cream-ivory surface with soft tan staining and a few small darker specks and faint brass-colored patches. Uniform surface only, no numbers, no dial marks, no needle. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "gauge_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b4-3055-72d0-8078-47801637cab2\\exec-9c4359a7-ee09-4d7c-b2c7-ea0bb89f0e59.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\brass_cream_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 46.3
+ },
+ {
+  "material": "black_iron",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the dark cast iron of the drain grate, bucket and hardware in the concept: very dark warm charcoal-brown iron with broad painted facets, a few soft rusty orange-brown flecks and lighter worn gray scuffs. Uniform metal surface only. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "grate_persp.png",
+   "crates_map.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b4-1c7a-7c03-94bd-89220697e19a\\exec-c0719949-cbbc-4bfb-9d48-495d2418e158.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\black_iron_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 57.3
+ },
+ {
+  "material": "brass_cream",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the cream dial paper and brass trim of the pressure gauges in the concept: warm cream-ivory surface with soft tan staining and a few small darker specks and faint brass-colored patches. Uniform surface only, no numbers, no dial marks, no needle. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "gauge_persp.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b4-fbbe-72a1-aa07-f1c8d0a3d1c4\\exec-a8cbfdc2-9024-415b-97b5-79160b5ac7c7.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\brass_cream_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 45.6
+ },
+ {
+  "material": "amber_glass",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the warm amber glow glass of the lanterns in the concept: luminous yellow-orange amber with broad painted lighter yellow and deeper orange cloud patches, tiny darker flecks. Uniform surface only, no frame, no bars. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "lantern_map.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b4-e506-7d00-98d0-201ca3fe5e2e\\exec-7853cc05-02c0-4f05-9dea-7c2bfe861be1.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\amber_glass_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 59.2
+ },
+ {
+  "material": "amber_glass",
+  "prompt": "Use the built-in image generation tool to create the image. Use case: stylized-concept. Asset: ONE seamless square base-color texture of the warm amber glow glass of the lanterns in the concept: luminous yellow-orange amber with broad painted lighter yellow and deeper orange cloud patches, tiny darker flecks. Uniform surface only, no frame, no bars. Hand-painted stylized game-art surface in the exact painting style of the supplied environment concept: broad posterized color patches, angular brush shapes, restrained wear, sparse bold detail, no photorealism. The WHOLE square is filled by the flat surface, viewed perfectly straight-on. No object, no silhouette, no outline, no border, no frame, no perspective, no vignette, no gradient from lighting, no cast shadow, no specular highlight, no text or labels, no characters. Even flat albedo only. Seamless tiling: left/right and top/bottom edges must match. Generate exactly one square image and save nothing else. The attached image(s) are the environment concept reference(s): extract the material from them. Do not write code and do not edit files.",
+  "references": [
+   "lantern_map.png"
+  ],
+  "codex_source": "C:\\Users\\mhzeu\\.codex\\generated_images\\01a154b5-adf8-71d1-83e8-42b81a5dcb3d\\exec-350ff42a-0cff-43b5-9350-3a0bbfe48df9.png",
+  "saved": "C:\\Users\\mhzeu\\Projects\\Unity\\BlahBlahFamilyV6\\.utmp\\boiler-room\\tex\\raw\\amber_glass_gen.png",
+  "size": [
+   1254,
+   1254
+  ],
+  "seconds": 45.2
+ }
+]

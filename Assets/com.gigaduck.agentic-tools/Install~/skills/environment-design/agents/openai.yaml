@@ -1,0 +1,4 @@
+interface:
+  display_name: "Environment Design"
+  short_description: "Build reference-faithful, efficient Unity environments"
+  default_prompt: "Use $environment-design to turn this concept art into a polished, modular, fully walkable Unity environment."

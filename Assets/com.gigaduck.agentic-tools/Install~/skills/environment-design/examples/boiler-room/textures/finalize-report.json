@@ -1,0 +1,371 @@
+{
+ "steps": [
+  "seamless cross-fade with half-offset copy (band 0.34 of half-size)",
+  "Lanczos resample 1254 -> 2048"
+ ],
+ "materials": {
+  "teal_iron": {
+   "candidate": "00_teal_iron",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 4.54,
+    "adjacent_x": 2.31,
+    "wrap_y": 4.67,
+    "adjacent_y": 1.96
+   },
+   "after": {
+    "wrap_x": 2.75,
+    "adjacent_x": 2.18,
+    "wrap_y": 1.74,
+    "adjacent_y": 1.84
+   },
+   "mean_rgb_before": [
+    65.0,
+    70.5,
+    62.1
+   ],
+   "mean_rgb_after": [
+    65.0,
+    70.7,
+    62.4
+   ]
+  },
+  "red_paint": {
+   "candidate": "02_red_paint",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 2.04,
+    "adjacent_x": 0.82,
+    "wrap_y": 2.7,
+    "adjacent_y": 0.93
+   },
+   "after": {
+    "wrap_x": 0.75,
+    "adjacent_x": 0.78,
+    "wrap_y": 0.76,
+    "adjacent_y": 0.88
+   },
+   "mean_rgb_before": [
+    138.5,
+    19.7,
+    2.4
+   ],
+   "mean_rgb_after": [
+    138.2,
+    19.6,
+    2.4
+   ]
+  },
+  "brick": {
+   "candidate": "04_brick",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 3.41,
+    "adjacent_x": 1.57,
+    "wrap_y": 4.18,
+    "adjacent_y": 1.85
+   },
+   "after": {
+    "wrap_x": 1.84,
+    "adjacent_x": 1.48,
+    "wrap_y": 2.09,
+    "adjacent_y": 1.74
+   },
+   "mean_rgb_before": [
+    192.7,
+    80.5,
+    39.7
+   ],
+   "mean_rgb_after": [
+    192.9,
+    80.5,
+    39.7
+   ]
+  },
+  "mortar_stone": {
+   "candidate": "05_mortar_stone",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 2.15,
+    "adjacent_x": 0.81,
+    "wrap_y": 2.79,
+    "adjacent_y": 0.78
+   },
+   "after": {
+    "wrap_x": 0.69,
+    "adjacent_x": 0.75,
+    "wrap_y": 0.7,
+    "adjacent_y": 0.72
+   },
+   "mean_rgb_before": [
+    148.6,
+    128.0,
+    106.3
+   ],
+   "mean_rgb_after": [
+    148.5,
+    127.9,
+    106.3
+   ]
+  },
+  "flagstone": {
+   "candidate": "09_flagstone",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 4.68,
+    "adjacent_x": 2.58,
+    "wrap_y": 4.58,
+    "adjacent_y": 2.85
+   },
+   "after": {
+    "wrap_x": 2.61,
+    "adjacent_x": 2.41,
+    "wrap_y": 3.08,
+    "adjacent_y": 2.68
+   },
+   "mean_rgb_before": [
+    126.6,
+    104.9,
+    81.1
+   ],
+   "mean_rgb_after": [
+    127.3,
+    105.4,
+    81.4
+   ]
+  },
+  "dark_oak": {
+   "candidate": "08_dark_oak",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 2.07,
+    "adjacent_x": 1.32,
+    "wrap_y": 1.84,
+    "adjacent_y": 0.59
+   },
+   "after": {
+    "wrap_x": 2.06,
+    "adjacent_x": 1.28,
+    "wrap_y": 0.57,
+    "adjacent_y": 0.58
+   },
+   "mean_rgb_before": [
+    72.3,
+    41.4,
+    18.0
+   ],
+   "mean_rgb_after": [
+    73.6,
+    42.1,
+    18.1
+   ]
+  },
+  "pine_planks": {
+   "candidate": "10_pine_planks",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 3.95,
+    "adjacent_x": 1.56,
+    "wrap_y": 1.93,
+    "adjacent_y": 0.53
+   },
+   "after": {
+    "wrap_x": 1.56,
+    "adjacent_x": 1.47,
+    "wrap_y": 0.61,
+    "adjacent_y": 0.52
+   },
+   "mean_rgb_before": [
+    144.7,
+    90.9,
+    35.8
+   ],
+   "mean_rgb_after": [
+    145.1,
+    91.1,
+    35.9
+   ]
+  },
+  "plaster": {
+   "candidate": "14_plaster",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 4.28,
+    "adjacent_x": 2.36,
+    "wrap_y": 3.63,
+    "adjacent_y": 2.32
+   },
+   "after": {
+    "wrap_x": 2.53,
+    "adjacent_x": 2.2,
+    "wrap_y": 2.41,
+    "adjacent_y": 2.18
+   },
+   "mean_rgb_before": [
+    206.6,
+    118.1,
+    63.0
+   ],
+   "mean_rgb_after": [
+    206.8,
+    118.4,
+    63.2
+   ]
+  },
+  "black_iron": {
+   "candidate": "15_black_iron",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 3.36,
+    "adjacent_x": 1.99,
+    "wrap_y": 3.02,
+    "adjacent_y": 2.08
+   },
+   "after": {
+    "wrap_x": 1.8,
+    "adjacent_x": 1.83,
+    "wrap_y": 2.45,
+    "adjacent_y": 1.91
+   },
+   "mean_rgb_before": [
+    53.4,
+    41.7,
+    33.6
+   ],
+   "mean_rgb_after": [
+    53.2,
+    41.6,
+    33.6
+   ]
+  },
+  "brass_cream": {
+   "candidate": "18_brass_cream",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 3.28,
+    "adjacent_x": 1.55,
+    "wrap_y": 3.74,
+    "adjacent_y": 1.55
+   },
+   "after": {
+    "wrap_x": 1.53,
+    "adjacent_x": 1.42,
+    "wrap_y": 1.52,
+    "adjacent_y": 1.42
+   },
+   "mean_rgb_before": [
+    226.3,
+    189.2,
+    137.4
+   ],
+   "mean_rgb_after": [
+    226.5,
+    189.5,
+    137.7
+   ]
+  },
+  "amber_glass": {
+   "candidate": "20_amber_glass",
+   "source_size": [
+    1254,
+    1254
+   ],
+   "final_size": [
+    2048,
+    2048
+   ],
+   "before": {
+    "wrap_x": 2.64,
+    "adjacent_x": 0.8,
+    "wrap_y": 2.43,
+    "adjacent_y": 0.86
+   },
+   "after": {
+    "wrap_x": 0.78,
+    "adjacent_x": 0.76,
+    "wrap_y": 0.87,
+    "adjacent_y": 0.81
+   },
+   "mean_rgb_before": [
+    251.4,
+    156.7,
+    10.8
+   ],
+   "mean_rgb_after": [
+    251.6,
+    157.1,
+    10.8
+   ]
+  }
+ }
+}
