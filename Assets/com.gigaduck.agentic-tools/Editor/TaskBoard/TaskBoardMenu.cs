@@ -52,7 +52,7 @@ namespace Gigaduck.AgenticTools
                 return;
             }
 
-            try { process.Kill(true); process.WaitForExit(2000); }
+            try { KillTree(process); process.WaitForExit(2000); }
             catch (Exception e) { Debug.LogWarning("[Task Board] Could not stop the board server: " + e.Message); }
             finally { process.Dispose(); EditorPrefs.DeleteKey(PidPref); }
             Debug.Log("[Task Board] Board server stopped.");
@@ -147,10 +147,21 @@ namespace Gigaduck.AgenticTools
 
             string detail;
             lock (stderr) detail = stderr.Length > 0 ? stderr.ToString().Trim() : "No output from the server.";
-            try { if (!process.HasExited) process.Kill(true); } catch { /* already gone */ }
+            try { if (!process.HasExited) KillTree(process); } catch { /* already gone */ }
             Debug.LogError("[Task Board] The board server did not start:\n" + detail);
             EditorUtility.DisplayDialog("Could not start the task board", detail.Length > 600 ? detail.Substring(0, 600) + "..." : detail, "OK");
             return false;
+        }
+
+        /// <summary>Kills the process and its children (the Windows py launcher starts the real interpreter as a child).</summary>
+        private static void KillTree(Process process)
+        {
+            if (Application.platform == RuntimePlatform.WindowsEditor)
+            {
+                using (Process killer = Process.Start(new ProcessStartInfo("taskkill", "/PID " + process.Id + " /T /F") { UseShellExecute = false, CreateNoWindow = true }))
+                    killer.WaitForExit(4000);
+            }
+            else process.Kill();
         }
 
         private static bool TryGetOwnProcess(out Process process)
