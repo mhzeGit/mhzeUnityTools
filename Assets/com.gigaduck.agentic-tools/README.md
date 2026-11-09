@@ -30,7 +30,7 @@ python <package>/Install~/install.py --project <repo> [--status] [--enable taskb
 | **Unity MCP setup** | `.mcp.json` and `.codex/config.toml` entries for MCP for Unity on `http://127.0.0.1:8080/mcp`. With `com.coplaydev.unity-mcp` installed, the package also compiles the `fast_play` MCP tool and starts the MCP server with the editor. |
 | **Agent skills** | `unity-gameplay-workflow`, `environment-design`, `concept-art-to-3d`, `model-to-textured-asset`, `game-prop-concept-art` in `.claude/skills`, `.agents/skills` (Codex), `.kilo/skills` and `.agent/skills` (Antigravity). **Skills for my user** in the window (or `install.py --personal-skills`) also copies them to your home folders. |
 | **Procedural animation rule** | `PROCEDURAL_ANIMATION.md`: motion computed in code always gets an editable curve profile. |
-| **Agent Task Board** (off by default) | `tools/taskboard` and `task-board.bat`: a local kanban that agents claim tasks from; finished tasks wait in Review until you commit their virtual commit. |
+| **Agent Task Board** (off by default) | `tools/taskboard` and `task-board.bat`: a local kanban that agents claim tasks from; finished tasks wait in Review until you commit their virtual commit. Open it from **Tools ▸ Agent Task Board ▸ Open Board** in Unity. |
 
 ## How it injects without overriding
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 - 2026-11-09
+
+- Tools ▸ Agent Task Board ▸ Open Board: one click opens the task board in the browser, starting the board server hidden in
+  the background if it is not running (a server already open from a terminal, `task-board.bat` or another project is reused).
+  Also **Stop Board Server** (stops a server started from the menu) and **Show Task Board Folder**. Needs the Agent Task Board
+  module installed and Python 3.9+; without the module it offers to open Tools ▸ Agentic Tools.
+
 ## 1.0.1 - 2026-11-08
 
 - Virtual commits: `agent-commit.ps1` builds file paths with the platform's separator, so `prepare` also registers new files

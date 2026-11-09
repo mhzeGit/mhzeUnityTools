@@ -10,7 +10,7 @@ A local kanban board that you and your AI agents share. You queue tasks, agents 
 
 ## Quick start
 
-1. **Open the board.** Double-click `task-board.bat` in the repository root, or run:
+1. **Open the board.** In Unity: **Tools ▸ Agent Task Board ▸ Open Board** (starts the server in the background if needed; **Stop Board Server** in the same menu stops it). Or double-click `task-board.bat` in the repository root, or run:
 
    ```
    python tools/taskboard/taskboard.py serve --open
