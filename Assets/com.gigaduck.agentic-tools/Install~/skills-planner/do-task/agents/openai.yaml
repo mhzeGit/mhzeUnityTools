@@ -1,0 +1,4 @@
+interface:
+  display_name: "Do Task"
+  short_description: "Do one card from the production plan and tick it off"
+  default_prompt: "Use $do-task to do the planner card I name, verify it, and tick it off once I confirm."

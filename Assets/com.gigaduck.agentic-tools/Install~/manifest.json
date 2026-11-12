@@ -70,6 +70,18 @@
       ]
     },
     {
+      "id": "planner",
+      "title": "Production planner skill",
+      "description": "The do-task skill: an agent takes one card from the production plan (the project-manager board and its pm command), marks it started, does and verifies the work, and ticks it off once you confirm. For projects that use the planner.",
+      "default": false,
+      "items": [
+        { "kind": "copy", "src": "skills-planner", "dst": ".claude/skills" },
+        { "kind": "copy", "src": "skills-planner", "dst": ".agents/skills" },
+        { "kind": "copy", "src": "skills-planner", "dst": ".kilo/skills" },
+        { "kind": "copy", "src": "skills-planner", "dst": ".agent/skills" }
+      ]
+    },
+    {
       "id": "procedural-animation",
       "title": "Procedural animation rule",
       "description": "Motion computed in code always gets an editable curve profile (ScriptableObject) instead of hard-coded easing.",

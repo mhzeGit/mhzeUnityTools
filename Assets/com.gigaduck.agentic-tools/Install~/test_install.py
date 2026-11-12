@@ -222,6 +222,18 @@ class InstallerTests(unittest.TestCase):
         s.run("--uninstall")
         self.assertEqual(tree(s.root), {}, "a project with nothing of its own is empty again")
 
+    def test_planner_skill_shares_the_skill_folders(self):
+        s = self.scenario()
+        s.run()
+        self.assertFalse(s.exists(".claude/skills/do-task"), "the planner module is opt-in")
+        s.run("--enable", "planner")
+        for root in (".claude/skills", ".agents/skills", ".kilo/skills", ".agent/skills"):
+            self.assertTrue(s.exists(root + "/do-task/SKILL.md"))
+            self.assertTrue(s.exists(root + "/unity-gameplay-workflow/SKILL.md"))
+        s.run("--disable", "planner")
+        self.assertFalse(s.exists(".claude/skills/do-task"))
+        self.assertTrue(s.exists(".claude/skills/unity-gameplay-workflow/SKILL.md"), "removing one module keeps the other's skills")
+
     def test_block_found_only_on_its_own_line(self):
         text = "x <!-- agentic-tools:begin core --> y\n<!-- agentic-tools:begin core -->\nbody\n<!-- agentic-tools:end core -->\nafter\n"
         start, end, body = install.find_block(text, "html", "core")
