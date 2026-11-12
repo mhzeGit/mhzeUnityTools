@@ -38,9 +38,10 @@ If the card is too vague to know when it is done, ask one precise question befor
 
 ## 3. Mark it started
 
-Move it to the Now column so the board shows what is being worked on:
-`pm move <id> now --agent "<your tool name>"`. If `pm` warns that Now is over its limit, mention it to the
-user but continue; never move the user's other cards. Skip this if the card is already in Now.
+`pm begin <id> --agent "<your tool name>"` moves the card to the in-progress column of its own board (the
+plan's Now, or a column like Doing on a sprint board) so the board shows what is being worked on. Use
+`pm begin`, not `pm move ... now`: a move to `now` can pull a card off its own board. If `pm` warns that
+Now is over its limit, mention it to the user but continue; never move the user's other cards.
 
 ## 4. Do the work
 
@@ -64,11 +65,12 @@ Tell the user, briefly: what changed, how you verified each point of the definit
 not done or not verified. Finish the project's own closing steps first (for example a virtual commit).
 Then ask: "Tick off <title> on the board?" and wait for the answer.
 
-- **Yes**: `pm done <id> --summary "<one line: what was delivered and how it was verified>" --agent "<your tool name>"`.
-- **Not yet / changes needed**: keep working, or leave the card in Now with a note:
+- **Yes**: `pm done <id> --summary "<one line: what was delivered and how it was verified>" --agent "<your tool name>"`
+  (it moves the card to the Done column of its own board).
+- **Not yet / changes needed**: keep working, or leave the card where it is with a note:
   `pm edit <id> --append "<what is left>" --agent "<your tool name>"`.
 - **Blocked** (you need the user, a decision or an asset): append the blocker to the card the same way,
-  leave it in Now, and tell the user exactly what you need.
+  leave it where it is, and tell the user exactly what you need.
 
 If the user said up front that you may tick it off without asking, skip the question, but only when
 every point of the definition of done is verified.

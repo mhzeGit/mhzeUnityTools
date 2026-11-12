@@ -3,8 +3,9 @@
 ## 1.2.0 - 2026-11-12
 
 - New opt-in module **Production planner skill** (`planner`): the `do-task` skill. Give an agent a card id or title from the
-  production plan and it reads the card (definition of done, steps, why, estimate), moves it to Now, does and verifies the
-  work under the project's rules, ticks its steps, reports, and ticks the card off with `pm done` once you confirm. Installed
+  production plan and it reads the card (definition of done, steps, why, estimate), moves it to its board's Now or Doing
+  column (`pm begin`, planner 2026-11-12 or later), does and verifies the work under the project's rules, ticks its steps,
+  reports, and ticks the card off with `pm done` once you confirm. Installed
   into the same skill folders as the other skills; enable it with `install.py --enable planner` or in Tools ▸ Agentic Tools.
 
 ## 1.1.0 - 2026-11-09
