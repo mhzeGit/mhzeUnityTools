@@ -78,6 +78,7 @@ function Invoke-Prepare($Store, [string]$CurrentDirectory) {
         Remove-FileQuietly $snapshot.PatchPath
     }
     $record = $registered.Record
+    Remove-FinishedPatches $Store
 
     $headline = "READY  Record #$($record.id) registered"
     if ($registered.Replaced) { $headline = "READY  Record #$($record.id) updated (replaces your earlier version of this task)" }

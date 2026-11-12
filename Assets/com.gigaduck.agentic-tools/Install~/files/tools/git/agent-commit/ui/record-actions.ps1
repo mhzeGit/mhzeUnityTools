@@ -45,6 +45,7 @@ function Invoke-Discard($State, $Record) {
         $r.discardedAt = Get-IsoNow
     }
     if ($problem) { return $problem }
+    Remove-RecordPatch $State.Store $Record
     [void]$State.Selected.Remove($Record.id)
     return "Discarded #$($Record.id)."
 }

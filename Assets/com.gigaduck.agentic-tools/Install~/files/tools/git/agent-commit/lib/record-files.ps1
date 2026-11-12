@@ -21,6 +21,34 @@ function Get-PatchFilePath($Store, $Record) {
     return [System.IO.Path]::Combine($Store.Patches, $Record.patch)
 }
 
+function Remove-RecordPatch($Store, $Record) {
+    # A patch is only read while its record is pending (to build the commit).
+    # Once the record is applied (the commit exists in git) or discarded the
+    # patch is dead weight: it holds a full binary copy of every file in it,
+    # which added up to gigabytes. Never throws.
+    try {
+        $path = Get-PatchFilePath $Store $Record
+        if ($path) { Remove-FileQuietly $path }
+    } catch { }
+}
+
+function Remove-FinishedPatches($Store) {
+    # Safety net: delete the patch of every applied or discarded record, for
+    # records finished by an older version of this tool or by a crash. Pending
+    # records are never touched. Runs under the store lock so it cannot race a
+    # prepare that is storing a new patch. Never throws.
+    try {
+        Enter-StoreLock $Store
+        try {
+            foreach ($record in @(Get-AllRecords $Store)) {
+                if ($record.status -ne 'pending') { Remove-RecordPatch $Store $record }
+            }
+        } finally {
+            Exit-StoreLock $Store
+        }
+    } catch { }
+}
+
 function Get-AllRecords($Store) {
     if (-not [System.IO.Directory]::Exists($Store.Records)) { return @() }
     $records = @(foreach ($file in [System.IO.Directory]::GetFiles($Store.Records, '*.json')) {

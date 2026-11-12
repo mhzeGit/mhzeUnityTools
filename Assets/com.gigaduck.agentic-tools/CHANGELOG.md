@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.1 - 2026-11-12
+
+- **Virtual commits no longer keep their patch files forever.** Each record stored a full binary patch of every file in it under
+  `.git/agent-commits/patches/`, and nothing ever deleted it; one project's store grew to 14 GB. The patch is only read while a
+  record is pending, so it is now deleted when the record is committed (finalize) or discarded (command or picker), and every
+  `prepare` also sweeps the patches of already applied or discarded records (leftovers from older versions or a crash). Pending
+  records are never touched. Records, commits and history are unchanged.
+
 ## 1.2.0 - 2026-11-12
 
 - New opt-in module **Production planner skill** (`planner`): the `do-task` skill. Give an agent a card id or title from the

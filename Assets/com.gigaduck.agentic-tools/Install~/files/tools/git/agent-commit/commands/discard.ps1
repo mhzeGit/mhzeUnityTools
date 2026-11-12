@@ -10,6 +10,9 @@ function Invoke-DiscardCommand($Store) {
             $r.discardedAt = Get-IsoNow
         }
         if ($problem) { Write-Out $problem 'Red'; $script:ExitCode = 1 }
-        else { Write-Out "Discarded #$($record.id). The files themselves are not changed." 'Green' }
+        else {
+            Remove-RecordPatch $Store $record
+            Write-Out "Discarded #$($record.id). The files themselves are not changed." 'Green'
+        }
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "com.gigaduck.agentic-tools",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "displayName": "Agentic Tools",
   "description": "Rules, tools and workflows for AI coding agents, installed into any project with one button: shared AGENTS.md rules injected without overriding the project's own, virtual commits, standalone agent play testing with patch builds, the fast_play MCP tool, agent skills and an optional task board.",
   "unity": "2022.3",

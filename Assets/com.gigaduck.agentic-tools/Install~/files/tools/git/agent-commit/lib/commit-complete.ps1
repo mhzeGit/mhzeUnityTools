@@ -40,6 +40,7 @@ function Complete-CommitPlan {
                 $fresh.appliedAt = $now
                 $fresh.pushed = $false
                 Save-Record $Store $fresh
+                Remove-RecordPatch $Store $fresh
             } catch {
                 $result.Notes.Add("Could not mark record #$($step.Record.id) as committed: $($_.Exception.Message)")
             }
