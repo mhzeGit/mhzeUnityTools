@@ -90,5 +90,7 @@ reports and knowledge: `GET /api/videos/<id>`, `/api/playtests/<id>`, `/api/know
 
 Give the user: the verdict and scores, segments that failed or need an agent (with the reason), new errors, hitches and
 pacing notes with their video times, the paths of `report.html` and the video, and `agentplay.py serve --detach --open` to
-browse it all. Show them a contact sheet of the important moments the way their client displays images. List the knowledge
+browse it all. When the user is away from the computer (or reads you on a phone), `agentplay.py serve --detach --tunnel`
+prints a secret view-only link that opens the dashboard, the report and the video anywhere; give them that link (the report
+is `<link host>/media/playtests/<id>/report.html?key=<key>`). Show them a contact sheet of the important moments the way their client displays images. List the knowledge
 base files you changed in your commit, and the lessons you added.

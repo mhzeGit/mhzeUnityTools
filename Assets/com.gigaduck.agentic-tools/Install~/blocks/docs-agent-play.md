@@ -105,7 +105,11 @@ playtests (report, embedded video, segment timeline), videos (player with captio
 knowledge (mastery, routes, lessons, values) and players (record, mark, stop, send). The same data is an API for agents and tools:
 `GET /api/videos`, `/api/videos/<id>` (with `videoUrl`, `captionsUrl`, `keyframes[].url`), `/api/videos/<id>/frame?t=S`,
 `/api/playtests[/<id>]`, `/api/knowledge[/<segment>]`, `/api/players`, `POST /api/players/<name>/send` (a command) and
-`/api/players/<name>/record` (`{"action":"start|mark|stop"}`; stop returns the video). Localhost only.
+`/api/players/<name>/record` (`{"action":"start|mark|stop"}`; stop returns the video). Localhost only, unless shared:
+`serve --detach --tunnel` adds a Cloudflare quick tunnel (no account; cloudflared is downloaded once into `Builds/AgentPlay/_tools`)
+and prints a secret share link that works from anywhere, a phone too, while the computer is on: remote viewers need its key
+(then a cookie) and can only look (`--allow-control` lets them act). `serve --status` prints the link again; `serve --stop`
+closes it. The pages fit a phone screen.
 
 ## Build records
 

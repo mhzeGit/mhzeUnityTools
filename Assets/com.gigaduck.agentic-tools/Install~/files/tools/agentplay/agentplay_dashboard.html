@@ -217,6 +217,19 @@ pre.ans.bad{border-color:#d03b3b99}
 .modal{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:#000b}
 .modal form{display:flex;flex-direction:column;gap:10px;width:min(460px,92vw);padding:16px;background:var(--s1);border:1px solid var(--base);border-radius:6px}
 .modal .row{display:flex;justify-content:flex-end;gap:6px}
+/* phones: header wraps with scrollable tabs, segment blocks shrink to slivers, tighter padding */
+@media (max-width:640px){
+.top{flex-wrap:wrap;height:auto;gap:4px 10px;padding:8px 10px 0}
+.brand .proj{display:none}
+nav.tabs{order:3;width:100%;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs a{padding:8px 10px;white-space:nowrap}
+.pane{padding:12px 10px 40px}
+.ss{gap:1px}.sb{padding:0;min-width:2px}.sb span{display:none}
+.tl{padding-left:56px;padding-right:8px}
+.vt{font-size:17px}
+.g-v{font-size:24px}
+}
 </style>
 </head>
 <body>

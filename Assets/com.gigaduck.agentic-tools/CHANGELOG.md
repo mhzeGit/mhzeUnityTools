@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.3 - 2026-11-15
+
+- **See it from a phone.** `agentplay.py serve --detach --tunnel` also opens a Cloudflare quick tunnel (no account; cloudflared
+  is downloaded once into `Builds/AgentPlay/_tools`) and prints a secret share link. Requests from elsewhere need its key
+  (once, then an HttpOnly cookie) and are view only (`--allow-control` lets them record and send commands); the computer
+  itself needs no key. `serve --status` prints the link again; `serve --stop` closes the server and the tunnel. `--share`
+  alone keys remote requests for your own tunnel or proxy.
+- Dashboard and report fit a phone: the header wraps with scrollable tabs, segment blocks shrink to slivers.
+
 ## 1.3.2 - 2026-11-15
 
 - Playtest pacing is judged only on segments the bot played (an unlearned segment's wait is not a pacing problem); the

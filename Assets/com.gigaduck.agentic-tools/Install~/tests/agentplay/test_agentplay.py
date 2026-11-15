@@ -512,6 +512,44 @@ class AgentPlayTests(unittest.TestCase):
         finally:
             server.shutdown()
 
+    def test_31_share_link_is_keyed_and_view_only(self):
+        """Through a tunnel (another Host, forwarding headers) the key is needed once, then a cookie; POST stays local."""
+        from http.server import ThreadingHTTPServer
+        import http.client
+        web = self.ap.web
+        web.SHARE.update(token="s3cret-key", control=False)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), web.Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        port = server.server_address[1]
+        remote = {"Host": "abc.trycloudflare.com", "Cf-Connecting-Ip": "203.0.113.9", "Cf-Visitor": '{"scheme":"https"}'}
+
+        def call(method, path, headers, body=None):
+            c = http.client.HTTPConnection("127.0.0.1", port, timeout=20)
+            c.request(method, path, body=body, headers=headers)
+            r = c.getresponse()
+            data = r.read()
+            c.close()
+            return r.status, r.getheader("Set-Cookie"), r.getheader("Location"), data
+        try:
+            self.assertEqual(call("GET", "/api/status", remote)[0], 401, "no key, no entry")
+            self.assertEqual(call("GET", "/?key=wrong", remote)[0], 401)
+            status, cookie, location, _ = call("GET", "/media/x?key=s3cret-key&t=1", remote)
+            self.assertEqual(status, 302)
+            self.assertEqual(location, "/media/x?t=1", "the key leaves the address bar")
+            self.assertIn("HttpOnly", cookie)
+            self.assertIn("Secure", cookie)
+            keyed = dict(remote, Cookie=cookie.split(";")[0])
+            status, _, _, body = call("GET", "/api/status", keyed)
+            self.assertEqual((status, json.loads(body)["tool"]), (200, "agentplay"))
+            status, _, _, body = call("POST", "/api/players/bot/send", dict(keyed, **{"Content-Type": "application/json"}), b'{"op":"status"}')
+            self.assertEqual(status, 403, "a share link is view only")
+            self.assertEqual(call("GET", "/api/status", {"Host": "127.0.0.1:%d" % port})[0], 200, "the local user needs no key")
+            web.SHARE["token"] = None
+            self.assertEqual(call("GET", "/api/status", remote)[0], 403, "without sharing, remote requests are refused")
+        finally:
+            web.SHARE.update(token=None, control=False)
+            server.shutdown()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
