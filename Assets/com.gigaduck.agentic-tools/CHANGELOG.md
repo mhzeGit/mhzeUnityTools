@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.6 - 2026-11-15
+
+- Attention captions read naturally: "looks where it walks", "the game has the view", "looks at Niko (speaking)".
+
 ## 1.3.5 - 2026-11-15
 
 - **Agents look like players** (`AgentPlayAttention`, on by default in every agent player): along the way they walk, and when

@@ -286,7 +286,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (AgentPlayRecorder.Active == null || now - _lastCaption < 0.8f) return;
             if (why == "idle" || why.StartsWith("the agent aims")) return;
             _lastCaption = now;
-            AgentPlayRecorder.Mark("look", "looks at " + why);
+            AgentPlayRecorder.Mark("look", why == "where it walks" ? "looks where it walks" : why.StartsWith("the game") || why == "off" ? why : "looks at " + why);
         }
     }
 }
