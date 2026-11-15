@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.0 - 2026-11-15
+
+- **Recordings show what the player sees.** The recorder captures the finished screen at the end of each frame: every
+  camera, the overlay UI (dialog boxes, prompts, menus, loading screens), zooms and effects. It used to re-render the player
+  camera alone, so overlay UI never appeared and a view the game changed could differ. `record {source: "camera"}` keeps
+  the old way for a picture of one camera; recording.json says which (`source`).
+- **Agents walk with real keys.** `AgentPlayOps.KeyWalk`: W, A, S and D for the way to the next corner, relative to where
+  the camera looks, so the game's own movement applies (speed, collisions, movement locks). While the game holds the player
+  still (a hook says so) the walk waits like a person instead of moving them anyway; `frozen` in the result says how long.
+  `run: true` holds Left Shift. The default walker uses it; the old mouse-steering walker is `MouseSteerWalk`.
+- Attention looks along the way the walker is about to go (`AgentPlayAttention.Heading`), so the player faces where it
+  walks before it moves.
+- Learning: a segment that wins alone but fails or dies chained is first retried from where it starts when played alone
+  (hand-off repair, tried before the other repairs); segments remember that start (`startPos`). No repairs are made from a
+  failure right after a story jump in a run (the game may still be in a death screen).
+
 ## 1.3.8 - 2026-11-15
 
 - Playtests: a segment the story already went through by itself (the segment before ended past its start, e.g. a checkpoint

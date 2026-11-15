@@ -375,10 +375,41 @@ def apply_episode(rec, rid, ep):
         if st.get("firstWinAfter") is None:
             st["firstWinAfter"] = st["runs"] - 1 + st.get("explorations", 0)
         rec["needsAgent"] = None
+        start = parse_pos(ep.get("startPlayer")) if ep.get("setup") else None
+        if start:
+            rec["startPos"] = start  # where the segment starts when played alone (and wins from there)
     rec["history"] = (rec.get("history", []) + [{
         "at": ep["at"], "by": ep["by"], "route": rid, "outcome": "win" if win else "fail", "failKind": ep.get("failKind"),
         "failStep": ep.get("failStep"), "time": ep["time"], "video": ep.get("video"), "build": current_build(),
         "noise": ep.get("noise", False), "episode": ep["id"]}])[-HISTORY_KEEP:]
+
+
+def parse_pos(value):
+    """[x, y, z] from a status position ("x,y,z" or a list), else None."""
+    try:
+        parts = value.split(",") if isinstance(value, str) else list(value)
+        pos = [round(float(p), 2) for p in parts]
+        return pos if len(pos) == 3 else None
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+def handoff_repair(rec, route, ep):
+    """A segment that wins played alone can fail chained because the segment before leaves the player somewhere else
+    (under the chandelier that falls next, in the girlfriend's way). The repair: first walk to where the segment starts
+    when played alone. Tried before the other repairs (prior)."""
+    start, here = rec.get("startPos"), parse_pos((ep.get("statusEnd") or {}).get("player"))
+    if not start:
+        return None
+    first = route["steps"][0] if route["steps"] else {}
+    if first.get("op") == "walk" and first.get("pos") == start:
+        return None  # it already does
+    if here and math.dist(start, here) < 0.6 and ep.get("failKind") != "death":
+        return None  # it was already there
+    walk = {"op": "walk", "pos": start, "tolerance": 0.5, "timeout": 15, "optional": True,
+            "why": "start where this segment starts when played alone (it wins from there): the segment before left the "
+                   "player elsewhere"}
+    return ("repair:handoff:start-where-it-wins", [walk] + route["steps"], "start where it starts alone")
 
 
 def add_lesson(rec, text, kind, by, auto=False):
@@ -608,6 +639,8 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
     send(name, {"op": "perf", "reset": True}, 30)
     st0 = status(name)
     deaths0 = st0.get("deaths", 0) or 0
+    ep["setup"] = bool(setup and seg.get("setup"))
+    ep["startPlayer"] = st0.get("player")
     if record:
         a = video.start(name, label or seg.get("label", seg["id"]))
         if not a.get("ok"):
@@ -955,7 +988,7 @@ def pick_route(rec, rng, prefer_untried=False):
 
     def ucb(r):
         if r.get("runs", 0) == 0:
-            return 1e9 + rng.random()
+            return 1e9 + r.get("prior", 0) + 0.1 * rng.random()
         return r["wins"] / r["runs"] + 0.6 * math.sqrt(math.log(total) / r["runs"]) + 0.05 * min(r.get("streak", 0), 5)
     return max(live, key=ucb)
 
@@ -1287,13 +1320,18 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
         report["findings"].append({"sev": "INFO", "text": "%.0f s mostly waiting (cutscene or dialog pacing?)" % ep["time"],
                                    "segment": seg["id"], "t": t_video})
     variants, lesson, follow = [], None, None
-    if adaptive and route and ep["outcome"] != "win" and ep["failKind"] not in ("setup", "crash", "hang"):
+    clean = chained or not report["segments"] or report["segments"][-1]["outcome"] == "pass"
+    if adaptive and route and clean and ep["outcome"] != "win" and ep["failKind"] not in ("setup", "crash", "hang"):
         step = route["steps"][ep["failStep"]] if ep["failStep"] is not None and ep["failStep"] < len(route["steps"]) else {}
         lesson = "%s: route %s step %s (%s) failed: %s %s" % (
             "chained after the segment before" if chained else "after a jump", route["id"], ep["failStep"],
             json.dumps(step)[:120], ep["failKind"], ep["failDetail"][:160])
         if not str(route.get("origin", "")).startswith("optimize:"):
             variants = repairs(route, ep, observe(name))
+        if chained:
+            fix = handoff_repair(KB.load(seg["id"], seg), route, ep)
+            if fix:
+                variants.insert(0, fix)
         if ep["failKind"] == "goal-timeout":  # the route ran out of steps here: explore on from where it left the game
             res = explore(name, seg, min(seg.get("budget", 150), 120), by=by, rng=rng, setup=False)
             record_exploration(seg["id"], seg, res, by)
@@ -1309,7 +1347,9 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
         for origin, steps, why in variants:
             if len(live_routes(r)) >= MAX_LIVE_ROUTES - 1:
                 break
-            add_route(r, steps, origin.replace("repair:", "repair-chained:"), by, parent=route["id"], why=why + " (chained)")
+            rid = add_route(r, steps, origin.replace("repair:", "repair-chained:"), by, parent=route["id"], why=why + " (chained)")
+            if origin.startswith("repair:handoff"):
+                next(x for x in r["routes"] if x["id"] == rid)["prior"] = 0.5
         if follow:
             add_route(r, follow, "explore-on-chained", by, parent=route["id"], why="the route ran out of steps in a chained run")
     KB.update(seg["id"], note, seg, by)

@@ -41,6 +41,10 @@ namespace Gigaduck.AgenticTools.AgentPlay
         /// <summary>True while the game drives the view itself (a scripted look, a look lock, look input off).</summary>
         public static Func<bool> GameHasView;
 
+        /// <summary>Where a walker is about to go (set every frame while it walks): looked along before the player moves.</summary>
+        public static Vector3? Heading;
+        internal static float HeadingAt;
+
         /// <summary>What it looks at now and why ("where it walks", "Girlfriend (speaking)", "idle", "the game has the view").</summary>
         public static string Focus { get; private set; } = "idle";
 
@@ -139,6 +143,11 @@ namespace Gigaduck.AgenticTools.AgentPlay
             _haveLast = true;
             Vector3 flat = new Vector3(_vel.x, 0f, _vel.z);
             bool moving = flat.magnitude > 0.35f;
+            if (Heading.HasValue && Time.realtimeSinceStartup - HeadingAt < 0.3f)
+            {
+                Vector3 way = new Vector3(Heading.Value.x, 0f, Heading.Value.z);
+                if (way.sqrMagnitude > 1e-4f) { flat = way.normalized * Mathf.Max(flat.magnitude, 1f); moving = true; }
+            }
 
             Vector3 f = cam.transform.forward;
             float yaw = AgentPlayOps.Yaw(f), pitch = AgentPlayOps.Pitch(f);

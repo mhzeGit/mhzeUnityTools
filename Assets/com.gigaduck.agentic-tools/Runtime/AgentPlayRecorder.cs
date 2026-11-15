@@ -33,7 +33,10 @@ namespace Gigaduck.AgenticTools.AgentPlay
             public string Id, Folder, Label, Ffmpeg, Codec = "libx264", Preset = "veryfast";
             public int Fps = 15, Width = 960, Height = 540, Quality = 72, Crf = 26;
             public float MaxSeconds = 3600f, KeyEvery = 2f;
-            public bool? Flip;
+            public bool? Flip, ScreenFlip;
+            /// <summary>"screen" (default): the finished frame the player sees, every camera, overlay UI and effect included;
+            /// "camera": re-render <see cref="CameraProvider"/> alone (no overlay UI; for a picture of one camera).</summary>
+            public string Source = "screen";
         }
 
         /// <summary>The running recording, or null.</summary>
@@ -42,7 +45,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
         /// <summary>What the last finished recording wrote to its recording.json (one that stopped at its time limit too).</summary>
         public static Dictionary<string, object> LastMeta { get; private set; }
 
-        /// <summary>The camera to record; default the harness picture camera.</summary>
+        /// <summary>The camera to record with source "camera"; default the player's eye.</summary>
         public static Func<Camera> CameraProvider;
 
         /// <summary>A short label of where the game is (level, stage); written as a "label" event whenever it changes.</summary>
@@ -61,8 +64,11 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private Options _o;
         private float _began, _nextCapture, _nextLabel, _nextKey, _stoppedAt;
         private bool _stopping, _finished, _flip, _useAsync;
-        private RenderTexture _rt;
+        private RenderTexture _rt, _screenRt;
         private Texture2D _syncTex;
+        private string _source = "screen";
+        private bool _wantShot, _screenFlip;
+        private float _shotT;
         private int _captured, _dropped, _pending, _emitted, _keyframes, _written;
         private string _sink = "jpeg", _sinkError, _lastLabel, _lastText;
         private readonly Queue<Frame> _queue = new Queue<Frame>();
@@ -120,6 +126,10 @@ namespace Gigaduck.AgenticTools.AgentPlay
             _flip = o.Flip ?? ReadbackIsBottomUp();
             _rt = new RenderTexture(o.Width, o.Height, 24, RenderTextureFormat.ARGB32) { name = "AgentPlayRecorder" };
             _rt.Create();
+            _source = o.Source == "camera" ? "camera" : "screen";
+            // A captured screen is upside down where texture coordinates start at the top (Direct3D, Metal, Vulkan).
+            _screenFlip = o.ScreenFlip ?? SystemInfo.graphicsUVStartsAtTop;
+            if (_source == "screen") StartCoroutine(EndOfFrames());
             _events = new StreamWriter(Path.Combine(o.Folder, "events.jsonl"), false, new UTF8Encoding(false)) { AutoFlush = true };
             if (!string.IsNullOrEmpty(o.Ffmpeg) && File.Exists(o.Ffmpeg))
             {
@@ -158,6 +168,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 try { _events?.Dispose(); } catch (IOException) { }
                 _events = null;
                 if (_rt != null) { _rt.Release(); Destroy(_rt); }
+                if (_screenRt != null) { _screenRt.Release(); Destroy(_screenRt); }
                 if (_syncTex != null) Destroy(_syncTex);
                 LastMeta = Meta();
                 File.WriteAllText(Path.Combine(_o.Folder, "recording.json"), AgentPlayJson.Write(LastMeta));
@@ -176,6 +187,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 ["video"] = _sink == "ffmpeg" ? "video.mp4" : null, ["fps"] = _o.Fps, ["width"] = _o.Width, ["height"] = _o.Height,
                 ["duration"] = Round(Elapsed), ["captured"] = _captured, ["frames"] = _sink == "ffmpeg" ? _emitted : _written,
                 ["dropped"] = _dropped, ["keyframes"] = KeyList(), ["flipped"] = _flip, ["readback"] = _useAsync ? "async" : "sync",
+                ["source"] = _source,
                 ["started"] = DateTime.Now.AddSeconds(-Elapsed).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
                 ["stopped"] = _finished,
             };
@@ -227,33 +239,54 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (t < _nextCapture) return;
             float step = 1f / _o.Fps;
             _nextCapture = t - _nextCapture > step ? t + step : _nextCapture + step;
-            Capture(t);
+            if (_source == "screen") { _wantShot = true; _shotT = t; } // taken once the frame is finished, UI included
+            else Capture(t);
         }
 
-        private void SampleText(Func<string> provider, ref string last, string kind)
+        private IEnumerator EndOfFrames()
         {
-            if (provider == null) return;
-            string now;
-            try { now = provider(); }
-            catch (Exception) { return; }
-            now = now ?? "";
-            if (now == last) return;
-            last = now;
-            if (now.Length > 0) Event(kind, now);
+            var end = new WaitForEndOfFrame();
+            while (!_stopping)
+            {
+                yield return end;
+                if (!_wantShot || _stopping) continue;
+                _wantShot = false;
+                Capture(_shotT);
+            }
         }
 
-        private void Capture(float t)
+        /// <summary>The finished frame on screen: every camera, the overlay UI, zooms and effects, as the player sees it.</summary>
+        private bool GrabScreen()
+        {
+            int w = Screen.width, h = Screen.height;
+            if (w < 16 || h < 16) return false;
+            try
+            {
+                if (_screenRt == null || _screenRt.width != w || _screenRt.height != h)
+                {
+                    if (_screenRt != null) { _screenRt.Release(); Destroy(_screenRt); }
+                    _screenRt = new RenderTexture(w, h, 0, RenderTextureFormat.ARGB32) { name = "AgentPlayRecorderScreen" };
+                    _screenRt.Create();
+                }
+
+                ScreenCapture.CaptureScreenshotIntoRenderTexture(_screenRt);
+                if (_screenFlip) Graphics.Blit(_screenRt, _rt, new Vector2(1f, -1f), new Vector2(0f, 1f));
+                else Graphics.Blit(_screenRt, _rt);
+                return true;
+            }
+            catch (Exception e)
+            {
+                _dropped++;
+                lock (_gate) _sinkError = _sinkError ?? ("screen capture failed: " + e.Message);
+                return false;
+            }
+        }
+
+        private bool RenderCamera()
         {
             Camera cam = CameraProvider != null ? CameraProvider() : null;
             if (cam == null) cam = Camera.main;
-            if (cam == null) return;
-            lock (_gate)
-            {
-                if (_pending + _queue.Count >= MaxQueued) { _dropped++; return; }
-            }
-
-            bool key = t >= _nextKey;
-            if (key) _nextKey = t + Mathf.Max(0.25f, _o.KeyEvery);
+            if (cam == null) return false;
             RenderTexture oldTarget = cam.targetTexture;
             try
             {
@@ -271,13 +304,38 @@ namespace Gigaduck.AgenticTools.AgentPlay
             {
                 _dropped++;
                 lock (_gate) _sinkError = _sinkError ?? ("camera render failed: " + e.Message);
-                return;
+                return false;
             }
             finally
             {
                 cam.targetTexture = oldTarget;
             }
 
+            return true;
+        }
+
+        private void SampleText(Func<string> provider, ref string last, string kind)
+        {
+            if (provider == null) return;
+            string now;
+            try { now = provider(); }
+            catch (Exception) { return; }
+            now = now ?? "";
+            if (now == last) return;
+            last = now;
+            if (now.Length > 0) Event(kind, now);
+        }
+
+        private void Capture(float t)
+        {
+            lock (_gate)
+            {
+                if (_pending + _queue.Count >= MaxQueued) { _dropped++; return; }
+            }
+
+            if (!(_source == "screen" ? GrabScreen() : RenderCamera())) return;
+            bool key = t >= _nextKey;
+            if (key) _nextKey = t + Mathf.Max(0.25f, _o.KeyEvery);
             _captured++;
             if (_useAsync)
             {

@@ -256,6 +256,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
                         Quality = I(c, "quality", 72), Crf = I(c, "crf", 26), MaxSeconds = F(c, "max", 3600f), KeyEvery = F(c, "key_every", 2f),
                     };
                     if (c.ContainsKey("flip")) o.Flip = B(c, "flip", false);
+                    if (c.ContainsKey("screen_flip")) o.ScreenFlip = B(c, "screen_flip", false);
+                    o.Source = S(c, "source", "screen");
                     o.Folder = Path.Combine(_out ?? Directory.GetCurrentDirectory(), "recordings", o.Id);
                     string error = AgentPlayRecorder.Begin(o, out AgentPlayRecorder started);
                     if (error != null) { fail(error); yield break; }
@@ -695,8 +697,114 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private static IEnumerator Walk(Vector3 point, float tolerance, float timeout, Dictionary<string, object> r) =>
             (Walker ?? SteerWalk)(point, tolerance, timeout, r);
 
-        /// <summary>The default walker: holds W and steers with the mouse in a straight line; stops when stuck for 2 s.</summary>
-        public static IEnumerator SteerWalk(Vector3 destination, float tolerance, float timeout, Dictionary<string, object> r)
+        /// <summary>The default walker: <see cref="KeyWalk"/> in a straight line.</summary>
+        public static IEnumerator SteerWalk(Vector3 destination, float tolerance, float timeout, Dictionary<string, object> r) =>
+            KeyWalk(new[] { destination }, tolerance, timeout, r);
+
+        private static readonly string[] MoveKeys = { "W", "A", "S", "D" };
+
+        /// <summary>
+        /// Walks like a player: holds W, A, S and D for the way to the next corner as seen from where the camera looks
+        /// (attention turns the view along the way: <see cref="AgentPlayAttention.Heading"/>), so the game's own movement
+        /// applies: its speed, its collisions, its locks. While <paramref name="frozen"/> says the game holds the player still
+        /// it lets go and waits, as a person would, instead of calling it blocked. <paramref name="run"/> holds Left Shift.
+        /// Fills reached, remaining, why, stoppedAt, frozen (seconds the game held the player).
+        /// </summary>
+        public static IEnumerator KeyWalk(IList<Vector3> corners, float tolerance, float timeout, Dictionary<string, object> r,
+            Func<bool> frozen = null, bool run = false)
+        {
+            Transform player = PlayerTransform();
+            if (player == null || corners == null || corners.Count == 0) { r["reached"] = false; r["why"] = "no player"; yield break; }
+            Vector3 destination = corners[corners.Count - 1];
+            float until = Time.realtimeSinceStartup + timeout, lastProgress = Time.realtimeSinceStartup, still = 0f, best = float.MaxValue;
+            Vector3 last = player.position;
+            string held = "";
+            int i = 0;
+            try
+            {
+                while (player != null)
+                {
+                    Vector3 to = Horizontal(corners[i] - player.position);
+                    bool final = i == corners.Count - 1;
+                    if (to.magnitude <= (final ? tolerance : Mathf.Max(tolerance, 0.5f)))
+                    {
+                        if (final) break;
+                        i++;
+                        continue;
+                    }
+
+                    float rest = Horizontal(destination - player.position).magnitude;
+                    if (final && best <= tolerance + 0.3f && rest > best + 0.05f) break; // a step past it: close enough
+                    best = Mathf.Min(best, rest);
+                    float now = Time.realtimeSinceStartup;
+                    if (now > until) { r["why"] = "timeout"; break; }
+                    bool hold = false;
+                    try { hold = frozen != null && frozen(); }
+                    catch (Exception) { }
+                    AgentPlayAttention.Heading = to;
+                    AgentPlayAttention.HeadingAt = now;
+                    string keys = hold ? "" : KeysToward(to);
+                    if (keys != held) { HoldKeys(held, keys, run); held = keys; }
+                    yield return null;
+                    if ((player.position - last).sqrMagnitude > 0.0025f) { last = player.position; lastProgress = Time.realtimeSinceStartup; }
+                    else if (hold) { still += Time.realtimeSinceStartup - now; lastProgress = Time.realtimeSinceStartup; }
+                    else if (Time.realtimeSinceStartup - lastProgress > 2f)
+                    {
+                        r["why"] = "blocked: no progress for 2 s (NPC, door or story barrier in the way)";
+                        break;
+                    }
+                }
+            }
+            finally
+            {
+                HoldKeys(held, "", run);
+                AgentPlayAttention.Heading = null;
+            }
+
+            if (still > 0.05f) r["frozen"] = Round(still);
+            Vector3 left = player != null ? Horizontal(destination - player.position) : Vector3.zero;
+            bool reached = player != null && left.magnitude <= tolerance + 0.5f;
+            r["reached"] = reached;
+            if (reached) { r.Remove("why"); yield break; }
+            r["remaining"] = player != null ? Round(left.magnitude) : -1f;
+            if (!r.ContainsKey("why")) r["why"] = "the player is gone";
+            if (player != null) r["stoppedAt"] = V(player.position);
+        }
+
+        /// <summary>The movement keys for a direction, relative to where the camera looks (8 directions).</summary>
+        public static string KeysToward(Vector3 to)
+        {
+            Camera cam = Cam();
+            Transform player = PlayerTransform();
+            Vector3 forward = cam != null ? cam.transform.forward : player != null ? player.forward : Vector3.forward;
+            float a = Mathf.DeltaAngle(Yaw(forward), Yaw(to));
+            string keys = "";
+            if (Mathf.Abs(a) <= 67.5f) keys += "W";
+            if (Mathf.Abs(a) >= 112.5f) keys += "S";
+            if (a >= 22.5f && a <= 157.5f) keys += "D";
+            if (a <= -22.5f && a >= -157.5f) keys += "A";
+            return keys;
+        }
+
+        private static void HoldKeys(string old, string now, bool run)
+        {
+            foreach (string k in MoveKeys)
+            {
+                bool was = old.Contains(k), will = now.Contains(k);
+                if (was != will) AgentPlayInput.SetKey(k, will);
+            }
+
+            if (run && (old.Length > 0) != (now.Length > 0)) AgentPlayInput.SetKey("LeftShift", now.Length > 0);
+        }
+
+        private static Vector3 Horizontal(Vector3 v)
+        {
+            v.y = 0f;
+            return v;
+        }
+
+        /// <summary>The old straight-line walker (W and mouse steering); kept for projects that call it.</summary>
+        public static IEnumerator MouseSteerWalk(Vector3 destination, float tolerance, float timeout, Dictionary<string, object> r)
         {
             Transform player = PlayerTransform();
             Camera cam = Cam();
