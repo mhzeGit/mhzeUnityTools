@@ -47,7 +47,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
         // Ops that move the view or the camera themselves: attention stays out of their way.
         private static readonly HashSet<string> HandsOff = new HashSet<string>
         {
-            "aim", "interact", "look", "shot", "shots", "punch", "photo", "album", "npc-look", "sister-intro",
+            "aim", "interact", "look", "shot", "shots", "punch", "photo", "album", "npc-look", "sister-intro", "point",
         };
 
         private static AgentPlayAttention _instance;

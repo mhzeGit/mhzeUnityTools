@@ -312,7 +312,7 @@ const untip = () => (tipEl.hidden = true);
 function verdictTone(v) {
   const s = String(v || '');
   if (/fail|fatal|broken|crash|block|regress|unplayable/i.test(s)) return { c: '#d03b3b', i: '✕', w: 'failing' };
-  if (/pass|\bok\b|good|clean|green|success|healthy/i.test(s)) return { c: '#0ca30c', i: '✓', w: 'passing' };
+  if (/^perfect|pass|\bok\b|good|clean|green|success|healthy/i.test(s)) return { c: '#0ca30c', i: '✓', w: 'passing' };
   return { c: '#fab219', i: '!', w: 'needs attention' };
 }
 const frBar = v => (fin(v) ? h('span', { class: 'mono' }, h('span', { class: 'fr' }, h('i', { style: { width: clamp(v) * 100 + '%' } })), (+v).toFixed(2)) : '–');

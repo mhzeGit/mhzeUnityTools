@@ -58,7 +58,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
         public static string InteractKey = "E";
         public static float Reach = 2.2f;
 
-        public static readonly string[] Names = { "record", "until", "observe", "aim", "interact", "approach", "screen", "perf", "attention" };
+        public static readonly string[] Names = { "record", "until", "observe", "aim", "interact", "approach", "screen", "perf", "attention", "point" };
 
         // Ops that only read or that the recorder would only clutter with captions.
         private static readonly HashSet<string> Quiet = new HashSet<string>
@@ -168,6 +168,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 case "screen": return Once(() => r["texts"] = ScreenTexts(I(c, "max", 20)));
                 case "perf": return Once(() => Perf(c, r));
                 case "attention": return Once(() => Attention(c, r, fail));
+                case "point": return Point(c, r, fail);
                 default: return Once(() => fail("not a shared op: " + op));
             }
         }
@@ -542,6 +543,81 @@ namespace Gigaduck.AgenticTools.AgentPlay
             return true;
         }
 
+        // ------------------------------------------------------------------ point: the mouse pointer, for menus and pointer UIs
+
+        /// <summary>
+        /// point {target | world:[x,y,z] | x, y (0..1 of the screen from the bottom left), click: n, interval: s, glide: frames}:
+        /// glides the pointer over an object as the camera sees it (a UI element where it is drawn), like a hand, so hover
+        /// effects fire, then clicks n times (aiming again before each click, for things that move).
+        /// </summary>
+        private static IEnumerator Point(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail)
+        {
+            if (!AgentPlayInput.Available) { fail(AgentPlayInput.Missing); yield break; }
+            GameObject go = null;
+            if (c.ContainsKey("target"))
+            {
+                go = FindObject(S(c, "target", ""), false);
+                if (go == null) { fail("point: no active object named '" + S(c, "target", "") + "'"); yield break; }
+                r["target"] = Path3(go.transform);
+            }
+
+            string error = ScreenPoint(c, go, out Vector2 screen);
+            if (error != null) { fail(error); yield break; }
+            Vector2 start = AgentPlayInput.Pointer;
+            int glide = Mathf.Max(1, I(c, "glide", 10));
+            for (int i = 1; i <= glide; i++)
+            {
+                float t = i / (float)glide;
+                AgentPlayInput.SetPointer(Vector2.Lerp(start, screen, t * t * (3f - 2f * t)));
+                yield return null;
+            }
+
+            yield return null;
+            int clicks = Mathf.Max(0, I(c, "click", 0));
+            float interval = Mathf.Max(0.05f, F(c, "interval", 0.4f));
+            for (int k = 0; k < clicks; k++)
+            {
+                if (go != null && ScreenPoint(c, go, out Vector2 again) == null) { AgentPlayInput.SetPointer(again); screen = again; yield return null; }
+                yield return AgentPlayInput.Click(0, 0.06f);
+                yield return new WaitForSecondsRealtime(interval);
+            }
+
+            r["screen"] = new List<object> { Round(screen.x), Round(screen.y) };
+            r["clicks"] = clicks;
+        }
+
+        private static string ScreenPoint(Dictionary<string, object> c, GameObject go, out Vector2 screen)
+        {
+            screen = default;
+            if (go == null && !c.ContainsKey("world"))
+            {
+                if (!c.ContainsKey("x")) return "point needs a target, world [x,y,z], or x and y (0..1 of the screen)";
+                screen = new Vector2(F(c, "x", 0.5f) * Screen.width, F(c, "y", 0.5f) * Screen.height);
+                return null;
+            }
+
+            if (go != null && go.transform is RectTransform rect)
+            {
+                var corners = new Vector3[4];
+                rect.GetWorldCorners(corners);
+                Vector3 middle = (corners[0] + corners[2]) * 0.5f;
+                Canvas canvas = go.GetComponentInParent<Canvas>();
+                if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay) { screen = middle; return null; }
+                Camera ui = canvas != null && canvas.worldCamera != null ? canvas.worldCamera : Cam();
+                if (ui == null) return "point: no camera draws " + go.name;
+                screen = ui.WorldToScreenPoint(middle);
+                return null;
+            }
+
+            Camera cam = Cam();
+            if (cam == null) return "point: no camera";
+            Vector3 world = go != null ? Focus(go) : V3(c, "world", Vector3.zero);
+            Vector3 p = cam.WorldToScreenPoint(world);
+            if (p.z <= 0f) return "point: " + (go != null ? go.name : "the point") + " is behind the camera";
+            screen = p;
+            return null;
+        }
+
         // ------------------------------------------------------------------ interact / approach
 
         private static IEnumerator Interact(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail)
@@ -655,10 +731,16 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
         // ------------------------------------------------------------------ lookups
 
+        /// <summary>The player's eye; without a player (a menu) the main camera, else the camera that draws last.</summary>
         public static Camera Cam()
         {
             Camera cam = ViewCamera != null ? ViewCamera() : null;
-            return cam != null ? cam : Camera.main;
+            if (cam != null) return cam;
+            if (Camera.main != null) return Camera.main;
+            Camera best = null;
+            foreach (Camera k in Camera.allCameras)
+                if (k.enabled && k.targetTexture == null && (best == null || k.depth > best.depth)) best = k;
+            return best;
         }
 
         public static Transform PlayerTransform()
@@ -691,7 +773,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
         public static GameObject FindObject(string name, bool preferInteractable)
         {
             if (string.IsNullOrEmpty(name)) return null;
-            Vector3 origin = PlayerTransform() != null ? PlayerTransform().position : Vector3.zero;
+            Camera eye = PlayerTransform() == null ? Cam() : null;
+            Vector3 origin = PlayerTransform() != null ? PlayerTransform().position : eye != null ? eye.transform.position : Vector3.zero;
             if (preferInteractable && Interactables != null)
             {
                 GameObject hit = Best(Interactables().Where(g => g != null && g.activeInHierarchy).Select(g => g.transform), name, origin);

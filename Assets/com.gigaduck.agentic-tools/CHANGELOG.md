@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.7 - 2026-11-15
+
+- **Perfect play-throughs**: `playtest --until-perfect N` plays the scope chained from its first segment, again and again,
+  every run recorded; between runs it learns from what failed in the chain (win-stay/UCB route choice, lessons, repair
+  variants, exploring on from where the run left the game) and stops at the first perfect run: every segment passed on a
+  learned route, chained, no deaths, no new errors. Reports get `perfect`, `imperfect` (the reasons) and `series` (run n of
+  N); the verdict reads `PERFECT: ...`; the phone app marks perfect runs and numbers the runs.
+- **`point` op** for menus and pointer UIs: glides the virtual mouse over an object as the camera sees it (or a UI element,
+  or a screen point), then clicks n times, aiming again before each click. Without a player, ops use the main camera, else
+  the camera that draws last, and object lookups prefer what is nearest that camera.
+- `explore(..., setup=False)` explores from wherever the game is (used by chained runs).
+
 ## 1.3.6 - 2026-11-15
 
 - Attention captions read naturally: "looks where it walks", "the game has the view", "looks at Niko (speaking)".

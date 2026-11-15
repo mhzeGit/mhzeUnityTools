@@ -108,6 +108,7 @@ a.card:active,button.card:active,.tap:active{transform:scale(.985);background:va
 .act b{font:700 10px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--c);margin-right:6px}
 
 /* verdict and meters */
+.perfect{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:99px;vertical-align:2px;background:var(--pass);color:#06200b;font:800 10px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.08em}
 .verdict{margin:14px 14px 10px;padding:16px;border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--c) 22%,var(--s1)),var(--s1) 70%);border:1px solid color-mix(in srgb,var(--c) 40%,var(--line))}
 .verdict h2{margin:0;font:800 20px/1.25 var(--display)}
 .verdict .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
@@ -384,11 +385,12 @@ async function testsView() {
   const details = await Promise.all(list.slice(0, 8).map(p => api('/api/playtests/' + encodeURIComponent(p.id)).catch(() => null)));
   return h('div', null, h('div', { class: 'h' }, 'Recent', h('b', null, list.length)), list.map((p, i) => {
     const d = details[i], segs = d && d.segments || [];
-    const bad = /did not|fail|error/i.test(p.verdict || '') && !/^PASS/.test(p.verdict || '');
+    const bad = /did not|fail|error/i.test(p.verdict || '') && !/^(PASS|PERFECT)/.test(p.verdict || '');
     return h('a', { class: 'card rise', href: '#/tests/' + encodeURIComponent(p.id), style: { animationDelay: Math.min(i * 40, 300) + 'ms' } },
       h('div', { class: 'pt-top' },
         h('div', { class: 'score' }, h('div', null, h('b', { style: { color: bad ? 'var(--warn)' : 'var(--pass)' } }, (p.passed ?? '–') + ''), h('span', null, 'of ' + p.segments))),
-        h('div', { class: 'pt-t' }, h('h3', null, p.scope === 'all' ? 'Whole game' : 'Scope ' + p.scope),
+        h('div', { class: 'pt-t' }, h('h3', null, (p.scope === 'all' ? 'Whole game' : 'Scope ' + p.scope) + (p.series ? ' · run ' + p.series.run : ''),
+          p.perfect ? h('span', { class: 'perfect' }, 'perfect') : null),
           h('p', null, (p.verdict || '').replace(/^\w+:\s*/, '')),
           h('p', { class: 'muted', style: { marginTop: '4px' } }, ago(p.started) + ' · ' + dur(p.duration) + (p.videoId ? ' · video' : '')))),
       segs.length ? h('div', { class: 'mini' }, segs.map(s => h('i', { class: s.outcome === 'unlearned' ? 'hatch' : '', style: { '--c': OUT[s.outcome] } }))) : null);
@@ -401,7 +403,7 @@ async function testView(id) {
   title(r.scope === 'all' ? 'Whole-game playtest' : 'Playtest ' + r.scope, ago(r.started) + ' · ' + dur(r.duration));
   const p = player(r.video, segs);
   const q = r.quality || {};
-  const bad = !/^PASS/.test(r.verdict || '');
+  const bad = !/^(PASS|PERFECT)/.test(r.verdict || '');
   const meter = (name, v, invert, wide) => {
     const good = invert ? v <= 0.15 : v >= 0.85, ok = invert ? v <= 0.4 : v >= 0.6;
     const c = good ? 'var(--pass)' : ok ? 'var(--warn)' : 'var(--fail)';

@@ -5,6 +5,7 @@ with what they mastered while recording a video and writing a quality report. Do
   agentplay.py kb brief [--scope S]                 START HERE: what is mastered, what is not, lessons, what to do next
   agentplay.py learn NAME --scope S [--workers 3]   learn segments until mastered (explore, replay, repair, optimize)
   agentplay.py playtest NAME --scope S [--learn]    play the scope with the learned routes, record it, write a report
+  agentplay.py playtest NAME --scope S --until-perfect 8   whole chained runs, learning between them, until one is perfect
   agentplay.py observe NAME                         what the bot sees, what the story waits for, suggested actions
   agentplay.py step NAME '{"op":"interact","target":"Kettle"}' [--why ...]   one exploration step, kept in the draft
   agentplay.py learn NAME --segment ID --from-draft turn your draft into a verified route
@@ -23,6 +24,11 @@ segment's start, a goal condition, a time budget). A route is a list of harness 
 - Mastery: a route that wins `--streak` times in a row (default 3) masters the segment; then optimization variants
   (no fixed waits, one step fewer) compete to make it faster. A mastered route that later fails marks the segment
   "stale": a regression in the game, or a route the game has outgrown.
+- Until perfect: a segment mastered alone can still fail when the run before it leaves the game a little differently
+  (an NPC a step further, a door already open). `playtest --until-perfect N` plays the whole scope chained (no story
+  jumps), again and again: every segment picks its route by win-stay/UCB, a chained failure adds a lesson and repair
+  variants (or explores on from where the run left the game), the run carries on by jumping, and the next run tries the
+  repairs. It stops at the first perfect run: every segment passed, chained, no deaths, no new errors.
 - What the autopilot cannot solve is marked needs-agent with a diagnosis; an agent then plays it by hand with
   observe/step and saves the route with --from-draft. Every outcome, lesson and route is shared through the knowledge
   base (agentplay.json "knowledgeDir", default AgentPlayKnowledge/, meant to be committed).
@@ -56,7 +62,7 @@ SCHEMA = 1
 STATE_FIELDS = ("scene", "stage", "running")
 META_KEYS = {"why", "expect", "expect_timeout", "optional", "when", "when_timeout", "note"}
 OP_TIMEOUT = {"walk": 45, "approach": 45, "interact": 50, "aim": 12, "key": 10, "stage": 60, "scene": 150, "teleport": 15,
-              "look": 10, "click": 10, "observe": 30, "status": 30, "hold": 10, "release": 10}
+              "look": 10, "click": 10, "observe": 30, "status": 30, "hold": 10, "release": 10, "point": 60}
 WAIT_CHANGE = {"op": "until", "cond": {"any": [{"field": "running", "changed": True}, {"field": "stage", "changed": True},
                                                {"field": "held", "changed": True}]}, "timeout": 8, "soft": True}
 HINT_FIELD = re.compile(r"target|zone|receiver|destination|dest|area|spot|point|door|item|pickup|interact|button|switch|"
@@ -765,14 +771,15 @@ def candidates(obs, q_state=None, tried=(), rng=None):
     return sorted(acts.values(), key=lambda a: -a.score)
 
 
-def explore(name, seg, budget=240, prefix=None, by="agent", rng=None, who="", record=False):
-    """Plays the segment by itself from its start (after `prefix` steps), learning which actions move the story on.
-    Returns {"outcome", "steps" (the useful ones, gated), "reason", "actions", "q" (updates)}."""
+def explore(name, seg, budget=240, prefix=None, by="agent", rng=None, who="", record=False, setup=True):
+    """Plays the segment by itself from its start (after `prefix` steps), learning which actions move the story on;
+    with setup=False from wherever the game is now (a chained run). Returns {"outcome", "steps" (the useful ones,
+    gated), "reason", "actions", "q" (updates)}."""
     rng = rng or random.Random()
     rec = KB.load(seg["id"], seg)
     q = json.loads(json.dumps(rec.get("q", {})))
     updates = []
-    for cmd in seg.get("setup", []):
+    for cmd in seg.get("setup", []) if setup else []:
         a = send(name, cmd, op_timeout(cmd))
         if not a.get("ok"):
             return {"outcome": "fail", "steps": [], "reason": "setup failed: " + str(a.get("error")), "actions": 0, "q": []}
@@ -1178,9 +1185,10 @@ def guarded(name, seg, headless, **kw):
 # ------------------------------------------------------------------ playtest: play a chunk with what was learned
 
 def playtest(name, segs, record=True, learn_first=False, label=None, by="agent", workers=1, headless_learning=False,
-             learn_kw=None):
+             learn_kw=None, adaptive=False, rng=None, series=None):
     """Plays the segments in order with their best routes, chaining them when the game is already at the next one,
-    recording one video. Writes Builds/AgentPlay/playtests/<id>/report.json and report.html. Returns the report."""
+    recording one video. Writes Builds/AgentPlay/playtests/<id>/report.json and report.html. Returns the report.
+    adaptive (the until-perfect runs): routes are picked by win-stay/UCB and every failure is learned from."""
     if learn_first:
         todo = [s for s in segs if mastery_of(KB.load(s["id"], s)) != "mastered"]
         if todo:
@@ -1190,23 +1198,26 @@ def playtest(name, segs, record=True, learn_first=False, label=None, by="agent",
     pt_id = time.strftime("%Y%m%d-%H%M%S-") + name
     report = {"id": pt_id, "scope": label or "%s..%s" % (segs[0]["id"], segs[-1]["id"]), "started": now_text(), "player": name,
               "build": current_build(), "by": by, "segments": [], "findings": [], "videoId": None, "video": None}
+    if series:
+        report["series"] = series
+    title = "playtest " + report["scope"] + (" run %d" % series["run"] if series else "")
     t_start = time.time()
     try:
         for cmd in segs[0].get("setup", []):
             send(name, cmd, op_timeout(cmd))
         recording = False
         if record:
-            a = video.start(name, "playtest " + report["scope"], rec_id=pt_id, max_minutes=240)
+            a = video.start(name, title, rec_id=pt_id, max_minutes=240)
             recording = bool(a.get("ok"))
             if not recording:
                 report["findings"].append({"sev": "INFO", "text": "no video: " + str(a.get("error")), "segment": None, "t": None})
         for seg in segs:
-            report["segments"].append(play_segment(name, seg, recording, report, by))
+            report["segments"].append(play_segment(name, seg, recording, report, by, adaptive, rng))
             row = report["segments"][-1]
             log("%-48s %-9s %5.0fs  %s%s" % (seg.get("label", seg["id"])[:48], row["outcome"].upper(), row["duration"],
                                             "chained" if row["chained"] else "jumped", ("  " + "; ".join(row["notes"])) if row["notes"] else ""))
         if recording:
-            meta = video.stop(name, extra={"playtest": pt_id, "label": "playtest " + report["scope"]})
+            meta = video.stop(name, extra={"playtest": pt_id, "label": title})
             report["videoId"] = meta["id"]
     finally:
         if started:
@@ -1217,16 +1228,22 @@ def playtest(name, segs, record=True, learn_first=False, label=None, by="agent",
     return report
 
 
-def play_segment(name, seg, recording, report, by):
+def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
     rec = KB.load(seg["id"], seg)
-    route = best_route(rec) if mastery_of(rec) in ("mastered", "competent", "stale") else None
+    if adaptive:
+        route = pick_route(rec, rng or random.Random()) if live_routes(rec) else None
+    else:
+        route = best_route(rec) if mastery_of(rec) in ("mastered", "competent", "stale") else None
     at = seg.get("at")
     chained = bool(at) and check(name, at)[0]
     t_video = video.elapsed(name) if recording else None
     if recording:
         video.mark(name, seg.get("label", seg["id"]), "segment")
     budget = seg.get("budget", 150) if route else min(seg.get("budget", 150), UNLEARNED_WAIT)
-    ep = run_episode(name, seg, route["steps"] if route else [], setup=not chained, by=by, budget=budget)
+    if adaptive and route is None:
+        ep = explore_episode(name, seg, chained, by, rng)
+    else:
+        ep = run_episode(name, seg, route["steps"] if route else [], setup=not chained, by=by, budget=budget)
     t_end = video.elapsed(name) if recording else None
     perf = ep.get("perf") or {}
     passive = sum(s.get("dt", 0) for s in ep["steps"] if s.get("op") in ("wait", "until"))
@@ -1240,7 +1257,11 @@ def play_segment(name, seg, recording, report, by):
            "blocked": sum(1 for s in ep["steps"] if s.get("kind") == "blocked"),
            "passiveRatio": round(min(1.0, (passive + max(0.0, waited)) / active_time), 2), "notes": [],
            "friction": friction(rec), "episode": ep["id"]}
-    if route is None:
+    if ep.get("explored"):
+        row.update(outcome="pass" if ep["outcome"] == "win" else "fail", explored=True)
+        row["notes"].append("no route yet: explored %s and %s" % ("on from the run" if chained else "from the start",
+                                                                  "learned one" if ep["outcome"] == "win" else "did not finish"))
+    elif route is None:
         row["notes"].append("no learned route: waited for the goal" + (" and it came" if ep["outcome"] == "win" else ""))
     if ep["outcome"] != "win":
         row["notes"].append("%s at step %s: %s" % (ep["failKind"], ep["failStep"], ep["failDetail"][:140]))
@@ -1258,11 +1279,112 @@ def play_segment(name, seg, recording, report, by):
     if route and row["passiveRatio"] > 0.85 and (ep["time"] or 0) > 40:  # an unlearned segment's wait says nothing about pacing
         report["findings"].append({"sev": "INFO", "text": "%.0f s mostly waiting (cutscene or dialog pacing?)" % ep["time"],
                                    "segment": seg["id"], "t": t_video})
+    variants, lesson, follow = [], None, None
+    if adaptive and route and ep["outcome"] != "win" and ep["failKind"] not in ("setup", "crash", "hang"):
+        step = route["steps"][ep["failStep"]] if ep["failStep"] is not None and ep["failStep"] < len(route["steps"]) else {}
+        lesson = "%s: route %s step %s (%s) failed: %s %s" % (
+            "chained after the segment before" if chained else "after a jump", route["id"], ep["failStep"],
+            json.dumps(step)[:120], ep["failKind"], ep["failDetail"][:160])
+        if not str(route.get("origin", "")).startswith("optimize:"):
+            variants = repairs(route, ep, observe(name))
+        if ep["failKind"] == "goal-timeout":  # the route ran out of steps here: explore on from where it left the game
+            res = explore(name, seg, min(seg.get("budget", 150), 120), by=by, rng=rng, setup=False)
+            record_exploration(seg["id"], seg, res, by)
+            if res["outcome"] == "win":
+                follow = route["steps"] + res["steps"]
+                row["notes"].append("explored on from the route's end and learned the rest")
+
     def note(r):
         if route:
             apply_episode(r, route["id"], ep)
+        if lesson:
+            add_lesson(r, lesson, "pitfall", by, auto=True)
+        for origin, steps, why in variants:
+            if len(live_routes(r)) >= MAX_LIVE_ROUTES - 1:
+                break
+            add_route(r, steps, origin.replace("repair:", "repair-chained:"), by, parent=route["id"], why=why + " (chained)")
+        if follow:
+            add_route(r, follow, "explore-on-chained", by, parent=route["id"], why="the route ran out of steps in a chained run")
     KB.update(seg["id"], note, seg, by)
+    if variants:
+        row["notes"].append("added %d repair variant(s) for the next run" % len(variants))
+    row["routeOrigin"] = route.get("origin") if route else None
     return row
+
+
+def explore_episode(name, seg, chained, by, rng):
+    """A segment nobody has a route for, in an until-perfect run: explore it (on from the run when chained), keep what
+    wins as a route, and report it like an episode."""
+    before = issue_counts(name)
+    deaths0 = status(name).get("deaths", 0) or 0
+    res = explore(name, seg, seg.get("budget", 150), by=by, rng=rng, setup=not chained)
+    record_exploration(seg["id"], seg, res, by)
+    if res["outcome"] == "win":
+        KB.update(seg["id"], lambda r: add_route(r, res["steps"], "explore-chained" if chained else "explore", by,
+                                                 why=res["reason"]), seg, by)
+    st = status(name)
+    ep = {"id": time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4], "segment": seg["id"], "at": now_text(), "by": by,
+          "player": name, "noise": False, "outcome": res["outcome"], "explored": True, "steps": [],
+          "failKind": None if res["outcome"] == "win" else "explore", "failStep": None, "failDetail": res["reason"],
+          "time": res.get("seconds", 0), "deaths": max(0, (st.get("deaths", 0) or 0) - deaths0),
+          "perf": trim(send(name, {"op": "perf"}, 30)), "video": None, "build": current_build()}
+    try:
+        ep["errors"] = new_issues(before, issue_counts(name))
+    except SystemExit:
+        ep["errors"] = []
+    return save_episode(ep)
+
+
+def imperfections(report):
+    """Why a playtest is not a perfect play-through ([] when it is): every segment passed on a learned route, each one
+    chained from the one before (no story jump), no deaths, no new errors."""
+    why = []
+    for i, r in enumerate(report.get("segments", [])):
+        if r["outcome"] != "pass":
+            why.append("%s did not finish (%s)" % (r["id"], r["outcome"]))
+        elif r.get("explored"):
+            why.append("%s had no route yet (explored)" % r["id"])
+        if i > 0 and not r.get("chained"):
+            why.append("%s started from a story jump" % r["id"])
+        if r.get("deaths"):
+            why.append("%s: died %d time(s)" % (r["id"], r["deaths"]))
+        if r.get("errors"):
+            why.append("%s: %d new error(s)" % (r["id"], len(r["errors"])))
+    return why
+
+
+def until_perfect(name, segs, runs=8, record=True, label=None, by="agent", rng=None):
+    """Whole chained runs of the scope, learning between them, until one is perfect (or `runs` are used up).
+    Returns (perfect report or None, [reports])."""
+    rng = rng or random.Random()
+    started = ensure_player(name)
+    reports, perfect = [], None
+    series = time.strftime("%Y%m%d-%H%M%S-") + name
+    try:
+        for n in range(1, runs + 1):
+            log("=== run %d of %d (%s) ===" % (n, runs, label or "scope"))
+            try:
+                report = playtest(name, segs, record=record, label=label, by=by, adaptive=True, rng=rng,
+                                  series={"id": series, "run": n, "of": runs})
+            except SystemExit as e:
+                log("run %d: player trouble (%s); restarting it" % (n, e))
+                try:
+                    ap.stop_one(name)
+                except SystemExit:
+                    pass
+                ensure_player(name)
+                continue
+            reports.append(report)
+            log("run %d: %s" % (n, report["verdict"]))
+            for why in report.get("imperfect", [])[:8]:
+                log("    - " + why)
+            if report.get("perfect"):
+                perfect = report
+                break
+    finally:
+        if started:
+            ap.stop_one(name)
+    return perfect, reports
 
 
 def score(report):
@@ -1279,6 +1401,11 @@ def score(report):
     fails = n - passed
     errs = sum(len(r["errors"]) for r in rows)
     report["passed"] = passed
+    report["imperfect"] = imperfections(report)
+    report["perfect"] = not report["imperfect"] and bool(rows)
+    if report["perfect"]:
+        report["verdict"] = "PERFECT: all %d segments in one chained play-through, no deaths, no errors" % n
+        return
     report["verdict"] = ("PASS: all %d segments played through" % n if fails == 0 else
                          "ISSUES: %d of %d segments did not finish" % (fails, n)) + (", %d new error(s)" % errs if errs else ", no errors")
 
@@ -1386,9 +1513,28 @@ def cmd_learn(args):
 
 def cmd_playtest(args):
     segs = scoped(args)
-    report = playtest(args.name, segs, record=not args.no_record, learn_first=args.learn, label=args.scope or args.segment,
-                      by=args.by or args.name, workers=args.workers,
-                      learn_kw=dict(attempts=args.attempts, streak=args.streak, explore_budget=args.explore_seconds))
+    learn_kw = dict(attempts=args.attempts, streak=args.streak, explore_budget=args.explore_seconds)
+    if args.until_perfect:
+        if args.learn:
+            todo = [s for s in segs if mastery_of(KB.load(s["id"], s)) != "mastered"]
+            if todo:
+                learn_many(args.name, todo, workers=args.workers, by=args.by or args.name, **learn_kw)
+        began = time.time()
+        perfect, reports = until_perfect(args.name, segs, runs=args.until_perfect, record=not args.no_record,
+                                         label=args.scope or args.segment, by=args.by or args.name)
+        print("\n%d run(s) in %.0f min:" % (len(reports), (time.time() - began) / 60))
+        for r in reports:
+            print("  run %-2s %-8s %d/%d passed  %5.0fs  %s" % (r["series"]["run"], "PERFECT" if r.get("perfect") else "-",
+                                                               r["passed"], len(r["segments"]), r["duration"],
+                                                               "; ".join(r.get("imperfect", [])[:3])[:150]))
+        if not perfect:
+            print("NO PERFECT RUN in %d tries: the learned lessons and repair variants are kept; run again, or teach the "
+                  "segments that keep failing by hand (observe/step, learn --from-draft)." % len(reports))
+            return
+        report = perfect
+    else:
+        report = playtest(args.name, segs, record=not args.no_record, learn_first=args.learn, label=args.scope or args.segment,
+                          by=args.by or args.name, workers=args.workers, learn_kw=learn_kw)
     folder = PLAYTESTS / report["id"]
     q = report["quality"]
     print("\n%s" % report["verdict"])
@@ -1697,6 +1843,8 @@ def register(sub, ap_module):
     scope_args(p)
     learn_args(p)
     p.add_argument("--learn", action="store_true", help="learn segments that are not mastered first")
+    p.add_argument("--until-perfect", type=int, metavar="RUNS", help="repeat whole chained runs, learning between them, "
+                   "until one is perfect (every segment passed, chained, no deaths or errors); at most RUNS runs")
     p.add_argument("--no-record", action="store_true")
     p.set_defaults(func=cmd_playtest)
 

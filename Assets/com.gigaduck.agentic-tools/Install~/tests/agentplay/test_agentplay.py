@@ -409,6 +409,17 @@ class AgentPlayTests(unittest.TestCase):
         rec = learn.KB.load(seg["id"])
         self.assertTrue(any(r["origin"] == "agent-draft" for r in rec["routes"]))
 
+    def test_13_until_perfect(self):
+        learn = self.ap.learn
+        row = {"id": "s", "outcome": "pass", "chained": True, "deaths": 0, "errors": []}
+        self.assertEqual(learn.imperfections({"segments": [dict(row, chained=False), row]}), [], "the first may be set up")
+        why = learn.imperfections({"segments": [row, dict(row, chained=False), dict(row, deaths=1), dict(row, explored=True)]})
+        self.assertEqual(len(why), 3, why)
+        perfect, reports = learn.until_perfect("bot", SEGMENTS, runs=2, record=False, label="fake", by="test")
+        self.assertIsNotNone(perfect, [r.get("imperfect") for r in reports])
+        self.assertTrue(perfect["verdict"].startswith("PERFECT"), perfect["verdict"])
+        self.assertEqual(perfect["series"]["run"], len(reports))
+
     def test_20_video_finalize_and_avi(self):
         if Image is None:
             self.skipTest("Pillow missing")

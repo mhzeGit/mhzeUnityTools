@@ -318,7 +318,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json({"playtests": [{
                     "id": r["id"], "scope": r.get("scope"), "started": r.get("started"), "duration": r.get("duration"),
                     "segments": len(r.get("segments", [])), "passed": r.get("passed"), "videoId": r.get("videoId"),
-                    "verdict": r.get("verdict")} for r in reports]})
+                    "verdict": r.get("verdict"), "perfect": r.get("perfect"), "series": r.get("series")} for r in reports]})
             hit = next((r for r in reports if r["id"] == rest[0]), None)
             if hit is None:
                 raise ApiError(404, "no playtest " + rest[0])

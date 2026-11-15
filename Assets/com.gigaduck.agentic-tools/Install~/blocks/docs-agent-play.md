@@ -44,6 +44,7 @@ Every harness (the package's and a project's own) also answers these, from `Agen
 | `until {cond, timeout, soft}` | Waits for a condition: `{"field":"stage","gt":4}` (eq ne gt gte lt lte contains in changed exists), `near`, `exists`/`active`/`gone`, `crosshair`, `text`, `log`, `all`/`any`/`not`, plus project keys. `soft` answers `met:false` instead of failing. |
 | `record {action: start\|stop\|mark\|snap\|status}` | The recorder (below). |
 | `screen`, `perf {reset}` | Visible UI text; frame times since the last reset (fps, worst, 95th percentile). |
+| `point {target \| world:[x,y,z] \| x, y, click: n, interval: s}` | The mouse pointer, for menus and pointer UIs: glides it over an object as the camera sees it (a UI element where it is drawn; x, y are 0..1 of the screen from the bottom left) so hover fires, then clicks n times. Without a player it uses the camera that draws the menu. |
 | `attention {mode: auto\|movement\|off}`, `{focus: name, for: s}`, `{clear: true}` | Where the player looks (below): its mode, a pinned focus, and the hotspots it sees with their scores. |
 
 **Where agents look.** Every agent player looks like a person plays (`AgentPlayAttention`, on by default): along the way it
@@ -85,6 +86,7 @@ Agents learn to play the game, keep what they learned in a shared knowledge base
 python tools/agentplay/agentplay.py kb brief [--scope S]               # START HERE: mastery, what needs an agent, lessons, next step
 python tools/agentplay/agentplay.py learn me1 --scope S [--workers 2]  # learn segments until mastered (starts its own players)
 python tools/agentplay/agentplay.py playtest me1 --scope S [--learn]   # play the scope with the learned routes, record, report
+python tools/agentplay/agentplay.py playtest me1 --scope S --until-perfect 8   # chained runs, learning between them, until one is perfect
 python tools/agentplay/agentplay.py observe me1                        # what the bot sees, what the story waits for, suggestions
 python tools/agentplay/agentplay.py step me1 '{"op":"interact","target":"Kettle"}' --why "..." --segment S   # explore by hand
 python tools/agentplay/agentplay.py learn me1 --segment S --from-draft  # your draft -> a verified route

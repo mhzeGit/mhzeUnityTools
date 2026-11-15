@@ -69,6 +69,19 @@ one video, and writes `Builds/AgentPlay/playtests/<id>/report.html` + `report.js
 performance, pacing and friction scores; per segment outcome, time, deaths, new errors, worst frame, blocked walks, how much
 was waiting; findings with their time in the video.
 
+**A perfect play-through.** Segments mastered one at a time can still fail when played in one go (the run before leaves an
+NPC a step further, a door already open). When the user wants to see a whole stretch played cleanly:
+
+```
+python tools/agentplay/agentplay.py playtest bot --scope S --until-perfect 8 [--learn]
+```
+
+It plays the scope chained from its first segment, again and again, each run recorded: routes are picked by win-stay/UCB, a
+failure in a run adds a lesson and repair variants (or explores on from where the run left the game) and the run carries on
+by jumping; the next run tries the repairs. It stops at the first **perfect** run (every segment passed on a learned route,
+chained from the one before, no deaths, no new errors: verdict `PERFECT`) and prints the run table. If no run is perfect
+within the budget, the segments that keep failing are the ones to teach by hand (section 3).
+
 ## 5. Look at the evidence (cheaply)
 
 Never watch the MP4 yourself. Read the report's findings, then look at the moments that matter:

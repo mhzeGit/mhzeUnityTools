@@ -84,6 +84,12 @@ namespace Gigaduck.AgenticTools.AgentPlay
             SendMouse(delta);
         }
 
+        /// <summary>Where the pointer is, in screen pixels from the bottom left.</summary>
+        public static Vector2 Pointer
+        {
+            get { Ensure(); return _mouse.position.ReadValue(); }
+        }
+
         /// <summary>Puts the pointer at a screen position in pixels (from the bottom left).</summary>
         public static void SetPointer(Vector2 position)
         {
@@ -139,6 +145,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
         public static void ReleaseAll() { }
         public static IEnumerator Press(string name, float seconds, Action<string> fail) { fail(Missing); yield break; }
         public static void MouseDelta(Vector2 delta) { }
+        public static Vector2 Pointer => Vector2.zero;
         public static void SetPointer(Vector2 position) { }
         public static void SetButton(int button, bool down) { }
         public static IEnumerator Click(int button, float seconds) { yield break; }
