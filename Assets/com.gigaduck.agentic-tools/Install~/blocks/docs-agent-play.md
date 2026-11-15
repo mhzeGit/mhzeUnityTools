@@ -44,6 +44,17 @@ Every harness (the package's and a project's own) also answers these, from `Agen
 | `until {cond, timeout, soft}` | Waits for a condition: `{"field":"stage","gt":4}` (eq ne gt gte lt lte contains in changed exists), `near`, `exists`/`active`/`gone`, `crosshair`, `text`, `log`, `all`/`any`/`not`, plus project keys. `soft` answers `met:false` instead of failing. |
 | `record {action: start\|stop\|mark\|snap\|status}` | The recorder (below). |
 | `screen`, `perf {reset}` | Visible UI text; frame times since the last reset (fps, worst, 95th percentile). |
+| `attention {mode: auto\|movement\|off}`, `{focus: name, for: s}`, `{clear: true}` | Where the player looks (below): its mode, a pinned focus, and the hotspots it sees with their scores. |
+
+**Where agents look.** Every agent player looks like a person plays (`AgentPlayAttention`, on by default): along the way it
+walks, and when something happens at the most important hotspot the project names (who speaks, a hazard that is live, what
+a story step that just began points at), then back at the way. It turns the view with real mouse movement, holds a hotspot
+long enough to see it, glances back at the way on long walks, ignores what is behind a wall or behind the walk unless it is
+critical, and never fights the game: while the game drives the view (a scripted look, a look lock, look input off), while an
+op aims or takes a picture itself, or when the view stops answering, it waits. `status` has `looking`, `observe` has
+`attention`, and recordings caption each change ("looks at ..."). Keep it on when you test; point it with
+`attention {focus: "Kettle", for: 5}` at what your check is about; `off` only for fixed-camera pictures. A project gives the
+hotspots with `AgentPlayAttention.Hotspots` and says when the game has the view with `AgentPlayAttention.GameHasView`.
 
 ## Record video
 

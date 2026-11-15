@@ -58,12 +58,12 @@ namespace Gigaduck.AgenticTools.AgentPlay
         public static string InteractKey = "E";
         public static float Reach = 2.2f;
 
-        public static readonly string[] Names = { "record", "until", "observe", "aim", "interact", "approach", "screen", "perf" };
+        public static readonly string[] Names = { "record", "until", "observe", "aim", "interact", "approach", "screen", "perf", "attention" };
 
         // Ops that only read or that the recorder would only clutter with captions.
         private static readonly HashSet<string> Quiet = new HashSet<string>
         {
-            "status", "observe", "record", "errors", "summary", "find", "screen", "shot", "shots", "sheet", "perf",
+            "status", "observe", "record", "errors", "summary", "find", "screen", "shot", "shots", "sheet", "perf", "attention",
         };
 
         private static string _out;
@@ -71,7 +71,10 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private static readonly object LogGate = new object();
         private static readonly List<string> LogLines = new List<string>();
         private static int _logSeq;
-        private static float _kx = 0.12f, _ky = 0.12f; // degrees of view per mouse unit, learned by aim (sign included)
+        internal static float _kx = 0.12f, _ky = 0.12f; // degrees of view per mouse unit, learned by aim and walking (sign included)
+
+        /// <summary>The op the harness runs now (null when idle); attention stays out of the way of ops that aim.</summary>
+        public static string CurrentOp { get; private set; }
 
         public static string OutputFolder => _out;
 
@@ -101,6 +104,12 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 UnityEngine.Object.DontDestroyOnLoad(go);
                 _sampler = go.AddComponent<FrameSampler>();
             }
+
+            // Agents look where they walk and at what matters, like players (AgentPlayAttention); -agent-attention off|movement|auto.
+            string[] args = Environment.GetCommandLineArgs();
+            int at = Array.IndexOf(args, "-agent-attention");
+            if (at >= 0 && at + 1 < args.Length && Enum.TryParse(args[at + 1], true, out AgentPlayAttention.Mode mode)) AgentPlayAttention.Current = mode;
+            AgentPlayAttention.Create();
         }
 
         // ------------------------------------------------------------------ perf: frame times since the last reset
@@ -158,6 +167,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 case "approach": return Approach(c, r, fail);
                 case "screen": return Once(() => r["texts"] = ScreenTexts(I(c, "max", 20)));
                 case "perf": return Once(() => Perf(c, r));
+                case "attention": return Once(() => Attention(c, r, fail));
                 default: return Once(() => fail("not a shared op: " + op));
             }
         }
@@ -168,23 +178,45 @@ namespace Gigaduck.AgenticTools.AgentPlay
             yield break;
         }
 
-        /// <summary>Adds the recording state to a status answer.</summary>
+        /// <summary>Adds the recording state and what the player looks at to a status answer.</summary>
         public static void AddStatus(Dictionary<string, object> r)
         {
             AgentPlayRecorder rec = AgentPlayRecorder.Active;
             r["recording"] = rec != null && !rec.Stopped ? rec.Id : (object)false;
+            r["looking"] = AgentPlayAttention.Focus;
+        }
+
+        /// <summary>attention {mode: auto|movement|off} | {focus: name, for: seconds} | {clear: true}; answers mode, focus, hotspots.</summary>
+        private static void Attention(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail)
+        {
+            if (c.ContainsKey("mode"))
+            {
+                if (!Enum.TryParse(S(c, "mode", ""), true, out AgentPlayAttention.Mode mode)) { fail("attention mode is auto, movement or off"); return; }
+                AgentPlayAttention.Current = mode;
+            }
+
+            if (c.ContainsKey("focus"))
+            {
+                string error = AgentPlayAttention.Pin(S(c, "focus", ""), F(c, "for", 4f));
+                if (error != null) { fail(error); return; }
+            }
+
+            if (B(c, "clear", false)) AgentPlayAttention.Unpin();
+            AgentPlayAttention.Describe(r);
         }
 
         // ------------------------------------------------------------------ command captions
 
         public static void CommandStarted(string op, Dictionary<string, object> c)
         {
+            CurrentOp = op;
             if (AgentPlayRecorder.Active == null || Quiet.Contains(op)) return;
             AgentPlayRecorder.Mark("op", Compact(op, c));
         }
 
         public static void CommandFinished(string op, bool ok, string error, Dictionary<string, object> r)
         {
+            CurrentOp = null;
             if (AgentPlayRecorder.Active == null || Quiet.Contains(op)) return;
             var sb = new StringBuilder(op).Append(ok ? " ok" : " FAILED: " + error);
             if (r != null)
@@ -319,6 +351,9 @@ namespace Gigaduck.AgenticTools.AgentPlay
             GameObject under = UnderCrosshair();
             r["crosshair"] = under != null ? Path3(under.transform) : null;
             r["texts"] = ScreenTexts(12);
+            var attention = new Dictionary<string, object>();
+            AgentPlayAttention.Describe(attention);
+            r["attention"] = attention;
 
             IEnumerable<GameObject> pool = Interactables != null ? Interactables() : Scripted(origin, radius);
             var entries = new List<(float, Dictionary<string, object>)>();

@@ -25,7 +25,7 @@ ap = None  # the agentplay module, set by register()
 VIDEOS = None
 _FFMPEG = "unset"
 
-KIND_TAG = {"op": "", "result": "", "mark": "* ", "segment": "## ", "label": "", "text": "“", "finding": "! "}
+KIND_TAG = {"op": "", "result": "", "mark": "* ", "segment": "## ", "label": "", "text": "“", "finding": "! ", "look": "\u25c9 "}
 
 
 # ------------------------------------------------------------------ ffmpeg

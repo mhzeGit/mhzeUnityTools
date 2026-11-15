@@ -51,6 +51,8 @@ python tools/agentplay/agentplay.py learn bot1 --segment SEG                   #
 python tools/agentplay/agentplay.py kb lesson SEG "what a player must know here" --kind tip|pitfall|bug|fix
 ```
 
+The player looks where it walks and at the hotspots (who speaks, live hazards, what a new story step points at) by itself:
+keep `attention` on, and point it (`step bot1 '{"op":"attention","focus":"Kettle","for":5}'`) at what you are checking.
 Prefer real inputs (`interact`, `aim`, `walk`, `key`, `click`, `look`, `until`) over `teleport` or story jumps inside a route:
 a route that cheats proves nothing about the game. Use `until` with a condition instead of fixed `wait`s where you can.
 If the game itself is broken (an object never becomes usable, a beat never ends), that is a finding: record a `bug` lesson,

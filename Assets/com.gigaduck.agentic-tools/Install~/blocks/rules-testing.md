@@ -54,6 +54,10 @@ ask whether to test and do not pretend: write the check list you would have run 
 - Keep a test cheap in tokens: one summary, a contact `sheet` instead of many single pictures, and never poll a build in a
   loop (`build` is one blocking command that prints one result).
 
+**Look like a player.** Agent players look where they walk and turn to what matters when something happens (attention, on by
+default; [`AGENT_PLAY.md`](../AGENT_PLAY.md)). Keep it on while you test, so the video shows what a player would see; aim it
+with `attention {focus: ...}` at what your check is about; turn it off only for fixed-camera pictures, and back on after.
+
 ### 3. Ask the user once per task
 
 - When the implementation is done and before you build, ask once whether to test: say what you would check and what it costs (the

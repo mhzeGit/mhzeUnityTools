@@ -249,7 +249,7 @@ function splitLabel(label, id) {
 const OUT = { pass: 'var(--pass)', fail: 'var(--fail)', unlearned: '#4b3f39', jumped: 'var(--warn)' };
 const MAST = { mastered: 'var(--m-mastered)', competent: 'var(--m-competent)', 'needs-agent': 'var(--m-needs)', learning: 'var(--m-learning)', stale: 'var(--m-stale)', unknown: 'var(--m-unknown)' };
 const SEV = { FATAL: 'var(--fail)', ERR: 'var(--fail)', STALL: 'var(--rec)', SOFT: 'var(--warn)', WARN: 'var(--warn)', INFO: 'var(--info)' };
-const KIND = { op: 'var(--info)', result: 'var(--m-learning)', mark: 'var(--warn)', segment: 'var(--rec)', label: 'var(--pass)', text: 'var(--t3)', finding: 'var(--fail)' };
+const KIND = { op: 'var(--info)', result: 'var(--m-learning)', mark: 'var(--warn)', segment: 'var(--rec)', label: 'var(--pass)', text: 'var(--t3)', finding: 'var(--fail)', look: 'var(--m-mastered)' };
 const chip = (text, c, solid) => h('span', { class: 'chip' + (solid ? ' solid' : ''), style: { '--c': c } }, h('i'), h('span', { class: 'ct' }, text));
 const outChip = o => o === 'unlearned' ? h('span', { class: 'chip' }, 'not learned') : chip(o, OUT[o] || 'var(--t3)', true);
 function tap(el, fn) { el.addEventListener('click', fn); return el; }
@@ -342,10 +342,10 @@ function player(meta, segs) {
   }
   lbl = h('span', { class: 'lbl' }); tm = h('span', { class: 'tm' }, clock(0) + ' / ' + clock(total));
   now = h('div', { class: 'now' }, lbl, tm); wrap.append(now);
-  const acts = (meta && meta.events || []).filter(e => ['op', 'result', 'mark', 'text', 'finding'].includes(e.kind)).sort((a, b) => a.t - b.t);
+  const acts = (meta && meta.events || []).filter(e => ['op', 'result', 'mark', 'text', 'finding', 'look'].includes(e.kind)).sort((a, b) => a.t - b.t);
   const act = acts.length ? h('div', { class: 'act' }) : null;
   if (act) wrap.append(act);
-  const ACT_LBL = { op: 'does', result: 'result', mark: 'note', text: 'on screen', finding: 'finding' };
+  const ACT_LBL = { op: 'does', result: 'result', mark: 'note', text: 'on screen', finding: 'finding', look: 'eyes' };
   function showAct(t) {
     let lo = 0, hi = acts.length - 1, at = -1;
     while (lo <= hi) { const m = (lo + hi) >> 1; if (acts[m].t <= t) { at = m; lo = m + 1; } else hi = m - 1; }

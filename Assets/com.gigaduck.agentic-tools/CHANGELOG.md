@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.5 - 2026-11-15
+
+- **Agents look like players** (`AgentPlayAttention`, on by default in every agent player): along the way they walk, and when
+  something happens at the most important hotspot (the project's `AgentPlayAttention.Hotspots`: who speaks, a hazard that is
+  live, what a story step that just began points at), then back at the way. Real mouse movement, smooth turns, a minimum dwell,
+  glances back at the way on long walks, nothing behind walls or behind the walk unless critical; it waits while the game drives
+  the view (`AgentPlayAttention.GameHasView`), while an op aims or takes a picture, or when the view stops answering. New op
+  `attention` (mode auto|movement|off, focus an object for a while, clear); `status.looking`, `observe.attention`, and a "look"
+  caption in recordings ("looks at ..."). `-agent-attention off|movement|auto` on the player command line. Rule in TESTING.md.
+
 ## 1.3.4 - 2026-11-15
 
 - **A phone app for the dashboard** (`agentplay_mobile.html`): phones opening the dashboard (or `/m`) get a phone-first app instead
