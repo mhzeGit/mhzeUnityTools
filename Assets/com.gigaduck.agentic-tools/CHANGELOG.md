@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.8 - 2026-11-15
+
+- Playtests: a segment the story already went through by itself (the segment before ended past its start, e.g. a checkpoint
+  that resolves at once) counts as played and chained, instead of jumping the story back to replay it out of order.
+
 ## 1.3.7 - 2026-11-15
 
 - **Perfect play-throughs**: `playtest --until-perfect N` plays the scope chained from its first segment, again and again,

@@ -419,6 +419,12 @@ class AgentPlayTests(unittest.TestCase):
         self.assertIsNotNone(perfect, [r.get("imperfect") for r in reports])
         self.assertTrue(perfect["verdict"].startswith("PERFECT"), perfect["verdict"])
         self.assertEqual(perfect["series"]["run"], len(reports))
+        # A segment the story already went through (the one before ended past its start) is chained, not jumped back to.
+        learn.send("bot", {"op": "stage", "n": 2}, 10)
+        report = {"segments": [{"id": "fake/s0", "outcome": "pass", "chained": True}], "findings": []}
+        row = learn.play_segment("bot", SEGMENTS[1], False, report, "test")
+        self.assertEqual((row["outcome"], row["chained"]), ("pass", True), row)
+        self.assertEqual(learn.status("bot")["stage"], 2, "no jump back to the segment's start")
 
     def test_20_video_finalize_and_avi(self):
         if Image is None:

@@ -1236,6 +1236,11 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
         route = best_route(rec) if mastery_of(rec) in ("mastered", "competent", "stale") else None
     at = seg.get("at")
     chained = bool(at) and check(name, at)[0]
+    through = False
+    if not chained and report["segments"] and report["segments"][-1]["outcome"] == "pass":
+        # The segment before ended already past this one's start: a checkpoint the story runs through by itself. Its goal
+        # holding means it was played, chained; jumping back to its start would replay it out of order.
+        through = chained = check(name, seg["goal"])[0]
     t_video = video.elapsed(name) if recording else None
     if recording:
         video.mark(name, seg.get("label", seg["id"]), "segment")
@@ -1257,6 +1262,8 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
            "blocked": sum(1 for s in ep["steps"] if s.get("kind") == "blocked"),
            "passiveRatio": round(min(1.0, (passive + max(0.0, waited)) / active_time), 2), "notes": [],
            "friction": friction(rec), "episode": ep["id"]}
+    if through:
+        row["notes"].append("the story went through it by itself (the segment before ended past its start)")
     if ep.get("explored"):
         row.update(outcome="pass" if ep["outcome"] == "win" else "fail", explored=True)
         row["notes"].append("no route yet: explored %s and %s" % ("on from the run" if chained else "from the start",
