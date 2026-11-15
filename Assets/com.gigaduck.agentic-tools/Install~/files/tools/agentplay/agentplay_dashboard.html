@@ -804,12 +804,12 @@ function qView(q) {
     ...states.slice(0, lim).flatMap(s => [h('div', { class: 'st', title: s.k }, s.k),
       h('div', { class: 'acts' }, s.a.slice(0, 4).map(x => h('div', { class: 'qa', title: x.k + '  value ' + x.v + '  n ' + x.n }, h('span', { class: 'ak' }, x.k),
         h('span', { class: 'vb' }, h('i', { style: { width: Math.abs(x.v) / mx * 100 + '%', '--c': x.v < 0 ? '#e66767' : '#3987e5' } })), h('span', { class: 'n' }, fmtNum(x.v) + ' · ' + x.n))))]),
-    states.length > lim ? h('div', { style: { gridColumn: '1 / -1' } }, h('button', { class: 'btn sm', onclick: () => { lim = Infinity; draw(); } }, 'Show all ' + states.length + ' states')) : null);
+    ...(states.length > lim ? [h('div', { style: { gridColumn: '1 / -1' } }, h('button', { class: 'btn sm', onclick: () => { lim = Infinity; draw(); } }, 'Show all ' + states.length + ' states'))] : []));
   draw();
   return box;
 }
 function segmentPage(s) {
-  const routes = (s.routeList || []).slice().sort((a, b) => ((fin(a.bestTime) ? a.bestTime : Infinity) - (fin(b.bestTime) ? b.bestTime : Infinity)) || (b.wins || 0) - (a.wins || 0));
+  const routes = (s.routeList || []).slice(); // the server sends them best first (the one playtests use)
   const les = s.lessons || [], hist = (s.history || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 40);
   const outC = o => (o === 'win' ? '#0ca30c' : o === 'fail' ? '#d03b3b' : '#5f5e58');
   return h('div', null,
@@ -817,6 +817,10 @@ function segmentPage(s) {
       h('div', { class: 'sub' }, chip(s.mastery, col(MAST_C, s.mastery)), '  ', s.lastRun ? 'last run ' + s.lastRun + (s.lastOutcome ? ' · ' + s.lastOutcome : '') : 'never run'))),
     h('div', { class: 'stats' }, stat('routes', routes.length || s.routes || 0), stat('runs', s.runs ?? 0), stat('win rate', s.runs ? pctTxt(s.wins / s.runs) : '–'),
       stat('streak', s.streak ?? 0), stat('best time', fmtSec(s.bestTime)), stat('lessons', les.length), stat('friction', fin(s.friction) ? (+s.friction).toFixed(2) : '–')),
+    s.needsAgentDetail ? sec('Needs an agent', 1, h('div', { style: { padding: '10px 12px', border: '1px solid #8a5a1e', borderRadius: '6px', background: 'rgba(230,150,40,.08)' } },
+      h('div', null, s.needsAgentDetail.summary || ''),
+      ...['beats', 'near', 'tried', 'texts'].filter(k => (s.needsAgentDetail[k] || []).length).map(k => h('div', { class: 'mono', style: { marginTop: '6px', whiteSpace: 'pre-wrap' } }, k + ': ' + (s.needsAgentDetail[k] || []).join(' | '))),
+      h('div', { class: 'mono', style: { marginTop: '6px' } }, s.needsAgentDetail.next || ''))) : null,
     sec('Routes · best first', routes.length, routes.length ? h('div', { class: 'routes' }, routes.map((r, i) => routeView(r, i === 0))) : empty('No routes learned yet.')),
     sec('Lessons', les.length, lessonsView(les)),
     sec('Recent history', hist.length, hist.length ? h('div', { class: 'tblwrap' }, sortTable([

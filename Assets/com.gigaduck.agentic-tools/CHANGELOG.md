@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.1 - 2026-11-15
+
+Fixes from the first real learning runs (a whole game, 39 segments):
+- Replays treat a route as story-state -> action pairs: a step waits for its learned state, but when the story is already in a
+  later step's state it jumps there instead of waiting for the past. A step whose op reports failure while the story moves on
+  (walking into the NPC it had to reach) counts as done.
+- Win-stay, lose-shift route choice: a route on a winning streak is replayed until mastered; UCB only after a loss or while
+  faster variants are tried. Every failure kind also offers a "drop the step" variant (ablation of steps that only looked
+  useful); repairs stop at 6 live routes and the oldest retired routes are forgotten beyond 16.
+- The explorer reads the screen ("Click LMB to continue" -> click, "Press E" -> key) and no longer counts interaction prompt
+  text as progress; steps that only changed a detail or failed while the story moved are learned as optional.
+- `learn --from-draft` keeps every deliberate, successful agent step (a sidestep out of a hazard shows no effect) and writes
+  each mistake as a lesson with what the agent was trying.
+- Dashboard: the needs-agent diagnosis on a segment's page; routes in the server's best-first order; no stray "null".
+
 ## 1.3.0 - 2026-11-15
 
 - **Gameplay video.** `agentplay.py record NAME start|mark|snap|status|stop`: the new `AgentPlayRecorder` renders the player's

@@ -35,7 +35,7 @@ class FakeGame:
     INTRO = 0.3
 
     def __init__(self):
-        self.deaths, self.stage, self.sub, self.held, self.finished = 0, 0, 0, None, False
+        self.deaths, self.stage, self.sub, self.held, self.finished, self.lamps = 0, 0, 0, None, False, 0
         self.t_stage = time.time()
         self.lock = threading.Lock()
 
@@ -85,7 +85,10 @@ class FakeGame:
             else:
                 self.sub = 1
             return {"targeted": True}
-        if target in ("Lamp",) or target.startswith("Item"):
+        if target == "Lamp":
+            self.lamps += 1
+            return {"targeted": True}
+        if target.startswith("Item"):
             return {"targeted": True}
         raise KeyError("interact: no active object named '%s'" % target)
 
@@ -166,8 +169,8 @@ def handle(cmd, game, folder, rec):
             return game.walk(cmd["pos"])
         if op in ("look", "wait", "key"):
             pass
-        if op == "errors":
-            return {"issues": ["ERR x1 @walk: a fake error"] if game.stage == 99 else []}
+        if op == "errors":  # a warning always, an error that grows with every lamp switched on
+            return {"issues": ["WARN x3 @walk: fake noise"] + (["ERR x%d @interact: the lamp sparks" % game.lamps] if game.lamps else [])}
         if op == "perf":
             return {"fps": 60, "worstMs": 20, "p95Ms": 17, "frames": 100}
     if op == "wait":
@@ -398,6 +401,8 @@ class AgentPlayTests(unittest.TestCase):
         for cmd in ({"op": "interact", "target": "Lamp"}, {"op": "interact", "target": "Item0"}, {"op": "walk", "pos": [5, 0, 5]}):
             learn.cmd_step(argparse.Namespace(name="bot", json=json.dumps(cmd), why="test", segment=seg["id"]))
         lines = learn.draft_file("bot").read_text(encoding="utf-8").splitlines()
+        ep = learn.run_episode("bot", seg, [{"op": "interact", "target": "Lamp"}], final_wait=1)
+        self.assertEqual(ep["errors"], ["ERR @interact: the lamp sparks"], "new errors of the run are reported")
         self.assertEqual(len(lines), 3)
         self.assertFalse(json.loads(lines[0])["progressed"])
         learn.learn_from_draft("bot", seg, "test")

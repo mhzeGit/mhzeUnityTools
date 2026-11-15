@@ -49,6 +49,8 @@ EPISODES = PLAYTESTS = None
 MASTER_STREAK = 3
 UNLEARNED_WAIT = 60  # a playtest waits this long for a segment nobody has learned before it jumps on
 MAX_LIVE_ROUTES = 8
+MAX_ROUTES = 16      # live and retired; the oldest retired ones are dropped beyond this
+REPAIR_BELOW = 6     # failed routes make repair variants only while fewer routes than this are live
 HISTORY_KEEP = 40
 SCHEMA = 1
 STATE_FIELDS = ("scene", "stage", "running")
@@ -333,6 +335,9 @@ def add_route(rec, steps, origin, by, parent=None, why=None):
         tried = [r for r in live if r.get("runs", 0) > 0 and r is not best_route(rec)]
         if tried:
             min(tried, key=win_rate)["retired"] = True
+    retired = [r for r in rec["routes"] if r.get("retired")]
+    for old in retired[:max(0, len(rec["routes"]) - MAX_ROUTES)]:  # forget the oldest losers; their lessons stay
+        rec["routes"].remove(old)
     return rid
 
 
@@ -497,10 +502,73 @@ def state_key(st):
 
 
 def micro_key(obs):
-    """A finer state: also the held item, which nearby objects are usable, and the text on screen."""
+    """A finer state: also the held item and which nearby objects are usable (not screen text: interaction prompts
+    change with every drawer opened, which is not progress)."""
     st = obs.get("status") or {}
     usable = sorted(o["name"] for o in obs.get("objects") or [] if o.get("usable") and o.get("dist", 99) < 8)[:12]
-    return state_key(st) + "|held=%s|use=%s|txt=%s" % (st.get("held"), ",".join(usable), "|".join(obs.get("texts") or [])[:120])
+    return state_key(st) + "|held=%s|use=%s" % (st.get("held"), ",".join(usable))
+
+
+def holds(cond, st):
+    """Evaluates a condition on a status answer here, without the player: True, False, or None when it needs the player
+    (object, text, log or project keys, `changed`)."""
+    if isinstance(cond, list):
+        parts = [holds(c, st) for c in cond]
+        return None if None in parts else all(parts)
+    if not isinstance(cond, dict):
+        return cond if isinstance(cond, bool) else None
+    result = True
+    for key, arg in cond.items():
+        if key in ("eq", "ne", "gt", "gte", "lt", "lte", "contains", "in", "exists", "within", "why", "label"):
+            continue
+        if key == "all":
+            parts = [holds(c, st) for c in arg]
+            if False in parts:
+                return False
+            if None in parts:
+                return None
+        elif key == "any":
+            parts = [holds(c, st) for c in arg]
+            if True not in parts:
+                if None in parts:
+                    return None
+                result = False
+        elif key == "not":
+            inner = holds(arg, st)
+            if inner is None:
+                return None
+            result = result and not inner
+        elif key == "field":
+            if "changed" in cond:
+                return None
+            v = st.get(arg)
+            same = lambda a, b: (str(a).lower() == str(b).lower()) if not isinstance(a, (int, float)) or isinstance(a, bool) else a == b
+            try:
+                if "eq" in cond and not same(v, cond["eq"]):
+                    result = False
+                if "ne" in cond and same(v, cond["ne"]):
+                    result = False
+                for op, fn in (("gt", lambda x, y: x > y), ("gte", lambda x, y: x >= y), ("lt", lambda x, y: x < y), ("lte", lambda x, y: x <= y)):
+                    if op in cond and not (isinstance(v, (int, float)) and fn(v, cond[op])):
+                        result = False
+            except TypeError:
+                return None
+            if "contains" in cond:
+                needle = str(cond["contains"]).lower()
+                if isinstance(v, list):
+                    found = any(str(x).lower() == needle or needle in str(x).lower() for x in v)
+                else:
+                    found = v is not None and needle in str(v).lower()
+                result = result and found
+            if "in" in cond and not any(same(v, o) for o in cond["in"]):
+                result = False
+            if "exists" in cond and (v is not None) != bool(cond["exists"]):
+                result = False
+            if not any(k in cond for k in ("eq", "ne", "gt", "gte", "lt", "lte", "contains", "in", "exists")):
+                result = result and bool(v) and v != "none"
+        else:
+            return None
+    return result
 
 
 def gate_for(st, previous_running):
@@ -543,27 +611,38 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
     deadline = t0 + budget
     if noise:
         send(name, {"op": "look", "dx": rng.uniform(-60, 60), "dy": rng.uniform(-15, 15), "frames": 6}, 20)
-    won, failed, st = False, False, st0
+    won, failed = False, False
     met, st = check(name, seg["goal"])
     won = met
-    for i, step in enumerate(steps):
-        if won or failed or time.time() > deadline:
-            break
-        cmd = {k: v for k, v in step.items() if k not in META_KEYS}
+    i = 0
+    while i < len(steps) and not (won or failed) and time.time() < deadline:
+        step = steps[i]
         if noise:
             time.sleep(rng.uniform(0.05, 0.6))
-        row = {"i": i, "op": cmd.get("op"), "cmd": cmd, "t": round(time.time() - t0, 2), "ok": True, "kind": None}
+        row_t = round(time.time() - t0, 2)
         kind, detail, a = None, "", {}
         if step.get("when"):
+            # A route is (story state -> action) pairs: wait for this step's state, but if the story is already in a later
+            # step's state (an earlier action did more than expected), jump there instead of waiting for the past.
+            ahead = [j for j in range(i, min(len(steps), i + 6)) if steps[j].get("when")]
             wait = min(float(step.get("when_timeout", 45)), max(1.0, deadline - time.time()))
-            a = send(name, {"op": "until", "cond": {"any": [step["when"], seg["goal"]]}, "timeout": wait, "soft": True}, wait + 40)
+            a = send(name, {"op": "until", "cond": {"any": [steps[j]["when"] for j in ahead] + [seg["goal"]]}, "timeout": wait,
+                            "soft": True}, wait + 40)
+            st = a.get("status") or st
             if not a.get("met"):
                 kind, detail = "when-timeout", "the story never reached the state this step was learned in: %s" % json.dumps(step["when"])[:200]
-        elif step.get("when"):
-            met, st = check(name, seg["goal"])  # the wait above also ends when the goal happens
-            if met:
+            elif holds(seg["goal"], st) is not False and check(name, seg["goal"])[0]:
                 won = True
                 break
+            else:
+                hit = next((j for j in ahead if holds(steps[j]["when"], st)), i)
+                for j in range(i, hit):
+                    ep["steps"].append({"i": j, "op": steps[j].get("op"), "cmd": steps[j], "t": row_t, "ok": True,
+                                        "kind": "skipped", "detail": "the story was already past this step's state"})
+                i, step = hit, steps[hit]
+        cmd = {k: v for k, v in step.items() if k not in META_KEYS}
+        row = {"i": i, "op": cmd.get("op"), "cmd": cmd, "t": row_t, "ok": True, "kind": None}
+        state_before = state_key(st)
         if kind is None:
             a = send(name, cmd, op_timeout(cmd))
             kind, detail = classify(cmd, a)
@@ -572,6 +651,8 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
                 if not e.get("met"):
                     kind, detail = "expect", "expected %s" % json.dumps(step["expect"])[:200]
         met, st = check(name, seg["goal"])
+        if kind in ("blocked", "timeout", "no-target", "expect") and state_key(st) != state_before:
+            detail, kind = "%s, but the story moved on: counts as done" % kind, None  # e.g. walked into the NPC it had to reach
         row.update(ok=kind is None, kind=kind, detail=str(detail)[:300], dt=round(time.time() - t0 - row["t"], 2),
                    stage=st.get("stage"), state=state_key(st), result=trim(a))
         ep["steps"].append(row)
@@ -585,6 +666,7 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
         if kind in ("crash", "hang", "bad-step") or (kind and not step.get("optional")):
             ep.update(failKind=kind, failStep=i, failDetail=str(detail)[:300])
             failed = True
+        i += 1
     if not won and not failed:
         remaining = max(3.0, deadline - time.time())
         if final_wait is not None:
@@ -666,6 +748,12 @@ def candidates(obs, q_state=None, tried=(), rng=None):
                     add(Act("goto:" + name, [{"op": "walk", "pos": ref["pos"], "timeout": 40, "why": "story hint " + why}], 0.8 * weight))
     passive = obs.get("playerFrozen") or hint_count == 0
     add(Act("wait", [dict(WAIT_CHANGE)], 0.7 if passive else 0.3, kind="wait"))
+    texts = " | ".join(obs.get("texts") or [])  # read the screen: "Click LMB to continue", "Press E to ..."
+    if re.search(r"\b(click|LMB|left mouse)\b", texts, re.I):
+        add(Act("click", [{"op": "click", "why": "the screen asks for a click"}], 0.86))
+    for key in re.findall(r"\bpress\s+\[?([A-Za-z]{1,8})\]?", texts, re.I)[:2]:
+        name = key.upper() if len(key) == 1 else key.capitalize()
+        add(Act("key:" + name, [{"op": "key", "key": name, "why": "the screen says press " + key}], 0.8))
     for o in objects:
         if o.get("usable") and o["name"] not in hinted:
             prior = 0.45 * math.exp(-o.get("dist", 10) / 8.0) + (0.08 if o.get("inView") else 0) + (0.05 if o.get("prompt") else 0)
@@ -758,6 +846,8 @@ def explore(name, seg, budget=240, prefix=None, by="agent", rng=None, who="", re
                 step = dict(cmd)
                 if gate:
                     step["when"] = gate
+                if not ok or reward < 0.5:
+                    step["optional"] = True  # it failed yet the story moved, or it only changed a detail: never fail a run on it
                 step["why"] = "learned: %s moved the story on (%s)" % (act.key, cmd.get("why", ""))
                 useful.append(step)
         if state_key(after) != state:
@@ -827,6 +917,9 @@ def repairs(route, ep, obs):
             out.append(("repair:death:skip", steps[:i] + steps[i + 1:], "drop the step"))
     elif kind == "no-control":
         out.append(("repair:no-control:wait", insert([{"op": "wait", "s": 4, "why": "the game had the controls off"}]), "wait for control"))
+    if kind in ("blocked", "no-target", "missing", "no-control", "error") and i < len(steps):
+        # Ablation: an explored route can carry a step that only looked useful (it happened to coincide with progress).
+        out.append(("repair:%s:skip" % kind, steps[:i] + steps[i + 1:], "drop the step"))
     return out
 
 
@@ -844,9 +937,13 @@ def optimizations(route):
     return out
 
 
-def pick_route(rec, rng):
-    """UCB1 over the live routes: untried ones first, then the best mean plus an exploration bonus."""
+def pick_route(rec, rng, prefer_untried=False):
+    """Win-stay, lose-shift: replay the route on a winning streak until it is mastered; after a loss (or when faster
+    variants should be tried) choose by UCB1, untried routes first, then the best mean plus an exploration bonus."""
     live = live_routes(rec)
+    hot = [r for r in live if r.get("streak", 0) > 0]
+    if hot and not prefer_untried:
+        return max(hot, key=lambda r: (r["streak"], win_rate(r), -(r.get("bestTime") or 1e9)))
     total = sum(r.get("runs", 0) for r in live) + 1
 
     def ucb(r):
@@ -869,6 +966,7 @@ def learn_segment(name, seg, attempts=10, streak=None, record="none", optimize=T
     began = time.time()
     rec = KB.load(sid, seg)
     explorations = 0
+    optimizing = False
     if mastery_of(rec) == "mastered" and not force:
         best = best_route(rec)
         ep = run_episode(name, seg, best["steps"], noise=True, rng=rng, by=by, who=who)
@@ -891,7 +989,7 @@ def learn_segment(name, seg, attempts=10, streak=None, record="none", optimize=T
             elif res["reason"].startswith("player "):
                 break
             continue
-        route = pick_route(rec, rng)
+        route = pick_route(rec, rng, prefer_untried=optimizing)
         ep = run_episode(name, seg, route["steps"], noise=route.get("runs", 0) > 0, rng=rng, record=(record == "all"),
                          by=by, who=who)
         KB.update(sid, lambda r: apply_episode(r, route["id"], ep), seg, by)
@@ -912,6 +1010,7 @@ def learn_segment(name, seg, attempts=10, streak=None, record="none", optimize=T
                         for origin, steps in optimizations(target):
                             add_route(r, steps, origin, by, parent=route["id"], why="faster variant")
                     KB.update(sid, add_variants, seg, by)
+                    optimizing = True
                     continue
                 if not any(r.get("runs", 0) == 0 for r in live_routes(rec)):
                     break
@@ -927,6 +1026,8 @@ def learn_segment(name, seg, attempts=10, streak=None, record="none", optimize=T
         def add_repairs(r):
             add_lesson(r, detail, "pitfall", by, auto=True)
             for origin, steps, why in variants:
+                if len(live_routes(r)) >= REPAIR_BELOW:
+                    break
                 add_route(r, steps, origin, by, parent=route["id"], why=why)
         KB.update(sid, add_repairs, seg, by)
         if ep["failKind"] == "goal-timeout" and explorations < 2:
@@ -1407,9 +1508,11 @@ def learn_from_draft(name, seg, by):
     for e in entries:
         died = (e.get("deathsAfter") or 0) > (e.get("deathsBefore") or 0)
         if died or not e["ok"]:
-            mistakes.append("%s %s" % ("killed the player:" if died else "failed (%s):" % e.get("kind"), json.dumps(e["cmd"])[:120]))
+            mistakes.append("%s %s%s" % ("killed the player:" if died else "failed (%s):" % e.get("kind"), json.dumps(e["cmd"])[:120],
+                                          " (tried: %s)" % e["why"] if e.get("why") else ""))
             continue
-        if e["progressed"] or e["micro"] or e["cmd"].get("op") in ("key", "click", "hold", "release"):
+        if e["cmd"].get("op") not in ("observe", "status", "screen", "perf", "errors", "find", "shot", "shots"):
+            # an agent's step is deliberate: keep it even without a visible effect (stepping out of a hazard's line shows nothing)
             step = dict(e["cmd"])
             if e.get("gate") and e["progressed"]:
                 step["when"] = e["gate"]
