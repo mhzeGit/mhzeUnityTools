@@ -108,10 +108,12 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     # ------------------------------------------------------------- plumbing
-    def allowed(self):
+    def is_local(self):
         host = (self.headers.get("Host") or "").split(":")[0].lower()
-        forwarded = any(self.headers.get(h) for h in FORWARD_HEADERS)
-        if host in ("127.0.0.1", "localhost") and not forwarded:
+        return host in ("127.0.0.1", "localhost") and not any(self.headers.get(h) for h in FORWARD_HEADERS)
+
+    def allowed(self):
+        if self.is_local():
             origin = self.headers.get("Origin")
             if self.command == "POST" and origin and urllib.parse.urlparse(origin).hostname not in ("127.0.0.1", "localhost"):
                 self.send_error(403, "cross-site request")
@@ -237,9 +239,11 @@ class Handler(BaseHTTPRequestHandler):
 
     # ------------------------------------------------------------- routes
     def dispatch(self, method, parts, query):
-        if method == "GET" and not parts:
-            page = Path(__file__).with_name("agentplay_dashboard.html")
-            return self.file(page)
+        if method == "GET" and (not parts or parts == ["m"]):
+            # Phones get the phone app (also at /m); ?desktop=1 asks for the desktop page anyway.
+            phone = parts == ["m"] or (not query.get("desktop") and re.search(r"Mobi|Android|iPhone|iPad", self.headers.get("User-Agent") or ""))
+            page = Path(__file__).with_name("agentplay_mobile.html" if phone else "agentplay_dashboard.html")
+            return self.file(page if page.exists() else Path(__file__).with_name("agentplay_dashboard.html"))
         if parts[:1] == ["media"] and method == "GET" and len(parts) >= 4 and parts[1] in ("videos", "playtests"):
             root = (ap.video.VIDEOS if parts[1] == "videos" else ap.learn.PLAYTESTS).resolve()
             target = (root / parts[2] / Path(*parts[3:])).resolve()
@@ -252,7 +256,7 @@ class Handler(BaseHTTPRequestHandler):
         if method == "GET" and what == "status":
             build = ap.latest_build()
             info = ap.read_info(build) if build else None
-            return self.json({"tool": "agentplay", "project": ap.ROOT.name,
+            return self.json({"tool": "agentplay", "project": ap.ROOT.name, "viewer": "local" if self.is_local() else "remote",
                               "build": {"name": build.name, "builtAt": (info or {}).get("builtAt"), "current": None} if build else None,
                               "knowledgeDir": str(ap.learn.KB.root), "ffmpeg": bool(ap.video.ffmpeg())})
         if what == "players":
@@ -411,6 +415,19 @@ def kill(pid):
     subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
+def start_detached(port, token=None, control=False):
+    """The server as a hidden background process; returns its pid."""
+    exe = Path(sys.executable)
+    quiet = exe.with_name("pythonw.exe") if exe.with_name("pythonw.exe").exists() else exe
+    ap.HOME.mkdir(parents=True, exist_ok=True)
+    command = [str(quiet), str(Path(ap.__file__).resolve()), "serve", "--port", str(port)]
+    if token:
+        command += ["--share-token", token] + (["--allow-control"] if control else [])
+    proc = subprocess.Popen(command, stdout=open(ap.HOME / "web.log", "w"), stderr=subprocess.STDOUT, cwd=str(ap.ROOT),
+                            creationflags=getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    return proc.pid
+
+
 def cmd_serve(args):
     state = read_state()
     if args.stop or args.status:
@@ -430,6 +447,16 @@ def cmd_serve(args):
         STATE.unlink(missing_ok=True)
         print("dashboard stopped" + (" and its share link closed" if state.get("public") else ""))
         return
+    if args.restart:
+        if state is None:
+            ap.fail("no background dashboard to restart: agentplay.py serve --detach [--tunnel]")
+        if ap.pid_alive(state["pid"]):
+            kill(state["pid"])
+        port = int(state["url"].rsplit(":", 1)[1].strip("/"))
+        new = dict(state, pid=start_detached(port, state.get("token"), state.get("control")), since=time.time())
+        STATE.write_text(json.dumps(new), encoding="utf-8")
+        print("DASHBOARD restarted at %s (pid %d)%s" % (state["url"], new["pid"], "; the share link is unchanged" if state.get("public") else ""))
+        return
     sharing = args.tunnel or args.share
     token = args.share_token or (secrets.token_urlsafe(18) if sharing else None)
     if args.detach:
@@ -442,21 +469,13 @@ def cmd_serve(args):
             if args.open:
                 webbrowser.open(state["url"])
             return
-        exe = Path(sys.executable)
-        quiet = exe.with_name("pythonw.exe") if exe.with_name("pythonw.exe").exists() else exe
-        ap.HOME.mkdir(parents=True, exist_ok=True)
-        command = [str(quiet), str(Path(ap.__file__).resolve()), "serve", "--port", str(args.port)]
-        if token:
-            command += ["--share-token", token] + (["--allow-control"] if args.allow_control else [])
-        proc = subprocess.Popen(command, stdout=open(ap.HOME / "web.log", "w"), stderr=subprocess.STDOUT, cwd=str(ap.ROOT),
-                                creationflags=getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
         url = "http://127.0.0.1:%d/" % args.port
-        new = {"pid": proc.pid, "url": url, "since": time.time()}
+        new = {"pid": start_detached(args.port, token, args.allow_control), "url": url, "since": time.time()}
         if args.tunnel:
             tunnel, public = start_tunnel(args.port, ap.HOME / "tunnel.log", detached=True)
             new.update(tunnelPid=tunnel.pid, public=public, token=token, control=args.allow_control)
         STATE.write_text(json.dumps(new), encoding="utf-8")
-        print("DASHBOARD %s (background, pid %d; agentplay.py serve --stop ends it)" % (url, proc.pid))
+        print("DASHBOARD %s (background, pid %d; agentplay.py serve --stop ends it)" % (url, new["pid"]))
         if args.tunnel:
             print_share(new["public"], token, args.allow_control)
         if args.open:
@@ -476,6 +495,7 @@ def register(sub, ap_module):
     p.add_argument("--detach", action="store_true", help="run in the background")
     p.add_argument("--stop", action="store_true", help="stop the background dashboard (and its tunnel)")
     p.add_argument("--status", action="store_true", help="is it running; prints the share link again")
+    p.add_argument("--restart", action="store_true", help="restart the background server (after a tools update); the share link stays")
     p.add_argument("--tunnel", action="store_true", help="reachable from anywhere: Cloudflare quick tunnel + secret view-only link")
     p.add_argument("--share", action="store_true", help="accept remote requests that carry the secret key (your own tunnel or LAN proxy)")
     p.add_argument("--allow-control", action="store_true", help="remote viewers may also start/stop recordings and send commands")

@@ -109,7 +109,9 @@ knowledge (mastery, routes, lessons, values) and players (record, mark, stop, se
 `serve --detach --tunnel` adds a Cloudflare quick tunnel (no account; cloudflared is downloaded once into `Builds/AgentPlay/_tools`)
 and prints a secret share link that works from anywhere, a phone too, while the computer is on: remote viewers need its key
 (then a cookie) and can only look (`--allow-control` lets them act). `serve --status` prints the link again; `serve --stop`
-closes it. The pages fit a phone screen.
+closes it. Phones get a phone app at the same address (also `/m`; `?desktop=1` for the desktop page): tabs at the bottom,
+the playtest video pinned on top with a tappable segment strip and cards that jump to each segment. After a tools update,
+`serve --restart` reloads the server and keeps the tunnel, so the link stays valid.
 
 ## Build records
 

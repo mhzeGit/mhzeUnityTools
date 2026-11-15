@@ -543,7 +543,14 @@ class AgentPlayTests(unittest.TestCase):
             self.assertEqual((status, json.loads(body)["tool"]), (200, "agentplay"))
             status, _, _, body = call("POST", "/api/players/bot/send", dict(keyed, **{"Content-Type": "application/json"}), b'{"op":"status"}')
             self.assertEqual(status, 403, "a share link is view only")
-            self.assertEqual(call("GET", "/api/status", {"Host": "127.0.0.1:%d" % port})[0], 200, "the local user needs no key")
+            self.assertEqual(json.loads(call("GET", "/api/status", keyed)[3])["viewer"], "remote")
+            local = {"Host": "127.0.0.1:%d" % port}
+            self.assertEqual(json.loads(call("GET", "/api/status", local)[3])["viewer"], "local")
+            phone = dict(keyed, **{"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148 Safari/604.1"})
+            self.assertIn(b'The phone app of the agentplay dashboard', call("GET", "/", phone)[3], "a phone gets the phone app")
+            self.assertNotIn(b'The phone app of the agentplay dashboard', call("GET", "/?desktop=1", phone)[3], "?desktop=1 asks for the desktop page")
+            self.assertIn(b'The phone app of the agentplay dashboard', call("GET", "/m", keyed)[3])
+            self.assertEqual(call("GET", "/api/status", local)[0], 200, "the local user needs no key")
             web.SHARE["token"] = None
             self.assertEqual(call("GET", "/api/status", remote)[0], 403, "without sharing, remote requests are refused")
         finally:

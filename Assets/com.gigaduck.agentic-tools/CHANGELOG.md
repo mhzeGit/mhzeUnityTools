@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.4 - 2026-11-15
+
+- **A phone app for the dashboard** (`agentplay_mobile.html`): phones opening the dashboard (or `/m`) get a phone-first app instead
+  of the desktop page (`?desktop=1` still asks for it): bottom tab bar, list-to-detail screens, normal page scrolling, large tap
+  targets, nothing wider than the screen. A playtest pins its video at the top with the segment "tape" under it (tap anywhere to
+  jump) and a line that says what the bot does or what the screen shows at that moment (captions stay off on the small video);
+  every segment is a card with a thumbnail of its start that plays from there and lights up while it plays; findings jump to
+  their time. Learning shows mastery per chapter, each segment's route steps, the needs-agent diagnosis, lessons and runs.
+  Checked as an iPhone 13 (Playwright): every screen, seeking from cards and the tape, no sideways overflow, no console errors.
+- `serve --restart` restarts the background server (after a tools update) and keeps the tunnel, so a shared link stays valid.
+  `/api/status` tells the page whether the viewer is local or remote.
+
 ## 1.3.3 - 2026-11-15
 
 - **See it from a phone.** `agentplay.py serve --detach --tunnel` also opens a Cloudflare quick tunnel (no account; cloudflared

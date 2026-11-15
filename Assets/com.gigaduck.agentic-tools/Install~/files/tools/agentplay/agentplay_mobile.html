@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#110c0b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<title>agentplay</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%23110c0b%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%277%27 fill=%27%23ff5a3c%27/%3E%3C/svg%3E">
+<!-- The phone app of the agentplay dashboard (served at / to phones, and at /m). Same API as the desktop page
+     (agentplay_dashboard.html); installed from the Agentic Tools package: change it there. No external files. -->
+<style>
+:root{
+  --bg:#110c0b;--s1:#1a1311;--s2:#221915;--s3:#2c211c;--line:#3a2b25;--line2:#4a3830;
+  --t1:#f4e8dd;--t2:#cbb7a8;--t3:#917d70;
+  --rec:#ff5a3c;--pass:#5fd38a;--fail:#ff5b5b;--warn:#f2b441;--info:#86a9ff;
+  --m-mastered:#7cc0ff;--m-competent:#5fd38a;--m-needs:#ff8a4c;--m-learning:#c9a2ff;--m-stale:#ff5b5b;--m-unknown:#6f625a;
+  --display:ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Segoe UI Variable Display",sans-serif;
+  --body:-apple-system,"SF Pro Text","Segoe UI Variable Text","Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,"Roboto Mono",monospace;
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
+  --bar:52px;--tab:60px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg);color-scheme:dark;-webkit-text-size-adjust:100%;overflow-x:clip}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--t1);font:15px/1.45 var(--body);overscroll-behavior-y:none;overflow-x:clip}
+/* nothing may be wider than the screen (a phone would zoom the whole page out): long tokens break anywhere */
+.lesson,.need,.fd .tx,.ev .x,.kr p,.verdict h2,.steps .arg,.pt-t p,.sc .note,.foot,.err{overflow-wrap:anywhere}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+img{display:block}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* app bar and tab bar */
+.bar{position:fixed;left:0;right:0;top:0;z-index:20;height:calc(var(--bar) + var(--st));padding:var(--st) 6px 0;display:flex;align-items:center;gap:4px;
+  background:rgba(17,12,11,.88);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border-bottom:1px solid var(--line)}
+.bar h1{flex:1;min-width:0;margin:0 4px;font:700 17px/1.15 var(--display);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar h1 small{display:block;font:500 11.5px var(--body);color:var(--t3);letter-spacing:.02em}
+.ib{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;color:var(--t2)}
+.ib:active{background:var(--s3)}
+.ib svg{width:22px;height:22px}
+.ib[hidden]{display:none}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;height:calc(var(--tab) + var(--sb));padding-bottom:var(--sb);display:grid;grid-template-columns:repeat(4,1fr);
+  background:rgba(17,12,11,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.tabs a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:600 10.5px var(--display);letter-spacing:.04em;color:var(--t3)}
+.tabs a svg{width:24px;height:24px}
+.tabs a.on{color:var(--t1)} .tabs a.on svg{color:var(--rec)}
+main{padding:calc(var(--bar) + var(--st)) 0 calc(var(--tab) + var(--sb) + 24px)}
+.pad{padding:0 14px}
+
+/* headings, cards, chips */
+.h{display:flex;align-items:baseline;gap:8px;margin:22px 14px 10px;font:700 13px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.h b{font:600 12px var(--mono);letter-spacing:0;color:var(--t2)}
+.h .sp{flex:1}
+.card{display:block;margin:0 14px 10px;padding:14px;background:var(--s1);border:1px solid var(--line);border-radius:16px;position:relative;overflow:hidden}
+a.card:active,button.card:active,.tap:active{transform:scale(.985);background:var(--s2)}
+.card,.tap{transition:transform .12s ease,background .12s ease}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:999px;background:var(--s3);color:var(--t2);font:600 11.5px var(--display);
+  letter-spacing:.02em;white-space:nowrap;vertical-align:middle}
+.chip i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--c,var(--t3))}
+.chip{max-width:100%;min-width:0}.chip .ct{overflow:hidden;text-overflow:ellipsis}
+.chip.solid{background:var(--c);color:#140d0b} .chip.solid i{display:none}
+.seg{display:flex;gap:6px;margin:0 14px 12px;padding:4px;background:var(--s1);border:1px solid var(--line);border-radius:14px;overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;min-height:36px;padding:0 12px;border-radius:10px;font:600 13px var(--display);color:var(--t2);white-space:nowrap}
+.seg button b{margin-left:5px;font:500 11.5px var(--mono);color:var(--t3)}
+.seg button.on{background:var(--s3);color:var(--t1);box-shadow:inset 0 0 0 1px var(--line2)}
+.muted{color:var(--t3)} .small{font-size:13px}
+.empty{margin:40px 24px;text-align:center;color:var(--t3);font-size:14px}
+.empty b{display:block;margin-bottom:6px;font:700 18px var(--display);color:var(--t2)}
+.err{margin:16px 14px;padding:14px;border-radius:14px;background:#3a1714;border:1px solid #6b2a22;color:#ffd3c9;font-size:14px}
+.err button{margin-top:10px;padding:8px 14px;border-radius:10px;background:#6b2a22;font-weight:600}
+.skel{height:86px;margin:0 14px 10px;border-radius:16px;background:linear-gradient(90deg,var(--s1),var(--s2),var(--s1));background-size:200% 100%;animation:sk 1.2s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+.rise{animation:rise .38s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* playtest list */
+.pt-top{display:flex;align-items:flex-start;gap:12px}
+.score{flex:none;width:68px;height:68px;border-radius:16px;display:grid;place-items:center;background:var(--s2);border:1px solid var(--line2);text-align:center}
+.score b{display:block;font:800 22px/1 var(--display)} .score span{font:500 10.5px var(--mono);color:var(--t3)}
+.pt-t{min-width:0;flex:1} .pt-t h3{margin:0 0 3px;font:700 16.5px/1.25 var(--display)}
+.pt-t p{margin:0;font-size:13px;color:var(--t2)}
+.mini{display:flex;gap:1px;height:8px;margin-top:12px;border-radius:4px;overflow:hidden}
+.mini i{flex:1 1 0;background:var(--c)}
+.hatch{background:repeating-linear-gradient(45deg,#4b3f39 0 3px,#362c27 3px 6px)!important}
+
+/* player */
+.player{position:sticky;top:calc(var(--bar) + var(--st));z-index:10;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:0 10px 24px -14px #000}
+.player.free{position:relative;top:0}
+.vbox{position:relative;aspect-ratio:16/9;background:#000;max-height:42vh;margin:0 auto}
+.vbox video,.vbox img.frame{width:100%;height:100%;object-fit:contain;background:#000}
+.vbox .pin{position:absolute;right:8px;top:8px;width:36px;height:36px;border-radius:10px;background:rgba(0,0,0,.55);display:grid;place-items:center;color:#fff}
+.vbox .pin svg{width:18px;height:18px}
+.tape{position:relative;height:30px;margin:8px 14px 0;display:flex;gap:1px;border-radius:7px;overflow:hidden;touch-action:none}
+.tape i{flex:1 1 0;background:var(--c);min-width:1px}
+.tape .ph{position:absolute;top:-2px;bottom:-2px;width:3px;margin-left:-1px;border-radius:2px;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.5);pointer-events:none}
+.now{display:flex;align-items:center;gap:10px;padding:8px 14px 10px;font-size:13px;min-height:40px}
+.now .lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t2)}
+.now .lbl b{color:var(--t1);font-family:var(--display)}
+.now .tm{font:600 12.5px var(--mono);color:var(--t3)}
+.act{margin:-4px 14px 0;padding-bottom:10px;min-height:28px;font-size:12.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act b{font:700 10px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--c);margin-right:6px}
+
+/* verdict and meters */
+.verdict{margin:14px 14px 10px;padding:16px;border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--c) 22%,var(--s1)),var(--s1) 70%);border:1px solid color-mix(in srgb,var(--c) 40%,var(--line))}
+.verdict h2{margin:0;font:800 20px/1.25 var(--display)}
+.verdict .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.verdict .meta div{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em}
+.verdict .meta b{display:block;margin-top:2px;font:600 14px var(--mono);color:var(--t1);text-transform:none;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 14px}
+.meter{padding:12px;border-radius:14px;background:var(--s1);border:1px solid var(--line)}
+.meter span{font:700 11px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.meter b{display:block;margin:6px 0 8px;font:800 26px/1 var(--display)} .meter b small{font-size:13px;color:var(--t3);margin-left:2px}
+.meter .track{height:6px;border-radius:3px;background:var(--s3);overflow:hidden} .meter .track i{display:block;height:100%;background:var(--c);border-radius:3px}
+.meter em{display:block;margin-top:6px;font:500 11.5px var(--body);font-style:normal;color:var(--c)}
+.meter.wide{grid-column:1/-1}
+
+/* segment cards */
+.sc{display:flex;gap:12px;align-items:stretch;margin:0 14px 8px;padding:10px 12px 10px 10px;background:var(--s1);border:1px solid var(--line);border-radius:14px;width:calc(100% - 28px);text-align:left;position:relative}
+.sc::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 4px 4px 0;background:var(--c)}
+.sc.on{border-color:var(--rec);background:var(--s2)}
+.sc.on::after{content:"PLAYING";position:absolute;right:10px;top:8px;font:700 9.5px var(--display);letter-spacing:.14em;color:var(--rec)}
+.thumb{flex:none;width:96px;aspect-ratio:16/9;border-radius:9px;overflow:hidden;background:var(--s3);margin-left:4px;align-self:center}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.sc .body{flex:1;min-width:0}
+.sc .n{font:600 11.5px var(--mono);color:var(--t3)}
+.sc h4{margin:1px 0 4px;font:700 15px/1.25 var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc h4 small{display:block;font:500 13px var(--body);color:var(--t2)}
+.sc .row{display:flex;flex-wrap:wrap;gap:5px}
+.sc .note{margin-top:7px;font-size:12.5px;color:var(--t3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sc.open .note{display:block}
+
+/* findings, events */
+.fd{display:flex;gap:10px;align-items:flex-start;margin:0 14px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.fd .tx{flex:1;min-width:0;font-size:13.5px;color:var(--t2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.fd.open .tx{display:block}
+.fd .tx b{display:block;color:var(--t1);font:600 12px var(--mono);margin-bottom:2px}
+.go{flex:none;display:inline-flex;align-items:center;gap:4px;height:34px;padding:0 11px;border-radius:10px;background:var(--s3);font:600 12.5px var(--mono);color:var(--t1)}
+.go svg{width:12px;height:12px;color:var(--rec)}
+.ev{display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px}
+.ev .tm{font:600 12px var(--mono);color:var(--t3);padding-top:1px}
+.ev .k{font:700 10px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--c)}
+.ev .x{color:var(--t2);word-break:break-word}
+.ev.on{background:color-mix(in srgb,var(--rec) 12%,transparent)} .ev.on .tm{color:var(--rec)}
+.hs{display:flex;gap:8px;overflow-x:auto;padding:0 14px 4px;scrollbar-width:none;scroll-snap-type:x proximity}
+.hs::-webkit-scrollbar{display:none}
+.kf{flex:none;width:132px;scroll-snap-align:start;border-radius:10px;overflow:hidden;background:var(--s2);position:relative}
+.kf img{width:100%;aspect-ratio:16/9;object-fit:cover}
+.kf span{position:absolute;left:5px;bottom:5px;padding:1px 5px;border-radius:5px;background:rgba(0,0,0,.65);font:600 11px var(--mono)}
+.search{display:block;width:calc(100% - 28px);margin:0 14px 10px;height:42px;padding:0 14px;border-radius:12px;background:var(--s1);border:1px solid var(--line);color:var(--t1);font:15px var(--body)}
+
+/* video list */
+.vl{display:flex;gap:12px;align-items:center}
+.vl .thumb{width:120px;margin:0}
+.vl .b{min-width:0;flex:1} .vl h3{margin:0 0 3px;font:700 15px/1.25 var(--display);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vl p{margin:0;font-size:12.5px;color:var(--t3)}
+
+/* knowledge */
+.hero{margin:16px 14px 6px}
+.hero .big{font:800 44px/1 var(--display);letter-spacing:-.01em} .hero .big small{font-size:20px;color:var(--t3);margin-left:4px}
+.hero p{margin:4px 0 12px;color:var(--t2);font-size:14px}
+.stack{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px}
+.stack i{background:var(--c)}
+.kr{display:flex;align-items:center;gap:12px;margin:0 14px;padding:12px 4px;border-bottom:1px solid var(--line);min-height:56px}
+.kr .dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 18%,transparent)}
+.kr .b{flex:1;min-width:0} .kr h4{margin:0;font:650 15px/1.25 var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kr p{margin:1px 0 0;font-size:12.5px;color:var(--t3)}
+.kr .r{flex:none;text-align:right;font:600 12px var(--mono);color:var(--t2)}
+.kr svg{flex:none;width:16px;height:16px;color:var(--t3)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 14px}
+.st{padding:10px;border-radius:12px;background:var(--s1);border:1px solid var(--line)}
+.st span{display:block;font:700 10px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.st b{display:block;margin-top:4px;font:700 18px var(--display)}
+.need{margin:12px 14px;padding:14px;border-radius:14px;background:color-mix(in srgb,var(--m-needs) 10%,var(--s1));border:1px solid color-mix(in srgb,var(--m-needs) 45%,var(--line))}
+.need h5{margin:0 0 6px;font:800 13px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--m-needs)}
+.need p{margin:0 0 8px;font-size:14px}
+.need .tr{display:flex;flex-wrap:wrap;gap:6px}
+.steps{margin:0 14px;padding:0;list-style:none;counter-reset:s}
+.steps li{position:relative;padding:10px 0 10px 40px;border-bottom:1px solid var(--line);counter-increment:s}
+.steps li::before{content:counter(s);position:absolute;left:0;top:10px;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--s3);font:700 13px var(--mono);color:var(--t2)}
+.steps .op{font:700 15px var(--display)} .steps .arg{font:500 13px var(--mono);color:var(--t2);word-break:break-word}
+.steps .why{display:block;margin-top:3px;font-size:12.5px;color:var(--t3)}
+.steps .gate{display:inline-block;margin-top:5px;padding:2px 7px;border-radius:6px;background:var(--s2);font:500 11px var(--mono);color:var(--t3);word-break:break-all}
+.lesson{margin:0 14px 8px;padding:12px;border-radius:12px;background:var(--s1);border:1px solid var(--line);font-size:13.5px;color:var(--t2)}
+.lesson .chip{margin-bottom:6px}
+.hist{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;margin:0 14px;font-size:13px;align-items:center}
+.hist > *{padding:8px 0;border-bottom:1px solid var(--line)}
+details.more{margin:0 14px 10px;border:1px solid var(--line);border-radius:14px;background:var(--s1)}
+details.more summary{list-style:none;padding:12px 14px;font:650 14px var(--display);cursor:pointer}
+details.more summary::-webkit-details-marker{display:none}
+details.more[open] summary{border-bottom:1px solid var(--line)}
+.foot{margin:26px 14px 0;text-align:center;font-size:12.5px;color:var(--t3)}
+.foot a{color:var(--t2);text-decoration:underline}
+</style>
+</head>
+<body>
+<header class="bar">
+  <button class="ib" id="back" hidden aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <h1 id="title">agentplay<small id="sub">loading…</small></h1>
+  <button class="ib" id="reload" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg></button>
+</header>
+<main id="view"></main>
+<nav class="tabs" id="tabs">
+  <a href="#/tests" data-t="tests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4-2.5z" fill="currentColor"/></svg>Playtests</a>
+  <a href="#/videos" data-t="videos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Videos</a>
+  <a href="#/learn" data-t="learn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>Learning</a>
+  <a href="#/live" data-t="live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Players</a>
+</nav>
+<script>
+'use strict';
+/* ---------- helpers (every text goes in as a text node) ---------- */
+const $ = id => document.getElementById(id);
+function h(tag, a, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in a || {}) {
+    const v = a[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'style') for (const s in v) s.startsWith('--') ? e.style.setProperty(s, v[s]) : (e.style[s] = v[s]);
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) if (c != null && c !== false) e.append(c instanceof Node ? c : String(c));
+  return e;
+}
+const svg = (d, extra) => { const w = document.createElement('span'); w.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>'; return w.firstChild; }; // constant markup only
+const PLAY = '<path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/>', CHEV = '<path d="M9 5l7 7-7 7"/>', PIN = '<path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/>';
+const fin = v => typeof v === 'number' && isFinite(v);
+const pad = n => String(n).padStart(2, '0');
+function clock(s) { if (!fin(s)) return '–'; s = Math.max(0, Math.floor(s)); const hh = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (hh ? hh + ':' + pad(m) : m) + ':' + pad(s % 60); }
+function dur(s) { if (!fin(s)) return '–'; if (s < 60) return Math.round(s) + ' s'; if (s < 3600) return Math.round(s / 60) + ' min'; return (s / 3600).toFixed(1) + ' h'; }
+const size = b => !fin(b) ? '–' : b > 1e9 ? (b / 1e9).toFixed(1) + ' GB' : (b / 1e6).toFixed(0) + ' MB';
+function ago(t) {
+  if (!t) return '';
+  const d = new Date(String(t).replace(' ', 'T')); if (isNaN(d)) return String(t);
+  const s = (Date.now() - d) / 1000;
+  return s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago';
+}
+function splitLabel(label, id) {
+  const m = /^(\d+)\s+(.*?)\s+-\s+(.*)$/.exec(label || '');
+  return m ? { n: m[1], title: m[2], sub: m[3] } : { n: '', title: label || id || '?', sub: '' };
+}
+const OUT = { pass: 'var(--pass)', fail: 'var(--fail)', unlearned: '#4b3f39', jumped: 'var(--warn)' };
+const MAST = { mastered: 'var(--m-mastered)', competent: 'var(--m-competent)', 'needs-agent': 'var(--m-needs)', learning: 'var(--m-learning)', stale: 'var(--m-stale)', unknown: 'var(--m-unknown)' };
+const SEV = { FATAL: 'var(--fail)', ERR: 'var(--fail)', STALL: 'var(--rec)', SOFT: 'var(--warn)', WARN: 'var(--warn)', INFO: 'var(--info)' };
+const KIND = { op: 'var(--info)', result: 'var(--m-learning)', mark: 'var(--warn)', segment: 'var(--rec)', label: 'var(--pass)', text: 'var(--t3)', finding: 'var(--fail)' };
+const chip = (text, c, solid) => h('span', { class: 'chip' + (solid ? ' solid' : ''), style: { '--c': c } }, h('i'), h('span', { class: 'ct' }, text));
+const outChip = o => o === 'unlearned' ? h('span', { class: 'chip' }, 'not learned') : chip(o, OUT[o] || 'var(--t3)', true);
+function tap(el, fn) { el.addEventListener('click', fn); return el; }
+
+/* ---------- data ---------- */
+const cache = new Map();
+let REMOTE = false;
+async function api(path, fresh) {
+  if (!fresh && cache.has(path)) return cache.get(path);
+  const r = await fetch(path, { credentials: 'same-origin', cache: 'no-store' });
+  if (r.status === 401) throw new Error('This page needs its share link (the one ending in ?key=…). Open that link again.');
+  let body; try { body = await r.json(); } catch (e) { throw new Error('Bad answer from the computer (' + r.status + ').'); }
+  if (!r.ok) throw new Error(body && body.error || ('Error ' + r.status));
+  cache.set(path, body);
+  return body;
+}
+
+/* ---------- router ---------- */
+const view = $('view');
+const scrolls = new Map();
+let route = null, cleanup = null, token = 0;
+function parse() {
+  let h0 = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+  // also understand the desktop page's links (#playtests/<id>, #videos/<id>, #knowledge/<seg>, #players)
+  h0 = h0.replace(/^playtests/, 'tests').replace(/^knowledge/, 'learn').replace(/^players/, 'live');
+  const [tab, ...rest] = h0.split('/');
+  return { tab: ['tests', 'videos', 'learn', 'live'].includes(tab) ? tab : 'tests', id: rest.join('/') || null, key: h0 || 'tests' };
+}
+async function render(back) {
+  if (route) scrolls.set(route.key, scrollY);
+  if (cleanup) { cleanup(); cleanup = null; }
+  route = parse();
+  const my = ++token;
+  for (const a of $('tabs').children) a.classList.toggle('on', a.dataset.t === route.tab);
+  $('back').hidden = !route.id;
+  view.replaceChildren(...[0, 1, 2].map(() => h('div', { class: 'skel' })));
+  try {
+    const fn = { tests: route.id ? testView : testsView, videos: route.id ? videoView : videosView, learn: route.id ? segView : learnView, live: liveView }[route.tab];
+    const node = await fn(route.id);
+    if (my !== token) return;
+    view.replaceChildren(node);
+    scrollTo(0, back && scrolls.has(route.key) ? scrolls.get(route.key) : 0);
+  } catch (e) {
+    if (my !== token) return;
+    view.replaceChildren(h('div', { class: 'err' }, String(e.message || e), h('br'), tap(h('button', null, 'Try again'), () => { cache.clear(); render(); })));
+  }
+}
+let popped = false;
+addEventListener('popstate', () => { popped = true; });
+addEventListener('hashchange', () => { const b = popped; popped = false; render(b); });
+$('back').addEventListener('click', () => { if (history.length > 1) history.back(); else location.hash = '#/' + route.tab; });
+$('reload').addEventListener('click', () => { cache.clear(); render(true); });
+function title(t, sub) { $('title').firstChild.textContent = t; $('sub').textContent = sub || ''; document.title = t + ' · agentplay'; }
+
+/* ---------- the player: video, the segment tape, what plays now ---------- */
+function player(meta, segs) {
+  const kfs = (meta && meta.keyframes || []).slice().sort((a, b) => a.t - b.t);
+  const box = h('div', { class: 'vbox' });
+  let video = null;
+  if (meta && meta.videoUrl) {
+    video = h('video', { controls: true, playsinline: true, 'webkit-playsinline': true, preload: 'metadata', poster: kfs[0] && kfs[0].url });
+    video.src = meta.videoUrl;
+    // Captions stay off on a phone (the small video would be covered); the line under the video shows the action instead.
+    if (meta.captionsUrl) video.append(h('track', { kind: 'captions', srclang: 'en', label: 'What the bot does', src: meta.captionsUrl }));
+    box.append(video);
+  } else if (kfs.length) {
+    box.append(h('img', { class: 'frame', src: kfs[0].url, alt: '' }));
+  } else box.append(h('div', { class: 'empty' }, 'No video'));
+  const wrap = h('div', { class: 'player' + (localStorage.getItem('ap-pin') === 'off' ? ' free' : '') }, box);
+  const pinBtn = tap(h('button', { class: 'pin', 'aria-label': 'Pin or unpin the video' }, svg(PIN)), () => {
+    wrap.classList.toggle('free'); localStorage.setItem('ap-pin', wrap.classList.contains('free') ? 'off' : 'on');
+  });
+  box.append(pinBtn);
+  const total = (meta && meta.duration) || (segs && segs.length ? Math.max(...segs.map(s => s.end || 0)) : 0) || 1;
+  let ph = null, now = null, lbl = null, tm = null;
+  if (segs && segs.length) {
+    const tape = h('div', { class: 'tape', role: 'slider', 'aria-label': 'Segments: tap to jump' });
+    for (const s of segs) {
+      const w = Math.max((s.end ?? s.start ?? 0) - (s.start ?? 0), total / 400);
+      tape.append(h('i', { class: s.outcome === 'unlearned' ? 'hatch' : '', style: { '--c': OUT[s.outcome] || 'var(--t3)', flexGrow: w } }));
+    }
+    ph = h('div', { class: 'ph', style: { left: '0%' } }); tape.append(ph);
+    const scrub = ev => {
+      const r = tape.getBoundingClientRect(), x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+      seek(Math.max(0, Math.min(1, x / r.width)) * total, false);
+    };
+    tape.addEventListener('click', scrub);
+    tape.addEventListener('touchmove', e => { e.preventDefault(); scrub(e); }, { passive: false });
+    wrap.append(tape);
+  }
+  lbl = h('span', { class: 'lbl' }); tm = h('span', { class: 'tm' }, clock(0) + ' / ' + clock(total));
+  now = h('div', { class: 'now' }, lbl, tm); wrap.append(now);
+  const acts = (meta && meta.events || []).filter(e => ['op', 'result', 'mark', 'text', 'finding'].includes(e.kind)).sort((a, b) => a.t - b.t);
+  const act = acts.length ? h('div', { class: 'act' }) : null;
+  if (act) wrap.append(act);
+  const ACT_LBL = { op: 'does', result: 'result', mark: 'note', text: 'on screen', finding: 'finding' };
+  function showAct(t) {
+    let lo = 0, hi = acts.length - 1, at = -1;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (acts[m].t <= t) { at = m; lo = m + 1; } else hi = m - 1; }
+    const e = at >= 0 && t - acts[at].t < 8 ? acts[at] : null;
+    act.replaceChildren(...(e ? [h('b', { style: { '--c': KIND[e.kind] || 'var(--t3)' } }, ACT_LBL[e.kind] || e.kind), e.text] : ['']));
+  }
+  const listeners = [];
+  function seek(t, play = true) {
+    if (!fin(t)) return;
+    if (video) { video.currentTime = Math.max(0, t); if (play) video.play().catch(() => {}); }
+    else if (kfs.length) { const k = nearest(kfs, t); box.querySelector('img').src = k.url; update(t); }
+    if (wrap.classList.contains('free')) window.scrollTo({ top: Math.max(0, wrap.offsetTop - 60), behavior: 'smooth' }); // a pinned video is always in view
+  }
+  function update(t) {
+    if (ph) ph.style.left = (100 * t / total) + '%';
+    tm.textContent = clock(t) + ' / ' + clock(total);
+    const s = segs && segs.find(x => fin(x.start) && t >= x.start && t < (x.end ?? Infinity));
+    lbl.replaceChildren(s ? h('b', null, splitLabel(s.label, s.id).title + ' ') : '', s ? splitLabel(s.label, s.id).sub : (meta && meta.label || ''));
+    if (act) showAct(t);
+    for (const fn of listeners) fn(t, s);
+  }
+  if (video) video.addEventListener('timeupdate', () => update(video.currentTime));
+  update(0);
+  return { el: wrap, seek, onTime: fn => listeners.push(fn), video, kfs };
+}
+function nearest(kfs, t) { let lo = 0, hi = kfs.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (kfs[m].t <= t) lo = m; else hi = m - 1; } return kfs[lo]; }
+const goBtn = (t, p) => tap(h('button', { class: 'go', 'aria-label': 'Play from ' + clock(t) }, svg(PLAY), clock(t)), e => { e.stopPropagation(); p.seek(t); });
+
+/* ---------- playtests ---------- */
+async function testsView() {
+  const [st, pts] = await Promise.all([api('/api/status'), api('/api/playtests')]);
+  REMOTE = st.viewer === 'remote';
+  title('Playtests', st.project + (st.build ? ' · build ' + ago(st.build.builtAt) : ''));
+  const list = pts.playtests || [];
+  if (!list.length) return h('div', { class: 'empty' }, h('b', null, 'No playtests yet'), 'An agent runs one with agentplay.py playtest NAME --scope …');
+  const details = await Promise.all(list.slice(0, 8).map(p => api('/api/playtests/' + encodeURIComponent(p.id)).catch(() => null)));
+  return h('div', null, h('div', { class: 'h' }, 'Recent', h('b', null, list.length)), list.map((p, i) => {
+    const d = details[i], segs = d && d.segments || [];
+    const bad = /did not|fail|error/i.test(p.verdict || '') && !/^PASS/.test(p.verdict || '');
+    return h('a', { class: 'card rise', href: '#/tests/' + encodeURIComponent(p.id), style: { animationDelay: Math.min(i * 40, 300) + 'ms' } },
+      h('div', { class: 'pt-top' },
+        h('div', { class: 'score' }, h('div', null, h('b', { style: { color: bad ? 'var(--warn)' : 'var(--pass)' } }, (p.passed ?? '–') + ''), h('span', null, 'of ' + p.segments))),
+        h('div', { class: 'pt-t' }, h('h3', null, p.scope === 'all' ? 'Whole game' : 'Scope ' + p.scope),
+          h('p', null, (p.verdict || '').replace(/^\w+:\s*/, '')),
+          h('p', { class: 'muted', style: { marginTop: '4px' } }, ago(p.started) + ' · ' + dur(p.duration) + (p.videoId ? ' · video' : '')))),
+      segs.length ? h('div', { class: 'mini' }, segs.map(s => h('i', { class: s.outcome === 'unlearned' ? 'hatch' : '', style: { '--c': OUT[s.outcome] } }))) : null);
+  }));
+}
+
+async function testView(id) {
+  const r = await api('/api/playtests/' + encodeURIComponent(id));
+  const segs = r.segments || [];
+  title(r.scope === 'all' ? 'Whole-game playtest' : 'Playtest ' + r.scope, ago(r.started) + ' · ' + dur(r.duration));
+  const p = player(r.video, segs);
+  const q = r.quality || {};
+  const bad = !/^PASS/.test(r.verdict || '');
+  const meter = (name, v, invert, wide) => {
+    const good = invert ? v <= 0.15 : v >= 0.85, ok = invert ? v <= 0.4 : v >= 0.6;
+    const c = good ? 'var(--pass)' : ok ? 'var(--warn)' : 'var(--fail)';
+    return h('div', { class: 'meter' + (wide ? ' wide' : ''), style: { '--c': c } }, h('span', null, name),
+      h('b', null, Math.round(100 * (v || 0)), h('small', null, '%')), h('div', { class: 'track' }, h('i', { style: { width: Math.round(100 * (v || 0)) + '%' } })),
+      h('em', null, (good ? 'good' : ok ? 'fair' : 'poor') + (invert ? ' · lower is better' : '')));
+  };
+  const counts = { all: segs.length, issues: segs.filter(s => s.outcome !== 'pass').length, pass: segs.filter(s => s.outcome === 'pass').length };
+  let filter = 'all';
+  const thumbOf = s => { if (!p.kfs.length || !fin(s.start)) return null; const k = nearest(p.kfs, s.start + 1.5); return k && k.url; };
+  const cards = new Map();
+  const listBox = h('div');
+  function drawList() {
+    listBox.replaceChildren(...segs.filter(s => filter === 'all' || (filter === 'pass' ? s.outcome === 'pass' : s.outcome !== 'pass')).map((s, i) => {
+      const L = splitLabel(s.label, s.id), th = thumbOf(s);
+      const card = h('button', { class: 'sc rise', style: { '--c': OUT[s.outcome] || 'var(--t3)', animationDelay: Math.min(i * 25, 250) + 'ms' } },
+        th ? h('div', { class: 'thumb' }, h('img', { src: th, loading: 'lazy', alt: '' })) : null,
+        h('div', { class: 'body' },
+          h('div', { class: 'n' }, (L.n ? L.n + ' · ' : '') + clock(s.start) + ' · ' + dur(s.duration)),
+          h('h4', null, L.title, h('small', null, L.sub)),
+          h('div', { class: 'row' }, outChip(s.outcome), s.mastery ? chip(s.mastery, MAST[s.mastery]) : null,
+            s.deaths ? chip(s.deaths + ' death' + (s.deaths > 1 ? 's' : ''), 'var(--fail)') : null,
+            (s.errors || []).length ? chip(s.errors.length + ' error' + (s.errors.length > 1 ? 's' : ''), 'var(--fail)') : null,
+            s.chained ? null : chip('jumped in', 'var(--t3)')),
+          (s.notes || []).length ? h('div', { class: 'note' }, s.notes.join(' · ')) : null));
+      tap(card, () => { card.classList.toggle('open'); if (fin(s.start)) p.seek(s.start); });
+      cards.set(s.id, card);
+      return card;
+    }));
+  }
+  const tabs = h('div', { class: 'seg' });
+  const drawTabs = () => tabs.replaceChildren(...[['all', 'All'], ['issues', 'Issues'], ['pass', 'Passed']].map(([k, t]) =>
+    tap(h('button', { class: filter === k ? 'on' : '' }, t, h('b', null, counts[k])), () => { filter = k; drawTabs(); drawList(); })));
+  drawTabs(); drawList();
+  let lastSeg = null;
+  p.onTime((t, s) => {
+    if (s === lastSeg) return;
+    if (lastSeg && cards.get(lastSeg.id)) cards.get(lastSeg.id).classList.remove('on');
+    lastSeg = s;
+    if (s && cards.get(s.id)) cards.get(s.id).classList.add('on');
+  });
+  const order = ['FATAL', 'ERR', 'STALL', 'SOFT', 'WARN', 'INFO'];
+  const findings = (r.findings || []).slice().sort((a, b) => order.indexOf(a.sev) - order.indexOf(b.sev) || (a.t || 0) - (b.t || 0));
+  const fBox = h('div', null, findings.slice(0, 60).map(f => {
+    const row = h('div', { class: 'fd' }, chip(f.sev, SEV[f.sev] || 'var(--t3)', true),
+      h('div', { class: 'tx' }, f.segment ? h('b', null, f.segment) : null, f.text), fin(f.t) && r.video ? goBtn(f.t, p) : null);
+    return tap(row, () => row.classList.toggle('open'));
+  }));
+  return h('div', null, p.el,
+    h('div', { class: 'verdict rise', style: { '--c': bad ? 'var(--warn)' : 'var(--pass)' } },
+      h('h2', null, r.verdict || ''),
+      h('div', { class: 'meta' }, h('div', null, 'Passed', h('b', null, (r.passed ?? '–') + ' / ' + segs.length)),
+        h('div', null, 'Length', h('b', null, clock(r.duration))), h('div', null, 'Player', h('b', null, r.player || '–')))),
+    h('div', { class: 'meters' }, meter('Completion', q.completion), meter('Stability', q.stability), meter('Performance', q.performance),
+      meter('Pacing', q.pacing), meter('Friction', q.friction, true, true)),
+    h('div', { class: 'h' }, 'Segments', h('b', null, segs.length), h('span', { class: 'sp' }), h('span', { class: 'small', style: { textTransform: 'none', letterSpacing: 0, fontWeight: 500 } }, 'tap to watch')),
+    tabs, listBox,
+    findings.length ? [h('div', { class: 'h' }, 'Findings', h('b', null, findings.length)), fBox] : null,
+    h('div', { class: 'foot' }, 'Build ' + (r.build || '–')));
+}
+
+/* ---------- videos ---------- */
+async function videosView() {
+  const v = await api('/api/videos');
+  title('Videos', (v.videos || []).length + ' recordings');
+  const list = v.videos || [];
+  if (!list.length) return h('div', { class: 'empty' }, h('b', null, 'No videos yet'), 'agentplay.py record NAME start');
+  return h('div', { style: { paddingTop: '12px' } }, list.map((m, i) => h('a', { class: 'card rise', href: '#/videos/' + encodeURIComponent(m.id), style: { animationDelay: Math.min(i * 35, 300) + 'ms' } },
+    h('div', { class: 'vl' }, h('div', { class: 'thumb' }, m.keyframes && m.keyframes[0] ? h('img', { src: m.keyframes[0].url, loading: 'lazy', alt: '' }) : null),
+      h('div', { class: 'b' }, h('h3', null, m.label || m.id), h('p', null, ago(m.created) + ' · ' + clock(m.duration) + ' · ' + size(m.sizeBytes)),
+        m.playtest ? h('p', { style: { color: 'var(--rec)' } }, 'playtest') : m.segment ? h('p', null, m.segment) : null)))));
+}
+
+async function videoView(id) {
+  const m = await api('/api/videos/' + encodeURIComponent(id));
+  title(m.label || 'Video', clock(m.duration) + ' · ' + ago(m.created));
+  const p = player(m, null);
+  const kfs = p.kfs, step = Math.max(1, Math.ceil(kfs.length / 120));
+  const strip = h('div', { class: 'hs' }, kfs.filter((k, i) => i % step === 0).map(k =>
+    tap(h('button', { class: 'kf' }, h('img', { src: k.url, loading: 'lazy', alt: '' }), h('span', null, clock(k.t))), () => p.seek(k.t))));
+  const chapters = h('div', { class: 'hs' }, (m.chapters || []).map(c => tap(h('button', { class: 'chip', style: { height: '34px', padding: '0 12px' } }, clock(c.t) + '  ' + c.title), () => p.seek(c.t))));
+  const events = (m.events || []).filter(e => e.kind !== 'label');
+  const kinds = [...new Set(events.map(e => e.kind))];
+  let kind = 'all', text = '';
+  const rows = events.map(e => { const row = h('div', { class: 'ev', style: { '--c': KIND[e.kind] || 'var(--t3)' } }, h('span', { class: 'tm' }, clock(e.t)),
+    h('div', null, h('div', { class: 'k' }, e.kind), h('div', { class: 'x' }, e.text))); row._e = e; return tap(row, () => p.seek(e.t)); });
+  const box = h('div', null, rows);
+  const apply = () => { for (const r of rows) r.style.display = (kind === 'all' || r._e.kind === kind) && (!text || r._e.text.toLowerCase().includes(text)) ? '' : 'none'; };
+  const seg = h('div', { class: 'seg' });
+  const drawSeg = () => seg.replaceChildren(...['all', ...kinds].map(k => tap(h('button', { class: kind === k ? 'on' : '' }, k, h('b', null, k === 'all' ? events.length : events.filter(e => e.kind === k).length)), () => { kind = k; drawSeg(); apply(); })));
+  drawSeg();
+  let on = null;
+  p.onTime(t => { let best = null; for (const r of rows) { if (r._e.t <= t) best = r; else break; } if (best !== on) { on && on.classList.remove('on'); on = best; on && on.classList.add('on'); } });
+  const search = h('input', { class: 'search', type: 'search', placeholder: 'Search what happened…', enterkeyhint: 'search' });
+  search.addEventListener('input', () => { text = search.value.trim().toLowerCase(); apply(); });
+  return h('div', null, p.el,
+    (m.chapters || []).length > 1 ? [h('div', { class: 'h' }, 'Chapters', h('b', null, m.chapters.length)), chapters] : null,
+    kfs.length ? [h('div', { class: 'h' }, 'Moments', h('b', null, kfs.length)), strip] : null,
+    h('div', { class: 'h' }, 'What happened', h('b', null, events.length)), search, seg, box,
+    h('div', { class: 'foot' }, size(m.sizeBytes) + ' · ' + m.width + '×' + m.height + ' · ' + m.fps + ' fps', h('br'),
+      m.videoUrl ? h('a', { href: m.videoUrl }, 'Open the video file') : null));
+}
+
+/* ---------- learning (knowledge base) ---------- */
+let learnFilter = 'all';
+async function learnView() {
+  const k = await api('/api/knowledge');
+  const segs = (k.segments || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+  const count = m => segs.filter(s => s.mastery === m).length;
+  const mastered = count('mastered');
+  title('Learning', 'what the bots can play');
+  const levels = ['mastered', 'competent', 'learning', 'stale', 'needs-agent', 'unknown'].filter(m => count(m));
+  const list = h('div');
+  const draw = () => {
+    const groups = new Map();
+    for (const s of segs) {
+      if (learnFilter !== 'all' && s.mastery !== learnFilter) continue;
+      const L = splitLabel(s.label, s.id);
+      if (!groups.has(L.title)) groups.set(L.title, []);
+      groups.get(L.title).push([s, L]);
+    }
+    list.replaceChildren(...[...groups].map(([chap, rows]) => h('div', null,
+      h('div', { class: 'h' }, chap, h('b', null, rows.filter(([s]) => s.mastery === 'mastered').length + '/' + rows.length)),
+      rows.map(([s, L]) => h('a', { class: 'kr tap', href: '#/learn/' + encodeURIComponent(s.id), style: { '--c': MAST[s.mastery] || 'var(--t3)' } },
+        h('span', { class: 'dot' }), h('div', { class: 'b' }, h('h4', null, L.sub || L.title), h('p', null, s.mastery + (s.runs ? ' · ' + s.wins + '/' + s.runs + ' wins' : ''))),
+        h('div', { class: 'r' }, s.bestTime ? dur(s.bestTime) : '', s.streak ? h('div', { class: 'muted' }, '×' + s.streak) : null), svg(CHEV))))));
+    if (!list.children.length) list.append(h('div', { class: 'empty' }, 'Nothing here.'));
+  };
+  const seg = h('div', { class: 'seg' });
+  const drawSeg = () => seg.replaceChildren(...['all', ...levels].map(m => tap(h('button', { class: learnFilter === m ? 'on' : '' }, m === 'needs-agent' ? 'needs agent' : m,
+    h('b', null, m === 'all' ? segs.length : count(m))), () => { learnFilter = m; drawSeg(); draw(); })));
+  drawSeg(); draw();
+  const lessons = (k.global && k.global.lessons) || [];
+  return h('div', null,
+    h('div', { class: 'hero rise' }, h('div', { class: 'big' }, mastered, h('small', null, '/ ' + segs.length)),
+      h('p', null, 'segments mastered · ' + count('needs-agent') + ' need an agent'),
+      h('div', { class: 'stack' }, levels.map(m => h('i', { style: { '--c': MAST[m], flexGrow: count(m) } })))),
+    h('div', { style: { height: '12px' } }), seg, list,
+    lessons.length ? [h('div', { class: 'h' }, 'Game-wide lessons', h('b', null, lessons.length)), lessons.slice(-8).reverse().map(l => h('div', { class: 'lesson' }, chip(l.kind, 'var(--info)'), h('div', null, l.text)))] : null);
+}
+
+function stepView(st) {
+  const args = Object.entries(st).filter(([k]) => !['op', 'why', 'when', 'optional', 'when_timeout'].includes(k))
+    .map(([k, v]) => k + '=' + (typeof v === 'object' ? JSON.stringify(v) : v)).join('  ');
+  const gate = st.when && st.when.all ? st.when.all.map(c => c.contains || c.eq).filter(Boolean).join(' + ') : st.when ? JSON.stringify(st.when) : '';
+  return h('li', null, h('span', { class: 'op' }, st.op), st.optional ? h('span', { class: 'muted small' }, '  optional') : null, h('div', { class: 'arg' }, args),
+    st.why ? h('span', { class: 'why' }, st.why) : null, gate ? h('span', { class: 'gate' }, 'when ' + gate) : null);
+}
+
+async function segView(id) {
+  const s = await api('/api/knowledge/' + encodeURIComponent(id));
+  const L = splitLabel(s.label, s.id);
+  title(L.sub || L.title, (L.n ? L.n + ' · ' : '') + L.title);
+  const routes = s.routeList || [], best = routes[0];
+  const need = s.needsAgentDetail;
+  const st = (k, v) => h('div', { class: 'st' }, h('span', null, k), h('b', null, v));
+  return h('div', null,
+    h('div', { style: { padding: '16px 14px 10px' } }, chip(s.mastery, MAST[s.mastery], true), s.lastRun ? h('span', { class: 'muted small' }, '  last run ' + ago(s.lastRun)) : null),
+    h('div', { class: 'grid3' }, st('Runs', s.runs || 0), st('Wins', s.wins || 0), st('Streak', s.streak || 0), st('Best', s.bestTime ? dur(s.bestTime) : '–'),
+      st('Routes', routes.length), st('Friction', fin(s.friction) ? Math.round(100 * s.friction) + '%' : '–')),
+    need ? h('div', { class: 'need' }, h('h5', null, 'Needs an agent'), h('p', null, need.summary || ''),
+      (need.tried || []).length ? [h('div', { class: 'muted small', style: { margin: '6px 0' } }, 'What the bot tried (value):'),
+        h('div', { class: 'tr' }, need.tried.slice(0, 12).map(t => { const v = parseFloat(String(t).split('=').pop()); return chip(t.replace(/=.*/, '') + ' ' + (v > 0 ? '+' : '') + (isNaN(v) ? '' : v.toFixed(2)), v < 0 ? 'var(--fail)' : 'var(--pass)'); }))] : null) : null,
+    best ? [h('div', { class: 'h' }, 'Best route', h('b', null, best.id), h('span', { class: 'sp' }), h('span', { class: 'small', style: { textTransform: 'none', letterSpacing: 0 } }, best.wins + '/' + best.runs + ' wins')),
+      h('ol', { class: 'steps' }, (best.steps || []).map(stepView)), (best.steps || []).length ? null : h('div', { class: 'empty' }, 'No steps: the story plays this part by itself.')] : null,
+    (s.lessons || []).length ? [h('div', { class: 'h' }, 'Lessons', h('b', null, s.lessons.length)),
+      s.lessons.slice().reverse().slice(0, 12).map(l => h('div', { class: 'lesson' }, chip(l.kind + (l.auto ? '' : ' · ' + (l.by || '')), l.kind === 'bug' ? 'var(--fail)' : l.kind === 'tip' ? 'var(--pass)' : 'var(--warn)'), h('div', null, l.text)))] : null,
+    (s.history || []).length ? [h('div', { class: 'h' }, 'Recent runs', h('b', null, s.history.length)),
+      h('div', { class: 'hist' }, s.history.slice(0, 15).map(r => [h('span', { class: 'muted' }, ago(r.at) + ' · ' + r.route), h('span', null, chip(r.outcome, r.outcome === 'win' ? 'var(--pass)' : 'var(--fail)', true)), h('span', { class: 'mono small' }, dur(r.time))]))] : null,
+    routes.length > 1 ? h('details', { class: 'more', style: { marginTop: '16px' } }, h('summary', null, 'Other routes (' + (routes.length - 1) + ')'),
+      routes.slice(1).map(r => h('div', { style: { padding: '10px 0' } }, h('div', { class: 'pad small muted' }, r.id + ' · ' + (r.origin || '') + ' · ' + r.wins + '/' + r.runs + ' wins' + (r.retired ? ' · retired' : '')),
+        h('ol', { class: 'steps' }, (r.steps || []).map(stepView))))) : null);
+}
+
+/* ---------- players ---------- */
+async function liveView() {
+  const [st, pl] = await Promise.all([api('/api/status', true), api('/api/players', true)]);
+  REMOTE = st.viewer === 'remote';
+  const list = (pl.players || []).slice().sort((a, b) => (a.state === 'running' ? 0 : 1) - (b.state === 'running' ? 0 : 1));
+  const running = list.filter(p => p.state === 'running');
+  title('Players', running.length + ' running');
+  return h('div', null,
+    h('div', { class: 'hero' }, h('div', { class: 'big' }, running.length, h('small', null, 'running')),
+      h('p', null, REMOTE ? 'View only from this link: start, record and send commands on the computer.' : 'Players agents started on this computer.')),
+    running.length ? [h('div', { class: 'h' }, 'Now'), running.map(p => h('div', { class: 'kr', style: { '--c': p.recording ? 'var(--rec)' : 'var(--pass)' } }, h('span', { class: 'dot' }),
+      h('div', { class: 'b' }, h('h4', null, p.name), h('p', null, (p.detail || '') + (p.heartbeatAge != null ? ' · ' + Math.round(p.heartbeatAge) + ' s ago' : ''))),
+      p.recording ? chip('REC', 'var(--rec)', true) : null))] : null,
+    list.length > running.length ? h('details', { class: 'more', style: { marginTop: '18px' } }, h('summary', null, 'Stopped players (' + (list.length - running.length) + ')'),
+      list.filter(p => p.state !== 'running').slice(0, 40).map(p => h('div', { class: 'kr', style: { '--c': 'var(--m-unknown)' } }, h('span', { class: 'dot' }), h('div', { class: 'b' }, h('h4', null, p.name))))) : null,
+    h('div', { class: 'foot' }, st.project + ' · build ' + (st.build ? st.build.name : '–'), h('br'), h('a', { href: '/?desktop=1' }, 'Open the desktop dashboard')));
+}
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !route.id) { cache.clear(); render(true); } });
+if (!location.hash) history.replaceState(null, '', '#/tests');
+render();
+</script>
+</body>
+</html>
