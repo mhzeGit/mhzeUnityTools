@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.2 - 2026-11-15
+
+- Playtest pacing is judged only on segments the bot played (an unlearned segment's wait is not a pacing problem); the
+  "mostly waiting" finding is no longer raised for them. `agentplay.py playtest-report ID` recomputes scores and findings.
+- Captions leave out the learner's own zero-wait checks (`until ... timeout=0`); `agentplay.py video recaption ID` rebuilds an
+  existing video's captions and swaps its subtitle track.
+
 ## 1.3.1 - 2026-11-15
 
 Fixes from the first real learning runs (a whole game, 39 segments):

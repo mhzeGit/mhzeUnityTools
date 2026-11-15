@@ -52,7 +52,7 @@ python tools/agentplay/agentplay.py record me1 start --label "what this shows"  
 python tools/agentplay/agentplay.py record me1 mark "the door should open now"     # a caption at this moment
 python tools/agentplay/agentplay.py record me1 stop                                # encodes and stores it; prints the paths
 python tools/agentplay/agentplay.py video sheet last --from 30 --to 60             # what an agent looks at instead of the video
-python tools/agentplay/agentplay.py video list | info ID | frame ID --at 42.5 [--exact] | events ID | open ID | prune --keep 30
+python tools/agentplay/agentplay.py video list | info ID | frame ID --at 42.5 [--exact] | events ID | open ID | recaption ID | prune --keep 30
 ```
 
 The player renders its camera into a small render texture, reads it back from the GPU without stalling and streams frames into

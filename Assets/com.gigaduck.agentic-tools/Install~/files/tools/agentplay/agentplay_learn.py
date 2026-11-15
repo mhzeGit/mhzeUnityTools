@@ -1255,7 +1255,7 @@ def play_segment(name, seg, recording, report, by):
     if ep["outcome"] != "win":
         report["findings"].append({"sev": "STALL", "text": "%s did not finish: %s" % (seg["id"], ep["failDetail"][:200]),
                                    "segment": seg["id"], "t": t_end})
-    if row["passiveRatio"] > 0.85 and (ep["time"] or 0) > 40:
+    if route and row["passiveRatio"] > 0.85 and (ep["time"] or 0) > 40:  # an unlearned segment's wait says nothing about pacing
         report["findings"].append({"sev": "INFO", "text": "%.0f s mostly waiting (cutscene or dialog pacing?)" % ep["time"],
                                    "segment": seg["id"], "t": t_video})
     def note(r):
@@ -1271,7 +1271,8 @@ def score(report):
     passed = sum(1 for r in rows if r["outcome"] == "pass")
     clean = sum(1 for r in rows if not r["errors"])
     smooth = sum(1 for r in rows if (r.get("p95FrameMs") or 0) < 50 and (r.get("worstFrameMs") or 0) < 250)
-    pacing = 1 - sum(max(0.0, r["passiveRatio"] - 0.6) / 0.4 for r in rows) / n
+    played = [r for r in rows if r["outcome"] != "unlearned"]  # pacing only where the bot played, not where it waited
+    pacing = 1 - sum(max(0.0, r["passiveRatio"] - 0.6) / 0.4 for r in played) / max(1, len(played))
     report["quality"] = {"completion": round(passed / n, 3), "stability": round(clean / n, 3),
                          "performance": round(smooth / n, 3), "pacing": round(max(0.0, pacing), 3),
                          "friction": round(sum(r.get("friction", 0) for r in rows) / n, 3)}
@@ -1299,6 +1300,15 @@ def write_report(report):
         html = template.read_text(encoding="utf-8").replace("/*__REPORT_JSON__*/null", data)
         (folder / "report.html").write_text(html, encoding="utf-8")
     return folder
+
+
+def cmd_playtest_report(args):
+    report = json.loads((PLAYTESTS / args.id / "report.json").read_text(encoding="utf-8"))
+    unlearned = {r["id"] for r in report["segments"] if r["outcome"] == "unlearned"}
+    report["findings"] = [f for f in report["findings"]
+                          if not (f["sev"] == "INFO" and f.get("segment") in unlearned and "mostly waiting" in f["text"])]
+    score(report)
+    print(write_report(report) / "report.html")
 
 
 def all_playtests():
@@ -1720,6 +1730,6 @@ def register(sub, ap_module):
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=cmd_kb)
 
-    p = sub.add_parser("playtest-report", help="rewrite a playtest's report.html (after a template update)")
+    p = sub.add_parser("playtest-report", help="rewrite a playtest's report (scores and report.html) from its report.json")
     p.add_argument("id")
-    p.set_defaults(func=lambda a: print(write_report(json.loads((PLAYTESTS / a.id / "report.json").read_text(encoding="utf-8"))) / "report.html"))
+    p.set_defaults(func=cmd_playtest_report)

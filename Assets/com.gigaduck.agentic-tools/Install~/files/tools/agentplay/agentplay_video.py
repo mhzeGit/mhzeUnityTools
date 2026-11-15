@@ -136,6 +136,22 @@ def read_events(folder):
     return events
 
 
+def clean_events(events):
+    """Without the learner's own zero-wait checks (`until ... timeout=0`, and their results): they are bookkeeping, not play."""
+    out, skip_result = [], False
+    for e in events:
+        text = e.get("text", "")
+        if e.get("kind") == "op" and text.startswith("until ") and re.search(r"\btimeout=0(\.0)?\b", text):
+            skip_result = True
+            continue
+        if e.get("kind") == "result" and skip_result and text.startswith("until"):
+            skip_result = False
+            continue
+        skip_result = False
+        out.append(e)
+    return out
+
+
 def vtt_time(t):
     t = max(0.0, t)
     return "%02d:%02d:%02d.%03d" % (int(t // 3600), int(t % 3600 // 60), int(t % 60), int(round(t % 1 * 1000)) % 1000)
@@ -196,7 +212,7 @@ def finalize(src, player="", extra=None, keep_frames=False):
         rec = json.loads((dst / "recording.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         pass
-    events = read_events(dst)
+    events = clean_events(read_events(dst))
     keyframes = rec.get("keyframes") or [{"t": int(p.stem[2:]) / 1000.0, "file": "keyframes/" + p.name}
                                          for p in sorted((dst / "keyframes").glob("k_*.jpg"))]
     keyframes.sort(key=lambda k: k["t"])
@@ -381,6 +397,27 @@ def write_avi(path, jpegs, times, fps, width, height):
     Path(path).write_bytes(b"RIFF" + struct.pack("<I", len(body)) + body)
 
 
+def recaption(meta):
+    """Rebuilds a stored video's captions from its event log (after a captions change) and swaps the MP4's subtitle track."""
+    folder = folder_of(meta)
+    events = clean_events(read_events(folder))
+    vtt = folder / "captions.vtt"
+    vtt.write_text(captions(events, float(meta.get("duration") or 0)), encoding="utf-8")
+    if meta.get("videoKind") == "mp4" and ffmpeg():
+        tmp = folder / "video.tmp.mp4"
+        proc = run([ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", folder / meta["video"], "-i", vtt, "-map", "0:v",
+                    "-map", "1", "-c:v", "copy", "-c:s", "mov_text", "-metadata:s:s:0", "language=eng", "-movflags", "+faststart", tmp], 900)
+        if proc.returncode == 0 and tmp.exists() and tmp.stat().st_size > 0:
+            os.replace(tmp, folder / meta["video"])
+        else:
+            tmp.unlink(missing_ok=True)
+            ap.fail("ffmpeg could not swap the captions: " + proc.stderr[-300:])
+    meta["events"] = events
+    meta["sizeBytes"] = folder_size(folder)
+    write_meta(folder, meta)
+    return meta
+
+
 def web_meta(meta, base):
     """The meta with ready URLs under `base` ("/media/videos/<id>/" for the server, "../../videos/<id>/" for a report),
     so the pages never build paths themselves. A browser cannot play AVI: then only keyframes play (a slideshow)."""
@@ -504,6 +541,9 @@ def cmd_video(args):
     folder = folder_of(meta)
     if args.action == "info":
         print_meta(meta, events=args.events)
+    elif args.action == "recaption":
+        meta = recaption(meta)
+        print("captions rebuilt: %d events in %s" % (len(meta["events"]), folder / "captions.vtt"))
     elif args.action == "path":
         print(folder / (meta.get("video") or ""))
     elif args.action == "open":
@@ -550,8 +590,8 @@ def register(sub, ap_module):
     p.add_argument("--keep-frames", action="store_true", help="stop: keep JPEG frames after encoding")
     p.set_defaults(func=cmd_record)
 
-    p = sub.add_parser("video", help="recorded videos: list, info, sheet, frame, events, path, open, prune")
-    p.add_argument("action", choices=("list", "info", "sheet", "frame", "events", "path", "open", "prune"))
+    p = sub.add_parser("video", help="recorded videos: list, info, sheet, frame, events, path, open, prune, recaption")
+    p.add_argument("action", choices=("list", "info", "sheet", "frame", "events", "path", "open", "prune", "recaption"))
     p.add_argument("ref", nargs="?", help="video id, part of it, or 'last'")
     p.add_argument("--limit", type=int, default=20)
     p.add_argument("--from", dest="start", type=float)
