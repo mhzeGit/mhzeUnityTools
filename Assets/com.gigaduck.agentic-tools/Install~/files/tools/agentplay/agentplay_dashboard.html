@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>agentplay</title>
+<style>
+/* agentplay dashboard: dark engineering console. Self-contained: no fonts, CDNs or libraries. */
+:root{color-scheme:dark;
+  --bg:#0f0f0e;--s1:#161615;--s2:#1d1d1b;--s3:#262624;--line:#2a2a28;--base:#383835;
+  --t1:#f0efec;--t2:#c3c2b7;--t3:#898781;--acc:#e8e1cf;--focus:#3987e5;
+  --good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --f-ui:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --f-label:Bahnschrift,"DIN Alternate","DIN Condensed","Barlow Semi Condensed","Arial Narrow",sans-serif;
+  --f-mono:"Cascadia Mono","JetBrains Mono","SF Mono",ui-monospace,Consolas,monospace}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;overflow:hidden;color:var(--t2);font:13px/1.45 var(--f-ui);
+  background:radial-gradient(1400px 420px at 75% -12%,#ffffff08,transparent 70%),var(--bg)}
+::selection{background:#3987e566}
+a{color:var(--t1);text-decoration:underline;text-decoration-color:var(--base);text-underline-offset:2px}
+a:hover{text-decoration-color:var(--t2)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--t3)} .t1{color:var(--t1)} .grow{flex:1}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lbl{font:500 10.5px var(--f-label);letter-spacing:.11em;text-transform:uppercase;color:var(--t3)}
+/* header with a ruler edge */
+.top{flex:none;position:relative;display:flex;align-items:stretch;gap:20px;height:46px;padding:0 14px;background:var(--s1);border-bottom:1px solid var(--line)}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;pointer-events:none;opacity:.6;
+  background:repeating-linear-gradient(90deg,var(--base) 0 1px,transparent 1px 10px);
+  -webkit-mask:linear-gradient(90deg,#000,transparent 65%);mask:linear-gradient(90deg,#000,transparent 65%)}
+.brand{display:flex;align-items:center;gap:9px;font:600 13px var(--f-label);letter-spacing:.22em;text-transform:uppercase;color:var(--t1);white-space:nowrap}
+.brand .proj{font-weight:400;letter-spacing:.08em;color:var(--t3);max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--base);box-shadow:0 0 0 3px #ffffff0a;flex:none}
+.dot.live{background:var(--good)} .dot.down{background:var(--crit)}
+nav.tabs{display:flex}
+nav.tabs a{display:flex;align-items:center;gap:7px;padding:0 13px;margin-bottom:-1px;border-bottom:2px solid transparent;text-decoration:none;
+  font:500 11.5px var(--f-label);letter-spacing:.13em;text-transform:uppercase;color:var(--t3)}
+nav.tabs a:hover{color:var(--t2)} nav.tabs a.on{color:var(--t1);border-bottom-color:var(--acc)}
+nav.tabs a b{font:500 10px/1 var(--f-mono);letter-spacing:0;color:var(--t3);background:var(--s3);padding:3px 6px;border-radius:9px}
+.hstat{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11.5px;min-width:0}
+.rec{display:inline-flex;align-items:center;gap:5px;height:18px;padding:0 7px;border-radius:3px;background:var(--crit);color:#fff;text-decoration:none;
+  font:600 10px/1 var(--f-label);letter-spacing:.12em;white-space:nowrap}
+.rec::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.15}}
+/* controls */
+.btn{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;background:var(--s2);border:1px solid var(--base);border-radius:4px;color:var(--t1);
+  cursor:pointer;text-decoration:none;white-space:nowrap;font:500 11px var(--f-label);letter-spacing:.08em;text-transform:uppercase}
+.btn:hover{background:var(--s3);border-color:#4a4945} .btn:disabled{opacity:.4;cursor:default}
+.btn.sm{height:22px;padding:0 7px;font-size:10.5px} .btn.ghost{background:none;border-color:transparent}
+.btn.red{border-color:#d03b3b99} .btn.red:hover{background:#d03b3b26}
+.in{height:26px;padding:0 8px;min-width:0;background:var(--bg);border:1px solid var(--base);border-radius:4px;color:var(--t1)}
+textarea.in{display:block;width:100%;height:auto;padding:8px;font:12px/1.5 var(--f-mono);resize:vertical}
+select.in{padding:0 4px}
+.chip{display:inline-flex;align-items:center;gap:5px;height:18px;padding:0 6px;border:1px solid var(--line);border-radius:3px;background:var(--s2);vertical-align:middle;
+  font:500 10px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--t2);white-space:nowrap}
+.chip>i{width:7px;height:7px;border-radius:2px;background:var(--c,var(--t3));flex:none}
+.chip.solid{background:var(--c);border-color:transparent;color:#fff} .chip.solid>i{display:none}
+/* layout */
+main{flex:1;min-height:0;display:flex}
+.split{flex:1;display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);min-height:0}
+.bin{overflow:auto;background:var(--s1);border-right:1px solid var(--line)}
+.bin-h{position:sticky;top:0;z-index:2;display:flex;padding:9px 10px;background:var(--s1);border-bottom:1px solid var(--line)}
+.bin-h .in{flex:1}
+.pane{flex:1;min-width:0;overflow:auto;padding:18px 24px 48px}
+.item{display:block;padding:9px 12px;border-bottom:1px solid var(--line);border-left:2px solid transparent;color:var(--t2);text-decoration:none}
+.item:hover{background:var(--s2)} .item.sel{background:var(--s2);border-left-color:var(--acc)}
+.it-t{display:flex;align-items:center;gap:7px;font-weight:600;color:var(--t1)}
+.it-v{margin-top:2px;font-size:12px}
+.it-m{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:4px;font-size:10.5px;color:var(--t3)}
+.vd{display:inline-grid;place-items:center;flex:none;width:15px;height:15px;border-radius:3px;background:var(--c);color:#0b0b0b;font:700 10px/1 var(--f-ui)}
+.pbar{height:2px;margin-top:7px;background:var(--s3);border-radius:1px;overflow:hidden} .pbar i{display:block;height:100%;background:var(--good)}
+.empty{padding:26px 16px;text-align:center;color:var(--t3)}
+.empty code{font:12px var(--f-mono);color:var(--t2);background:var(--s2);padding:2px 6px;border-radius:3px}
+.empty.big{padding:90px 20px;font:500 11.5px var(--f-label);letter-spacing:.14em;text-transform:uppercase}
+.empty.big::before{content:"";display:block;width:140px;height:9px;margin:0 auto 16px;background:repeating-linear-gradient(90deg,var(--base) 0 1px,transparent 1px 7px)}
+.loading{padding:30px 16px;color:var(--t3);font:500 11px var(--f-label);letter-spacing:.14em;text-transform:uppercase}
+.errbox{margin:12px 0;padding:10px 12px;border:1px solid #d03b3b77;border-radius:4px;background:#d03b3b14;color:var(--t1)}
+.errbox::before{content:"✕  ";color:var(--crit);font-weight:700}
+/* detail headers & sections */
+.dh{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.dh h2{margin:0;font:600 21px/1.2 var(--f-label);letter-spacing:.01em;color:var(--t1)}
+.dh .sub{margin-top:4px;font:11.5px var(--f-mono);color:var(--t3)}
+.crumb{margin-bottom:5px;font:500 10.5px var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--t3)} .crumb a{color:var(--t3)}
+.acts{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.kv{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0}
+.kv dt{font:500 9.5px var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.kv dd{margin:1px 0 0;font:12px var(--f-mono);color:var(--t1)}
+.sec{margin-top:24px;animation:rise .3s ease-out both}
+.sec:nth-of-type(2){animation-delay:.04s} .sec:nth-of-type(3){animation-delay:.08s} .sec:nth-of-type(4){animation-delay:.12s}
+@keyframes rise{from{opacity:0;transform:translateY(5px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+.sec>h3{display:flex;align-items:center;gap:10px;margin:0 0 9px;font:500 11px var(--f-label);letter-spacing:.15em;text-transform:uppercase;color:var(--t3)}
+.sec>h3::after{content:"";flex:1;height:1px;background:var(--line)}
+.sec>h3 .cnt{font:11px var(--f-mono);letter-spacing:0;color:var(--t2)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:11.5px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;background:var(--c)} .legend b{font-weight:400;color:var(--t1)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin-bottom:14px}
+.stat{padding:8px 10px;background:var(--s1);border:1px solid var(--line);border-radius:5px}
+.stat b{display:block;margin-top:3px;font:600 19px/1.15 var(--f-label);color:var(--t1)}
+/* tables */
+.tblwrap{overflow-x:auto;background:var(--s1);border:1px solid var(--line);border-radius:6px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{padding:7px 10px;text-align:left;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--base);
+  font:500 10px var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.tbl th:hover,.tbl th.sorted{color:var(--t1)} .tbl th.sorted::after{content:" ↑"} .tbl th.sorted.desc::after{content:" ↓"}
+.tbl td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .n{text-align:right;white-space:nowrap;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tbl tr.click{cursor:pointer} .tbl tr.click:hover td{background:var(--s2)}
+.sub{margin-top:2px;font-size:11px;color:var(--t3)} .sub.err{color:var(--t2)} .sub.err::before{content:"✕ ";color:var(--crit)}
+.flag::before{content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--crit);vertical-align:1px}
+.fr{display:inline-block;position:relative;width:54px;height:5px;margin-right:6px;vertical-align:1px;background:var(--s3);border-radius:3px;overflow:hidden}
+.fr i{position:absolute;left:0;top:0;bottom:0;background:#d95926;border-radius:3px}
+/* video component */
+.vvwrap{container-type:inline-size}
+.vv{display:grid;grid-template-columns:minmax(0,1fr) 330px;background:var(--s1);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.vv-stage{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:16/9;max-height:64vh;background:#000;outline:none}
+.vv-stage>video,.vv-stage>img{display:block;width:100%;height:100%;object-fit:contain;background:#000}
+.vv-badge{position:absolute;top:8px;left:8px;padding:3px 7px;border-radius:3px;background:#000b;color:var(--t1);font:500 10px var(--f-label);letter-spacing:.12em;text-transform:uppercase}
+.vv-none{display:flex;flex-direction:column;gap:4px;text-align:center;color:var(--t3);font:500 12px var(--f-label);letter-spacing:.12em;text-transform:uppercase}
+.vv-ctrl{display:flex;align-items:center;gap:10px;padding:6px 10px;border-top:1px solid var(--line);font-size:11.5px}
+.vv-side{position:relative;border-left:1px solid var(--line)}
+.vv-side>div{position:absolute;inset:0;display:flex;flex-direction:column}
+.ev-h{display:flex;flex-direction:column;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
+.kbar{display:flex;flex-wrap:wrap;gap:4px}
+.kb{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 6px;border:1px solid var(--line);border-radius:3px;background:none;cursor:pointer;
+  font:500 10px var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.kb i{width:7px;height:7px;border-radius:2px;background:var(--c);opacity:.3} .kb b{font:400 10px var(--f-mono);color:var(--t3)}
+.kb.on{color:var(--t1);background:var(--s2);border-color:var(--base)} .kb.on i{opacity:1}
+.ev-list{position:relative;flex:1;min-height:120px;overflow:auto}
+.er{display:grid;grid-template-columns:58px auto minmax(0,1fr);gap:8px;align-items:baseline;padding:3px 10px 3px 8px;border-left:2px solid transparent;cursor:pointer;font-size:12px}
+.er:hover{background:var(--s2)} .er.cur{background:#e8e1cf14;border-left-color:var(--acc)}
+.er .x{color:var(--t1);word-break:break-word} .er .chip{height:16px;font-size:9.5px}
+.tl{padding:6px 12px 9px 80px;border-top:1px solid var(--line);background:linear-gradient(var(--s1),var(--bg))}
+.tl-a{position:relative;cursor:crosshair}
+.ln{position:relative;height:9px;margin-top:3px;background:#ffffff07;border-radius:2px}
+.ln::before{content:attr(data-n);position:absolute;right:calc(100% + 9px);top:50%;transform:translateY(-50%);white-space:nowrap;
+  font:500 9.5px var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.ln>i{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;border-radius:1px;background:var(--c)}
+.ln.off{opacity:.22}
+.ruler{height:13px;margin:0;background:none;overflow:hidden}
+.ruler span{position:absolute;top:0;padding-left:3px;border-left:1px solid var(--base);white-space:nowrap;font:9.5px/13px var(--f-mono);color:var(--t3)}
+.chl{height:16px}
+.chp{position:absolute;top:0;bottom:0;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:var(--s3);border-left:2px solid var(--t3);font:10.5px/16px var(--f-ui);color:var(--t2)}
+.chp:nth-child(even){background:var(--s2)}
+.ph{position:absolute;top:0;bottom:-3px;width:1px;background:var(--acc);pointer-events:none;box-shadow:0 0 6px #e8e1cf88}
+.ph::before{content:"";position:absolute;top:-1px;left:-4px;border:4.5px solid transparent;border-top-color:var(--acc)}
+.hv{position:absolute;top:0;bottom:0;width:1px;background:#ffffff45;pointer-events:none}
+.fs-wrap{margin-top:10px}
+.fs{position:relative;display:flex;gap:4px;overflow-x:auto;padding:6px 0 8px;scrollbar-width:thin}
+.fs figure{position:relative;flex:0 0 132px;margin:0;overflow:hidden;cursor:pointer;background:#000;border:1px solid var(--line);border-radius:3px}
+.fs figure:hover{border-color:var(--t3)} .fs figure.cur{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.fs img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--s2)}
+.fs figcaption{position:absolute;right:0;bottom:0;padding:1px 4px;background:#000b;font-size:10px;color:var(--t2)}
+.vv-foot{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-top:10px}
+.sheets{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+@container (max-width:880px){.vv{grid-template-columns:1fr}.vv-side{border-left:0;border-top:1px solid var(--line)}.vv-side>div{position:static}.ev-list{max-height:280px}}
+/* playtest */
+.verdict{position:relative;display:flex;justify-content:space-between;align-items:center;gap:14px 28px;flex-wrap:wrap;padding:15px 18px 15px 22px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 15%,transparent),transparent 55%),var(--s1);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.verdict::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.vt{font:600 21px/1.25 var(--f-label);color:var(--t1)}
+.vi{display:inline-grid;place-items:center;width:24px;height:24px;margin-right:9px;vertical-align:2px;border-radius:4px;background:var(--c);color:#0b0b0b;font:700 14px/1 var(--f-ui)}
+.vs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12px}
+.gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
+.g{padding:10px 12px 11px;background:var(--s1);border:1px solid var(--line);border-radius:6px}
+.g-v{margin:8px 0 9px;font:600 28px/1 var(--f-label);color:var(--t1);font-variant-numeric:tabular-nums} .g-v small{margin-left:2px;font-size:13px;color:var(--t3)}
+.g-bar{position:relative;height:5px;background:var(--s3);border-radius:3px}
+.g-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c);border-radius:3px}
+.g-bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(var(--a) - 1px),var(--s1) 0 var(--a),transparent 0 calc(var(--b) - 1px),var(--s1) 0 var(--b),transparent 0)}
+.g-s{margin-top:8px;font-size:11.5px} .g-s b{margin-right:3px;color:var(--c)}
+.ss{position:relative;display:flex;gap:2px;height:34px}
+.sb{position:relative;flex:1 1 0;min-width:3px;display:flex;align-items:center;padding:0 6px;overflow:hidden;cursor:pointer;border-radius:3px;background:var(--c);
+  color:#fff;white-space:nowrap;font:500 10.5px var(--f-label);letter-spacing:.04em}
+.sb span{overflow:hidden;text-overflow:ellipsis} .sb:hover{filter:brightness(1.2)}
+.sb.o-fail{background:repeating-linear-gradient(135deg,var(--c) 0 6px,#a52a2a 6px 9px)}
+.sb.o-unlearned{background:repeating-linear-gradient(45deg,#4a4945 0 4px,#3a3936 4px 8px);color:var(--t2)}
+.ss .ph{top:-4px;bottom:-4px;width:2px;border-radius:1px;box-shadow:0 0 0 1px #000a}
+.fg{margin-bottom:14px} .fg-h{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.fi{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;margin-bottom:3px;padding:6px 8px 6px 12px;
+  background:var(--s1);border:1px solid var(--line);border-left:3px solid var(--c);border-radius:3px}
+.fi .x{color:var(--t1);word-break:break-word}
+/* knowledge */
+.mbar{display:flex;gap:2px;height:14px;margin-top:4px} .mbar i{min-width:3px;border-radius:2px;background:var(--c)}
+.routes details{margin-bottom:6px;background:var(--s1);border:1px solid var(--line);border-radius:5px}
+.routes summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:8px 12px;cursor:pointer;list-style:none}
+.routes summary::-webkit-details-marker{display:none}
+.routes summary::before{content:"▸";color:var(--t3);transition:transform .12s} .routes details[open]>summary::before{transform:rotate(90deg)}
+.routes .rs{margin-left:auto;font-size:11px;color:var(--t2)}
+ol.steps{margin:0;padding:8px 14px 10px 46px;border-top:1px solid var(--line);font:12px/1.6 var(--f-mono);color:var(--t1)}
+ol.steps li::marker{color:var(--t3)} .steps .op{font-weight:700} .steps .ak{color:var(--t3)} .steps .arg{color:var(--t2)}
+.steps .why{display:block;margin-bottom:3px;font:italic 11.5px/1.4 var(--f-ui);color:var(--t3)}
+.ls{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.q{display:grid;grid-template-columns:minmax(120px,260px) minmax(0,1fr);gap:5px 16px;font-size:11.5px}
+.q .st{font-family:var(--f-mono);color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q .acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px 14px}
+.qa{display:grid;grid-template-columns:minmax(0,1fr) 64px 76px;align-items:center;gap:6px;font-family:var(--f-mono)}
+.qa .ak{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t1)} .qa .n{text-align:right;color:var(--t3)}
+.vb{position:relative;height:5px;background:var(--s3);border-radius:3px} .vb i{position:absolute;left:0;top:0;bottom:0;background:var(--c);border-radius:3px}
+/* players */
+.cons{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;margin-top:18px}
+.card{padding:12px;background:var(--s1);border:1px solid var(--line);border-radius:6px}
+.card .row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+pre.ans{max-height:380px;margin:0;padding:10px;overflow:auto;white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:4px;font:12px/1.5 var(--f-mono);color:var(--t1)}
+pre.ans.bad{border-color:#d03b3b99}
+.log{max-height:420px;overflow:auto;font:11.5px/1.6 var(--f-mono)} .log div{padding:3px 0;border-bottom:1px solid var(--line)} .log time{margin-right:8px;color:var(--t3)}
+@media (max-width:900px){.cons{grid-template-columns:1fr}.split{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.bin{max-height:34vh;border-right:0;border-bottom:1px solid var(--line)}}
+/* overlays */
+.tip{position:fixed;z-index:50;max-width:360px;padding:6px 9px;pointer-events:none;background:#0b0b0bf2;border:1px solid var(--base);border-radius:4px;box-shadow:0 8px 24px #000a;font-size:11.5px;color:var(--t2)}
+#toasts{position:fixed;right:14px;bottom:14px;z-index:60;display:flex;flex-direction:column;gap:6px}
+.toast{max-width:440px;padding:8px 12px;background:var(--s2);border:1px solid var(--base);border-left:3px solid var(--c);border-radius:4px;box-shadow:0 8px 24px #0009;color:var(--t1);animation:rise .18s ease-out}
+.modal{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:#000b}
+.modal form{display:flex;flex-direction:column;gap:10px;width:min(460px,92vw);padding:16px;background:var(--s1);border:1px solid var(--base);border-radius:6px}
+.modal .row{display:flex;justify-content:flex-end;gap:6px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="dot" id="conn" title="Server connection"></span>agentplay<span class="proj" id="proj"></span></div>
+  <nav class="tabs" id="tabs">
+    <a href="#playtests" data-tab="playtests">Playtests <b>·</b></a>
+    <a href="#videos" data-tab="videos">Videos <b>·</b></a>
+    <a href="#knowledge" data-tab="knowledge">Knowledge <b>·</b></a>
+    <a href="#players" data-tab="players">Players <b>·</b></a>
+  </nav>
+  <div class="hstat"><span id="recall" class="acts"></span><span id="build"></span><span id="ff"></span><span id="upd" class="mono muted"></span>
+    <button class="btn sm" id="refresh" title="Refresh now">↻</button></div>
+</header>
+<main id="main"></main>
+<div id="toasts"></div>
+<script>
+'use strict';
+/* ---------- core helpers (shared with agentplay_report.html) ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const enc = encodeURIComponent;
+const fin = x => x != null && x !== '' && Number.isFinite(+x);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, +v || 0));
+function h(tag, a, ...kids) { // element builder; all text goes through text nodes (escaped)
+  const e = document.createElement(tag);
+  for (const k in a || {}) {
+    const v = a[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'style') for (const s in v) s.startsWith('--') ? e.style.setProperty(s, v[s]) : (e.style[s] = v[s]);
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) if (c != null && c !== false) e.append(c instanceof Node ? c : String(c));
+  return e;
+}
+const safeUrl = u => (/^\s*(javascript|data|vbscript):/i.test(String(u ?? '')) ? '#' : String(u ?? ''));
+const pad = n => String(n).padStart(2, '0');
+function fmtDur(s) { if (!fin(s)) return '–'; s = Math.max(0, Math.round(s)); const hh = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (hh ? hh + ':' + pad(m) : m) + ':' + pad(s % 60); }
+function fmtT(s) { if (!fin(s)) return '–'; s = Math.floor(Math.max(0, s) * 10) / 10; const m = Math.floor(s / 60); return m + ':' + (s - m * 60).toFixed(1).padStart(4, '0'); }
+const fmtSec = s => (!fin(s) ? '–' : s < 60 ? (+s).toFixed(1) + ' s' : fmtDur(s));
+function fmtBytes(b) { if (!fin(b)) return '–'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; b = +b; while (b >= 1024 && i < 4) { b /= 1024; i++; } return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + ' ' + u[i]; }
+const pctTxt = v => (fin(v) ? Math.round(v * 100) + '%' : '–');
+const fmtNum = v => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2));
+function idxAt(a, t) { let lo = 0, hi = a.length - 1, r = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (a[m].t <= t + 1e-6) { r = m; lo = m + 1; } else hi = m - 1; } return r; }
+const niceStep = x => [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200].find(s => s >= x) || 7200;
+const ord = (arr, v) => { const i = arr.indexOf(v); return i < 0 ? arr.length : i; };
+function scrollInto(c, el, horiz) {
+  if (horiz) { const l = el.offsetLeft, w = el.offsetWidth; if (l < c.scrollLeft || l + w > c.scrollLeft + c.clientWidth) c.scrollLeft = l - c.clientWidth / 2 + w / 2; }
+  else { const t = el.offsetTop, hh = el.offsetHeight; if (t < c.scrollTop || t + hh > c.scrollTop + c.clientHeight) c.scrollTop = t - c.clientHeight / 3; }
+}
+/* palette: dark steps from the dataviz reference palette; status colours are reserved */
+const KINDS = ['segment', 'mark', 'label', 'finding', 'result', 'op'];
+const KIND_C = { op: '#3987e5', mark: '#c98500', label: '#199e70', result: '#9085e9', finding: '#e66767', segment: '#d55181' };
+const OUT = ['pass', 'fail', 'jumped', 'unlearned'];
+const OUT_C = { pass: '#0ca30c', fail: '#d03b3b', jumped: '#3987e5', unlearned: '#5f5e58' };
+const MAST = ['unknown', 'learning', 'competent', 'mastered', 'stale', 'needs-agent'];
+const MAST_C = { unknown: '#4a4945', learning: '#184f95', competent: '#2a78d6', mastered: '#86b6ef', stale: '#fab219', 'needs-agent': '#ec835a' };
+const SEV = ['FATAL', 'ERR', 'STALL', 'SOFT', 'WARN', 'INFO'];
+const SEV_C = { FATAL: '#d03b3b', ERR: '#e66767', STALL: '#ec835a', SOFT: '#fab219', WARN: '#c98500', INFO: '#898781' };
+const LES_C = { tip: '#199e70', pitfall: '#fab219', bug: '#d03b3b', fix: '#0ca30c', 'needs-agent': '#ec835a' };
+const col = (m, k) => m[k] || '#5f5e58';
+const chip = (t, c, cls) => h('span', { class: 'chip' + (cls ? ' ' + cls : ''), style: { '--c': c } }, h('i'), t ?? '–');
+const kv = (k, v) => h('div', null, h('dt', null, k), h('dd', null, v == null || v === '' ? '–' : v));
+const sec = (title, n, ...body) => h('section', { class: 'sec' }, h('h3', null, title, n != null ? h('span', { class: 'cnt' }, n) : null), ...body);
+const empty = (...kids) => h('div', { class: 'empty' }, ...kids);
+const errBox = msg => h('div', { class: 'errbox' }, msg);
+const tipEl = h('div', { class: 'tip', hidden: true });
+function tip(e, ...lines) {
+  tipEl.replaceChildren(...lines.filter(l => l != null && l !== '').map((l, i) => h('div', { class: i ? '' : 't1' }, l)));
+  tipEl.hidden = false;
+  const w = tipEl.offsetWidth, ht = tipEl.offsetHeight;
+  let x = e.clientX + 14, y = e.clientY + 16;
+  if (x + w > innerWidth - 8) x = e.clientX - w - 12;
+  if (y + ht > innerHeight - 8) y = e.clientY - ht - 12;
+  tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px';
+}
+const untip = () => (tipEl.hidden = true);
+function verdictTone(v) {
+  const s = String(v || '');
+  if (/fail|fatal|broken|crash|block|regress|unplayable/i.test(s)) return { c: '#d03b3b', i: '✕', w: 'failing' };
+  if (/pass|\bok\b|good|clean|green|success|healthy/i.test(s)) return { c: '#0ca30c', i: '✓', w: 'passing' };
+  return { c: '#fab219', i: '!', w: 'needs attention' };
+}
+const frBar = v => (fin(v) ? h('span', { class: 'mono' }, h('span', { class: 'fr' }, h('i', { style: { width: clamp(v) * 100 + '%' } })), (+v).toFixed(2)) : '–');
+
+/* sortable table: cols [{key,label,num,get,render,sort}] */
+function sortTable(cols, rows, opt = {}) {
+  const st = opt.state || {};
+  if (st.key === undefined) { st.key = opt.key ?? null; st.dir = opt.dir || 1; }
+  const thead = h('thead'), tbody = h('tbody'), val = (c, r) => (c.get ? c.get(r) : r[c.key]);
+  const blank = x => x == null || x === '' || (typeof x === 'number' && isNaN(x));
+  function draw() {
+    thead.replaceChildren(h('tr', null, cols.map(c => h('th', {
+      class: [c.num ? 'n' : '', c.key === st.key ? (st.dir < 0 ? 'sorted desc' : 'sorted') : ''].join(' ').trim() || null,
+      onclick: c.sort === false ? null : () => { if (st.key === c.key) st.dir = -st.dir; else { st.key = c.key; st.dir = c.num ? -1 : 1; } draw(); },
+    }, c.label))));
+    let rs = rows;
+    const c = cols.find(x => x.key === st.key);
+    if (c) rs = rows.slice().sort((a, b) => {
+      const x = val(c, a), y = val(c, b);
+      if (blank(x) || blank(y)) return blank(x) - blank(y);
+      return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * st.dir;
+    });
+    tbody.replaceChildren(...rs.map(r => h('tr', { class: opt.onRow ? 'click' : null, title: opt.title || null, onclick: opt.onRow ? () => opt.onRow(r) : null },
+      cols.map(c => { const v = c.render ? c.render(r) : val(c, r); return h('td', { class: c.num ? 'n' : null }, blank(v) ? '–' : v); }))));
+  }
+  draw();
+  return h('table', { class: 'tbl' }, thead, tbody);
+}
+
+/* ---------- video component: player (mp4 or keyframe slideshow), lane timeline, events, filmstrip ---------- */
+function videoView(v) {
+  const evs = (v.events || []).filter(e => e && fin(e.t)).sort((a, b) => a.t - b.t);
+  const kfs = (v.keyframes || []).filter(k => k && k.url && fin(k.t)).sort((a, b) => a.t - b.t);
+  const chs = (v.chapters || []).filter(c => c && fin(c.t)).sort((a, b) => a.t - b.t);
+  const D = +v.duration || Math.max(evs.length ? evs[evs.length - 1].t + 1 : 0, kfs.length ? kfs[kfs.length - 1].t + 1 : 0, 1);
+  const subs = new Set();
+  let media = { time: () => 0, seek() {}, play() {} };
+  const emit = () => { const t = media.time(); subs.forEach(f => f(t)); };
+  const stage = h('div', { class: 'vv-stage' }), ctrl = h('div', { class: 'vv-ctrl', hidden: true });
+  if (v.width && v.height) stage.style.aspectRatio = v.width + ' / ' + v.height;
+
+  function genCues(vid, mode) { // captions built from events when the .vtt is missing or cannot load (file://)
+    if (!window.VTTCue || !evs.length) return;
+    const tt = vid.addTextTrack('captions', 'Agent events', 'en');
+    evs.forEach((e, i) => {
+      const nx = evs[i + 1], end = Math.max(e.t + 0.8, Math.min(nx ? nx.t : e.t + 4, e.t + 4));
+      const txt = (e.kind === 'op' ? '' : '[' + e.kind + '] ') + String(e.text ?? '');
+      try { tt.addCue(new VTTCue(e.t, end, txt.replace(/&/g, '&amp;').replace(/</g, '&lt;'))); } catch (_) { /* ignore bad cue */ }
+    });
+    tt.mode = mode;
+  }
+  function useVideo() {
+    const vid = h('video', { controls: true, preload: 'metadata', playsinline: true });
+    vid.src = safeUrl(v.videoUrl);
+    if (v.captionsUrl) {
+      const tr = h('track', { kind: 'captions', src: safeUrl(v.captionsUrl), srclang: 'en', label: 'Agent events', default: true });
+      tr.addEventListener('error', () => { tr.remove(); genCues(vid, 'showing'); });
+      vid.append(tr);
+    } else genCues(vid, 'hidden');
+    vid.addEventListener('error', () => {
+      if (kfs.length) useFrames('The video could not be played here; showing keyframes instead.');
+      else stage.replaceChildren(h('div', { class: 'vv-none' }, 'Video could not be played', h('small', null, String(v.videoUrl))));
+    });
+    let raf = 0;
+    const loop = () => { emit(); if (!vid.paused && vid.isConnected) raf = requestAnimationFrame(loop); };
+    vid.addEventListener('play', () => { cancelAnimationFrame(raf); loop(); });
+    vid.addEventListener('timeupdate', emit); vid.addEventListener('seeked', emit);
+    stage.replaceChildren(vid); ctrl.hidden = true;
+    media = { time: () => vid.currentTime || 0, seek: t => { vid.currentTime = clamp(t, 0, D); emit(); }, play: () => vid.play().catch(() => {}) };
+  }
+  function useFrames(msg) { // "frames player": keyframe slideshow on a real clock
+    const img = h('img', { alt: 'keyframe', decoding: 'async' });
+    let t = 0, playing = false, rate = 1, last = 0, raf = 0, shown = -1;
+    const bp = h('button', { class: 'btn sm', title: 'Play / pause (space)' }, '▶');
+    const tm = h('span', { class: 'mono t1' });
+    const sp = h('select', { class: 'in', title: 'Playback speed' }, [0.5, 1, 2, 4, 8].map(r => h('option', { value: r, selected: r === 1 }, r + '×')));
+    sp.onchange = () => (rate = +sp.value);
+    const draw = () => {
+      const i = Math.max(0, idxAt(kfs, t));
+      if (i !== shown) { shown = i; img.src = safeUrl(kfs[i].url); if (kfs[i + 1]) new Image().src = safeUrl(kfs[i + 1].url); }
+      tm.textContent = fmtT(t) + ' / ' + fmtT(D); emit();
+    };
+    const stop = () => { playing = false; cancelAnimationFrame(raf); bp.textContent = '▶'; };
+    const tick = now => {
+      if (!playing || !img.isConnected) return stop();
+      t += (now - last) / 1000 * rate; last = now;
+      if (t >= D) { t = D; stop(); }
+      draw(); if (playing) raf = requestAnimationFrame(tick);
+    };
+    const start = () => { if (t >= D) t = 0; playing = true; last = performance.now(); bp.textContent = '❚❚'; cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
+    bp.onclick = () => (playing ? stop() : start());
+    img.onclick = () => bp.click();
+    stage.tabIndex = 0;
+    stage.onkeydown = e => {
+      if (e.key === ' ') { e.preventDefault(); bp.click(); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const i = idxAt(kfs, t) + (e.key === 'ArrowRight' ? 1 : -1); const k = kfs[clamp(i, 0, kfs.length - 1)]; t = k.t; draw(); }
+    };
+    stage.replaceChildren(img, h('span', { class: 'vv-badge' }, 'keyframes · ' + kfs.length));
+    ctrl.replaceChildren(bp, tm, sp, h('span', { class: 'muted ell' }, msg || 'No encoded video: keyframes play as a slideshow. Space plays, arrows step.'));
+    ctrl.hidden = false;
+    media = { time: () => t, seek: x => { t = clamp(x, 0, D); draw(); }, play: start };
+    draw();
+  }
+
+  // timeline: ruler, chapter lane, one lane per event kind
+  const lanes = [...KINDS.filter(k => evs.some(e => e.kind === k)), ...new Set(evs.map(e => e.kind).filter(k => !KINDS.includes(k)))];
+  const byKind = {}; lanes.forEach(k => (byKind[k] = evs.filter(e => e.kind === k)));
+  const pos = t => clamp(t / D) * 100 + '%';
+  const area = h('div', { class: 'tl-a' });
+  const ruler = h('div', { class: 'ln ruler' }), step = niceStep(D / 8);
+  for (let s = 0; s <= D + 1e-6; s += step) ruler.append(h('span', { style: { left: pos(s) } }, fmtDur(s)));
+  area.append(ruler);
+  if (chs.length) area.append(h('div', { class: 'ln chl', 'data-n': 'chapters', 'data-k': '#ch' },
+    chs.map((c, i) => h('div', { class: 'chp', style: { left: pos(c.t), width: clamp(((chs[i + 1] ? chs[i + 1].t : D) - c.t) / D) * 100 + '%' } }, c.title))));
+  const laneEl = {};
+  lanes.forEach(k => area.append(laneEl[k] = h('div', { class: 'ln', 'data-n': k, 'data-k': k, style: { '--c': col(KIND_C, k) } }, byKind[k].map(e => h('i', { style: { left: pos(e.t) } })))));
+  const ph = h('div', { class: 'ph' }), hv = h('div', { class: 'hv', hidden: true });
+  area.append(ph, hv);
+  const tAt = e => { const r = area.getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width) * D; };
+  function hit(e) {
+    const t = tAt(e), ln = e.target.closest('.ln'), k = ln && ln.dataset.k;
+    if (k === '#ch') { const i = idxAt(chs, t); if (i >= 0) return { t: chs[i].t, kind: 'chapter', label: chs[i].title }; }
+    else if (k && byKind[k]) {
+      const a = byKind[k], i = idxAt(a, t), tol = 5 / area.getBoundingClientRect().width * D;
+      let best = null;
+      for (const ev of [a[i], a[i + 1]]) if (ev && Math.abs(ev.t - t) <= tol && (!best || Math.abs(ev.t - t) < Math.abs(best.t - t))) best = ev;
+      if (best) return { t: best.t, kind: best.kind, label: best.text };
+    }
+    return { t };
+  }
+  area.addEventListener('mousemove', e => { const x = hit(e); hv.hidden = false; hv.style.left = pos(x.t); tip(e, fmtT(x.t) + (x.kind ? ' · ' + x.kind : ''), x.label); });
+  area.addEventListener('mouseleave', () => { hv.hidden = true; untip(); });
+  area.addEventListener('click', e => seek(hit(e).t));
+
+  // event list with kind filters and search
+  const on = new Set(lanes);
+  const q = h('input', { class: 'in', type: 'search', placeholder: 'Search ' + evs.length + ' events…' });
+  const kbar = h('div', { class: 'kbar' }, lanes.map(k => {
+    const b = h('button', { class: 'kb on', style: { '--c': col(KIND_C, k) }, title: 'Show/hide ' + k }, h('i'), k, h('b', null, byKind[k].length));
+    b.onclick = () => { on.has(k) ? on.delete(k) : on.add(k); b.classList.toggle('on', on.has(k)); laneEl[k].classList.toggle('off', !on.has(k)); drawList(); };
+    return b;
+  }));
+  const list = h('div', { class: 'ev-list' });
+  let rows = [], cur = -1;
+  function drawList() {
+    const s = q.value.trim().toLowerCase(), out = [];
+    rows = []; cur = -1;
+    for (const e of evs) {
+      if (!on.has(e.kind) || (s && !String(e.text ?? '').toLowerCase().includes(s))) continue;
+      if (rows.length >= 2000) { out.push(empty('Showing the first 2000 matches; narrow the search.')); break; }
+      const r = h('div', { class: 'er', onclick: () => seek(e.t) }, h('span', { class: 'mono muted' }, fmtT(e.t)), chip(e.kind, col(KIND_C, e.kind)), h('span', { class: 'x' }, e.text));
+      r.t = e.t; rows.push(r); out.push(r);
+    }
+    list.replaceChildren(...(out.length ? out : [empty(evs.length ? 'No events match.' : 'No events recorded.')]));
+    sync(media.time());
+  }
+  q.oninput = drawList;
+
+  // filmstrip, meta, sheets
+  const figs = kfs.map(k => { const f = h('figure', { onclick: () => seek(k.t) }, h('img', { loading: 'lazy', decoding: 'async', src: safeUrl(k.url), alt: '' }), h('figcaption', { class: 'mono' }, fmtT(k.t))); f.t = k.t; return f; });
+  const strip = h('div', { class: 'fs' }, figs);
+  let curK = -1;
+  function sync(t) {
+    ph.style.left = pos(t);
+    const i = idxAt(rows, t);
+    if (i !== cur) { if (rows[cur]) rows[cur].classList.remove('cur'); cur = i; if (rows[i]) { rows[i].classList.add('cur'); if (!list.matches(':hover')) scrollInto(list, rows[i]); } }
+    const k = idxAt(figs, t);
+    if (k !== curK) { if (figs[curK]) figs[curK].classList.remove('cur'); curK = k; if (figs[k]) { figs[k].classList.add('cur'); if (!strip.matches(':hover')) scrollInto(strip, figs[k], true); } }
+  }
+  subs.add(sync);
+  const meta = h('dl', { class: 'kv' }, kv('player', v.player), kv('created', v.created), kv('duration', fmtDur(v.duration)),
+    kv('resolution', v.width && v.height ? v.width + '×' + v.height : null), kv('fps', fin(v.fps) ? (+v.fps).toFixed(1) : null),
+    kv('frames', v.frames == null ? null : v.frames + (v.dropped ? ' (' + v.dropped + ' dropped)' : '')), kv('size', fmtBytes(v.sizeBytes)), kv('media', v.videoKind));
+  const sheets = (v.sheetUrls || []).map((u, i) => h('a', { class: 'btn sm', href: safeUrl(u), target: '_blank', rel: 'noopener' }, 'Sheet ' + (i + 1)));
+  const el = h('div', { class: 'vvwrap' },
+    h('div', { class: 'vv' }, h('div', { class: 'vv-main' }, stage, ctrl, h('div', { class: 'tl' }, area)),
+      h('div', { class: 'vv-side' }, h('div', null, h('div', { class: 'ev-h' }, q, kbar), list))),
+    kfs.length ? h('div', { class: 'fs-wrap' }, h('div', { class: 'lbl' }, 'Keyframes · ' + kfs.length), strip) : null,
+    h('div', { class: 'vv-foot' }, meta, sheets.length ? h('div', { class: 'sheets' }, h('span', { class: 'lbl' }, 'Contact sheets'), sheets) : null));
+
+  const canMp4 = !!document.createElement('video').canPlayType('video/mp4');
+  if (v.videoUrl && (canMp4 || !kfs.length)) useVideo();
+  else if (kfs.length) useFrames(v.videoUrl ? 'This viewer cannot decode mp4; playing keyframes instead.' : null);
+  else stage.replaceChildren(h('div', { class: 'vv-none' }, 'No playable media', h('small', null, (v.videoKind || 'unknown') + ' · ' + (v.frames || 0) + ' frames, no keyframes')));
+  drawList();
+  function seek(t, play) { media.seek(t); if (play) media.play(); }
+  return { el, seek(t) { seek(t, true); stage.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, onTime: f => subs.add(f) };
+}
+
+/* ---------- playtest report view (shared with agentplay_report.html) ---------- */
+function gauge(name, v, inv) {
+  const ok = fin(v), g = ok ? (inv ? 1 - v : +v) : null;
+  const st = !ok ? ['–', 'no data', '#5f5e58'] : g >= 0.85 ? ['✓', 'good', '#0ca30c'] : g >= 0.6 ? ['!', 'fair', '#fab219'] : ['✕', 'poor', '#d03b3b'];
+  return h('div', { class: 'g', style: { '--c': st[2], '--a': inv ? '15%' : '60%', '--b': inv ? '40%' : '85%' } },
+    h('div', { class: 'lbl' }, name), h('div', { class: 'g-v' }, ok ? Math.round(v * 100) : '–', ok ? h('small', null, '%') : null),
+    h('div', { class: 'g-bar', title: 'marks: fair / good thresholds' }, h('i', { style: { width: (ok ? clamp(v) * 100 : 0) + '%' } })),
+    h('div', { class: 'g-s' }, h('b', null, st[0]), st[1], inv ? h('span', { class: 'muted' }, ' · lower is better') : null));
+}
+function segStrip(segs, onSeek) {
+  const bar = h('div', { class: 'ss' }), ph = h('div', { class: 'ph', hidden: true });
+  const blocks = segs.map(s => {
+    const b = h('div', { class: 'sb o-' + s.outcome, style: { '--c': col(OUT_C, s.outcome), flexGrow: Math.max(+s.duration || 0, 0.001) } }, h('span', null, s.label || s.id));
+    b.onmousemove = e => tip(e, s.label || s.id, (s.outcome || '?') + ' · ' + fmtDur(s.duration) + ' · mastery ' + (s.mastery || '?') + (s.chained ? ' · chained' : ''),
+      [s.deaths ? s.deaths + ' deaths' : '', s.errors && s.errors.length ? s.errors.length + ' errors' : '', 'starts ' + fmtT(s.start)].filter(Boolean).join(' · '));
+    b.onmouseleave = untip;
+    if (onSeek) b.onclick = () => onSeek(s.start);
+    bar.append(b); return b;
+  });
+  bar.append(ph);
+  const time = t => {
+    const i = segs.findIndex(s => t >= s.start && t < s.end);
+    if (i < 0) { ph.hidden = true; return; }
+    const s = segs[i], b = blocks[i];
+    ph.hidden = false; ph.style.left = b.offsetLeft + clamp((t - s.start) / ((s.end - s.start) || 1)) * b.offsetWidth + 'px';
+  };
+  const counts = OUT.map(o => [o, segs.filter(s => s.outcome === o).length]).filter(x => x[1]);
+  return { time, el: h('div', null, bar, h('div', { class: 'legend' }, counts.map(([o, n]) => h('span', null, h('i', { style: { '--c': col(OUT_C, o) } }), o, h('b', { class: 'mono' }, n))),
+    onSeek ? h('span', { class: 'muted' }, 'click a block to jump the video to that segment') : null)) };
+}
+function segTable(segs, onSeek) {
+  const flag = (v, bad) => h('span', { class: bad ? 'flag' : null }, v);
+  const nErr = s => (s.errors || []).length;
+  return sortTable([
+    { key: '_i', label: '#', num: true, render: s => s._i + 1 },
+    { key: 'label', label: 'Segment', render: s => h('div', null, h('div', { class: 't1' }, s.label || s.id),
+      h('div', { class: 'sub mono' }, [s.route ? 'route ' + s.route : 'no route', s.chained ? 'chained' : null, fmtT(s.start) + '–' + fmtT(s.end)].filter(Boolean).join(' · ')),
+      (s.errors || []).slice(0, 3).map(x => h('div', { class: 'sub err' }, x)), (s.notes || []).slice(0, 3).map(x => h('div', { class: 'sub' }, x))) },
+    { key: 'outcome', label: 'Outcome', get: s => ord(OUT, s.outcome), render: s => chip(s.outcome, col(OUT_C, s.outcome)) },
+    { key: 'mastery', label: 'Mastery', get: s => ord(MAST, s.mastery), render: s => chip(s.mastery, col(MAST_C, s.mastery)) },
+    { key: 'duration', label: 'Duration', num: true, render: s => fmtDur(s.duration) },
+    { key: 'deaths', label: 'Deaths', num: true, render: s => flag(s.deaths ?? '–', s.deaths > 0) },
+    { key: 'errors', label: 'Errors', num: true, get: nErr, render: s => flag(nErr(s), nErr(s) > 0) },
+    { key: 'worstFrameMs', label: 'Worst frame', num: true, render: s => (fin(s.worstFrameMs) ? flag(Math.round(s.worstFrameMs) + ' ms', s.worstFrameMs >= 100) : '–') },
+    { key: 'fpsAvg', label: 'FPS', num: true, render: s => (fin(s.fpsAvg) ? (+s.fpsAvg).toFixed(0) : '–') },
+    { key: 'blocked', label: 'Blocked', num: true, render: s => flag(s.blocked ?? '–', s.blocked > 0) },
+    { key: 'passiveRatio', label: 'Passive', num: true, render: s => (fin(s.passiveRatio) ? h('span', null, h('span', { class: 'fr' }, h('i', { style: { width: clamp(s.passiveRatio) * 100 + '%', background: '#3987e5' } })), pctTxt(s.passiveRatio)) : '–') },
+  ], segs.map((s, i) => ({ ...s, _i: i })), { onRow: onSeek ? s => onSeek(s.start) : null, title: onSeek ? 'Click to jump the video to this segment' : null });
+}
+function findingsView(finds, segs, onSeek, link) {
+  if (!finds.length) return empty('No findings: nothing was flagged during this run.');
+  const lab = id => (segs.find(s => s.id === id) || {}).label || id;
+  const groups = [...SEV, ...new Set(finds.map(f => f.sev).filter(s => !SEV.includes(s)))];
+  return h('div', null, groups.map(sv => {
+    const fs = finds.filter(f => f.sev === sv);
+    if (!fs.length) return null;
+    return h('div', { class: 'fg' }, h('div', { class: 'fg-h' }, chip(sv, col(SEV_C, sv), sv === 'FATAL' ? 'solid' : ''), h('span', { class: 'mono muted' }, fs.length)),
+      fs.map(f => h('div', { class: 'fi', style: { '--c': col(SEV_C, sv) } }, h('span', { class: 'x' }, f.text),
+        f.segment ? (link ? h('a', { class: 'muted', href: link(f.segment) }, lab(f.segment)) : h('span', { class: 'muted' }, lab(f.segment))) : h('span'),
+        fin(f.t) ? (onSeek ? h('button', { class: 'btn sm', onclick: () => onSeek(f.t), title: 'Jump the video here' }, '▶ ' + fmtT(f.t)) : h('span', { class: 'mono muted' }, fmtT(f.t))) : h('span'))));
+  }));
+}
+function playtestView(r, video, link) {
+  const segs = r.segments || [], finds = r.findings || [], Q = r.quality || {};
+  const vv = video ? videoView(video) : null, seek = vv ? t => fin(t) && vv.seek(+t) : null;
+  const passed = segs.filter(s => s.outcome === 'pass').length, tone = verdictTone(r.verdict);
+  const sevN = SEV.map(s => [s, finds.filter(f => f.sev === s).length]).filter(x => x[1]);
+  const strip = segStrip(segs, seek);
+  if (vv) vv.onTime(strip.time);
+  return h('div', null,
+    h('div', { class: 'verdict', style: { '--c': tone.c } },
+      h('div', null, h('div', { class: 'vt' }, h('span', { class: 'vi', title: tone.w }, tone.i), r.verdict || 'No verdict'),
+        h('div', { class: 'vs' }, h('span', { class: 't1' }, passed + '/' + segs.length + ' segments passed'), sevN.map(([s, n]) => chip(n + ' ' + s, SEV_C[s])))),
+      h('dl', { class: 'kv' }, kv('scope', r.scope), kv('started', r.started), kv('player', r.player), kv('build', r.build), kv('duration', fmtDur(r.duration)))),
+    h('div', { class: 'gauges' }, ['completion', 'stability', 'performance', 'pacing', 'friction'].map(k => gauge(k, Q[k], k === 'friction'))),
+    sec('Segment timeline', segs.length, segs.length ? strip.el : empty('No segments in this playtest.')),
+    h('section', { class: 'sec rec-sec' }, h('h3', null, 'Recording'), vv ? vv.el : empty(r.videoId ? 'Video ' + r.videoId + ' is not available.' : 'This playtest ran without recording.')),
+    sec('Segments', segs.length, segs.length ? h('div', { class: 'tblwrap' }, segTable(segs, seek)) : empty('No segments.')),
+    sec('Findings', finds.length, findingsView(finds, segs, seek, link)));
+}
+
+/* ---------- dashboard: API ---------- */
+async function api(path, body) {
+  let res;
+  try { res = await fetch(path, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+  catch (e) { throw new Error('Server unreachable (' + e.message + ')'); }
+  let j = null;
+  try { j = await res.json(); } catch (_) { /* non-JSON body */ }
+  if (!res.ok) throw new Error((j && j.error) || 'HTTP ' + res.status + ' on ' + path);
+  if (j == null) throw new Error('Invalid JSON from ' + path);
+  return j;
+}
+function toast(msg, kind, extra) {
+  const t = h('div', { class: 'toast', style: { '--c': kind === 'err' ? '#d03b3b' : kind === 'ok' ? '#0ca30c' : '#898781' } }, msg, extra ? ' · ' : null, extra);
+  t.onclick = () => t.remove();
+  $('#toasts').append(t);
+  setTimeout(() => t.remove(), kind === 'err' ? 9000 : 6000);
+}
+function ask(title, placeholder) { // in-page prompt (window.prompt is unavailable in some webviews)
+  return new Promise(res => {
+    const inp = h('input', { class: 'in', placeholder: placeholder || '' });
+    const done = v => { m.remove(); res(v); };
+    const m = h('div', { class: 'modal', onmousedown: e => { if (e.target === m) done(null); } },
+      h('form', { onsubmit: e => { e.preventDefault(); done(inp.value.trim()); } }, h('div', { class: 'lbl' }, title), inp,
+        h('div', { class: 'row' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => done(null) }, 'Cancel'), h('button', { class: 'btn', type: 'submit' }, 'OK'))));
+    inp.onkeydown = e => { if (e.key === 'Escape') done(null); };
+    document.body.append(m); inp.focus();
+  });
+}
+
+/* ---------- dashboard: state & routing ---------- */
+const TABS = ['playtests', 'videos', 'knowledge', 'players'];
+const S = { tab: null, id: undefined, L: null, lists: {}, errs: {}, sig: {}, status: null, tok: null, log: [] };
+const TS = { know: {}, players: {}, hist: {} }; // persistent sort state
+function parseHash() {
+  const s = location.hash.slice(1), i = s.indexOf('/');
+  let id = null;
+  try { id = i < 0 ? null : decodeURIComponent(s.slice(i + 1)) || null; } catch (_) { id = null; }
+  const tab = i < 0 ? s : s.slice(0, i);
+  return { tab: TABS.includes(tab) ? tab : 'playtests', id };
+}
+const go = (tab, id) => (location.hash = tab + (id != null ? '/' + enc(id) : ''));
+function route() {
+  const { tab, id } = parseHash();
+  document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.tab === tab));
+  if (tab !== S.tab) { S.tab = tab; S.id = undefined; buildLayout(tab); drawList(true); }
+  if (id !== S.id) { S.id = id; markSel(); showDetail(); }
+}
+function buildLayout(tab) {
+  const main = $('#main');
+  untip();
+  if (tab === 'playtests' || tab === 'videos') {
+    const flt = h('input', { class: 'in', type: 'search', placeholder: 'Filter ' + tab + '…' });
+    const list = h('div', null, h('div', { class: 'loading' }, 'Loading…'));
+    flt.oninput = () => applyFilter();
+    S.L = { list, flt, detail: h('section', { class: 'pane' }) };
+    main.replaceChildren(h('div', { class: 'split' }, h('aside', { class: 'bin' }, h('div', { class: 'bin-h' }, flt), list), S.L.detail));
+  } else if (tab === 'knowledge') {
+    S.L = { list: h('div', null, h('div', { class: 'loading' }, 'Loading…')), detail: h('div', { hidden: true }) };
+    S.L.pane = h('section', { class: 'pane' }, S.L.list, S.L.detail);
+    main.replaceChildren(S.L.pane);
+  } else {
+    const P = buildPlayers();
+    S.L = { list: P.list, P };
+    main.replaceChildren(P.pane);
+    renderLog();
+  }
+}
+function applyFilter() {
+  const q = S.L.flt ? S.L.flt.value.trim().toLowerCase() : '';
+  S.L.list.querySelectorAll('.item').forEach(a => (a.hidden = !!q && !a.textContent.toLowerCase().includes(q)));
+}
+function markSel() { if (S.L && S.L.list) S.L.list.querySelectorAll('.item').forEach(a => a.classList.toggle('sel', a.dataset.id === S.id)); }
+const PAGE = { videos: videoPage, playtests: playtestPage, knowledge: segmentPage };
+async function showDetail() {
+  const { tab, id, L } = S, tok = (S.tok = {});
+  untip();
+  if (tab === 'players') { if (id && L.P.sel.querySelector('option')) L.P.sel.value = id; return; }
+  if (tab === 'knowledge') { L.list.hidden = id != null; L.detail.hidden = id == null; L.pane.scrollTop = 0; if (id == null) return; }
+  if (id == null) { L.detail.replaceChildren(h('div', { class: 'empty big' }, tab === 'videos' ? 'Select a video to watch it' : 'Select a playtest to open its report')); return; }
+  L.detail.replaceChildren(h('div', { class: 'loading' }, 'Loading ' + id + '…'));
+  if (L.detail.classList.contains('pane')) L.detail.scrollTop = 0;
+  try {
+    const el = await PAGE[tab](await api('/api/' + tab + '/' + enc(id)));
+    if (S.tok === tok) L.detail.replaceChildren(el);
+  } catch (e) { if (S.tok === tok) L.detail.replaceChildren(errBox('Could not load ' + id + ': ' + e.message)); }
+}
+
+/* ---------- dashboard: lists (auto-refreshed) ---------- */
+const item = (tab, id, ...kids) => h('a', { class: 'item' + (S.id === id ? ' sel' : ''), href: '#' + tab + '/' + enc(id), 'data-id': id }, ...kids);
+function playtestItems(d) {
+  const ps = d.playtests || [];
+  if (!ps.length) return [empty('No playtests yet: agents create them with ', h('code', null, 'agentplay.py playtest …'))];
+  return ps.map(p => {
+    const tone = verdictTone(p.verdict);
+    return item('playtests', p.id, h('div', { class: 'it-t' }, h('span', { class: 'vd', style: { '--c': tone.c }, title: tone.w }, tone.i), h('span', { class: 'ell' }, p.scope || p.id)),
+      h('div', { class: 'it-v ell' }, p.verdict || ''),
+      h('div', { class: 'it-m mono' }, h('span', null, p.started), h('span', null, fmtDur(p.duration)), h('span', null, (p.passed ?? 0) + '/' + (p.segments ?? 0) + ' passed'), p.videoId ? h('span', null, '▶ video') : null),
+      h('div', { class: 'pbar' }, h('i', { style: { width: (p.segments ? clamp(p.passed / p.segments) * 100 : 0) + '%' } })));
+  });
+}
+function videoItems(d) {
+  const vs = d.videos || [];
+  if (!vs.length) return [empty('No videos yet: ', h('code', null, 'agentplay.py record NAME start'))];
+  return vs.map(v => item('videos', v.id, h('div', { class: 'it-t' }, h('span', { class: 'muted', title: v.videoKind }, v.videoKind === 'mp4' ? '▶' : '▦'), h('span', { class: 'ell' }, v.label || v.id)),
+    h('div', { class: 'it-m mono' }, h('span', null, v.player), h('span', null, v.created), h('span', null, fmtDur(v.duration)), h('span', null, fmtBytes(v.sizeBytes)),
+      v.playtest ? h('span', { title: 'playtest ' + v.playtest }, 'playtest') : null, v.segment ? h('span', { title: v.segment }, 'segment') : null)));
+}
+function drawList(force) {
+  const tab = S.tab, d = S.lists[tab];
+  if (!S.L) return;
+  if (!d) { if (S.errs[tab]) S.L.list.replaceChildren(errBox('Could not load ' + tab + ': ' + S.errs[tab])); return; }
+  const sig = JSON.stringify(d);
+  if (!force && S.sig[tab] === sig) return;
+  S.sig[tab] = sig;
+  if (tab === 'playtests' || tab === 'videos') { S.L.list.replaceChildren(...(tab === 'videos' ? videoItems(d) : playtestItems(d))); applyFilter(); }
+  else if (tab === 'knowledge') S.L.list.replaceChildren(knowledgeOverview(d));
+  else drawPlayers(d);
+}
+function drawStatus(st) {
+  $('#proj').textContent = st.project || '';
+  document.title = 'agentplay' + (st.project ? ' · ' + st.project : '');
+  const b = st.build;
+  $('#build').replaceChildren(b ? chip(b.current === true ? 'build current' : b.current === false ? 'build outdated' : 'build ?', b.current === true ? '#0ca30c' : b.current === false ? '#fab219' : '#5f5e58') : chip('no build', '#5f5e58'));
+  $('#build').title = b ? (b.name || '') + (b.builtAt ? ' · built ' + b.builtAt : '') : 'No build found';
+  $('#ff').replaceChildren(chip('ffmpeg ' + (st.ffmpeg ? 'yes' : 'no'), st.ffmpeg ? '#0ca30c' : '#fab219'));
+  $('#ff').title = st.ffmpeg ? 'Videos are encoded to mp4' : 'ffmpeg missing: videos fall back to keyframe playback';
+}
+function drawCounts() {
+  const L = S.lists, pl = (L.players && L.players.players) || [];
+  const n = { playtests: L.playtests?.playtests?.length, videos: L.videos?.videos?.length, knowledge: L.knowledge?.segments?.length, players: L.players ? pl.filter(p => p.state === 'running').length + '/' + pl.length : null };
+  document.querySelectorAll('#tabs a').forEach(a => (a.querySelector('b').textContent = n[a.dataset.tab] ?? '·'));
+  $('#recall').replaceChildren(...pl.filter(p => p.recording).map(p => h('a', { class: 'rec', href: '#players/' + enc(p.name), title: 'Recording on ' + p.name }, p.name)));
+}
+let busy = false;
+async function refresh(manual) {
+  if (busy) return;
+  busy = true;
+  try {
+    const urls = { status: '/api/status', playtests: '/api/playtests', videos: '/api/videos', knowledge: '/api/knowledge', players: '/api/players' };
+    const keys = Object.keys(urls), res = await Promise.allSettled(keys.map(k => api(urls[k])));
+    let fail = null;
+    res.forEach((r, i) => {
+      const k = keys[i];
+      if (r.status === 'fulfilled') { if (k === 'status') S.status = r.value; else S.lists[k] = r.value; S.errs[k] = null; }
+      else { fail = fail || r.reason; S.errs[k] = r.reason.message; }
+    });
+    if (S.status) drawStatus(S.status);
+    drawCounts(); drawList();
+    $('#conn').className = 'dot ' + (fail ? 'down' : 'live');
+    $('#conn').title = fail ? 'Error: ' + fail.message : 'Connected';
+    $('#upd').textContent = fail ? 'offline' : new Date().toLocaleTimeString();
+    if (fail && manual) toast(fail.message, 'err');
+  } finally { busy = false; }
+}
+
+/* ---------- pages ---------- */
+function videoPage(v) {
+  return h('div', null,
+    h('div', { class: 'dh' }, h('div', null, h('div', { class: 'crumb' }, h('a', { href: '#videos' }, 'Videos'), ' / ', v.player || '?'), h('h2', null, v.label || v.id), h('div', { class: 'sub' }, v.id)),
+      h('div', { class: 'acts' }, v.playtest ? h('a', { class: 'btn sm', href: '#playtests/' + enc(v.playtest) }, 'Playtest report') : null,
+        v.segment ? h('a', { class: 'btn sm', href: '#knowledge/' + enc(v.segment) }, 'Segment knowledge') : null,
+        v.videoUrl ? h('a', { class: 'btn sm', href: safeUrl(v.videoUrl), download: '' }, 'Download mp4') : null)),
+    videoView(v).el);
+}
+async function playtestPage(r) {
+  let video = r.video;
+  if (!video && r.videoId) try { video = await api('/api/videos/' + enc(r.videoId)); } catch (_) { video = null; }
+  return h('div', null,
+    h('div', { class: 'dh' }, h('div', null, h('div', { class: 'crumb' }, h('a', { href: '#playtests' }, 'Playtests'), ' / ', r.started || ''), h('h2', null, r.scope || r.id), h('div', { class: 'sub' }, r.id)),
+      video ? h('div', { class: 'acts' }, h('a', { class: 'btn sm', href: '#videos/' + enc(video.id) }, 'Open video')) : null),
+    playtestView(r, video, id => '#knowledge/' + enc(id)));
+}
+const stat = (k, v) => h('div', { class: 'stat' }, h('span', { class: 'lbl' }, k), h('b', null, v));
+const sum = (a, k) => a.reduce((t, x) => t + (+x[k] || 0), 0);
+function lessonsView(les) {
+  if (!les.length) return empty('No lessons recorded.');
+  const order = ['bug', 'needs-agent', 'pitfall', 'fix', 'tip'];
+  return h('div', null, les.slice().sort((a, b) => ord(order, a.kind) - ord(order, b.kind)).map(l => h('div', { class: 'ls' }, h('div', null, chip(l.kind, col(LES_C, l.kind))),
+    h('div', null, h('div', { class: 't1' }, l.text), h('div', { class: 'sub mono' }, [l.by, l.at, l.auto ? 'auto' : null].filter(Boolean).join(' · '))))));
+}
+function knowledgeOverview(d) {
+  const segs = d.segments || [], les = (d.global && d.global.lessons) || [];
+  const head = h('div', { class: 'dh' }, h('div', null, h('h2', null, 'Knowledge'), h('div', { class: 'sub' }, (S.status && S.status.knowledgeDir) || '')));
+  if (!segs.length) return h('div', null, head, empty('No knowledge yet: segments appear here once agents start learning stages.'));
+  const counts = MAST.map(m => [m, segs.filter(s => s.mastery === m).length]).filter(x => x[1]);
+  segs.filter(s => !MAST.includes(s.mastery)).length && counts.push(['other', segs.filter(s => !MAST.includes(s.mastery)).length]);
+  const runs = sum(segs, 'runs'), wins = sum(segs, 'wins');
+  return h('div', null, head,
+    h('div', { class: 'stats' }, stat('segments', segs.length), stat('mastered', segs.filter(s => s.mastery === 'mastered').length + ' / ' + segs.length), stat('routes', sum(segs, 'routes')),
+      stat('runs', runs), stat('win rate', runs ? pctTxt(wins / runs) : '–'), stat('lessons', sum(segs, 'lessons') + les.length)),
+    h('div', { class: 'lbl' }, 'Mastery'),
+    h('div', { class: 'mbar' }, counts.map(([m, n]) => h('i', { style: { '--c': col(MAST_C, m), flexGrow: n }, onmousemove: e => tip(e, m, n + ' of ' + segs.length + ' segments'), onmouseleave: untip }))),
+    h('div', { class: 'legend' }, counts.map(([m, n]) => h('span', null, h('i', { style: { '--c': col(MAST_C, m) } }), m, h('b', { class: 'mono' }, n)))),
+    sec('Segments', segs.length, h('div', { class: 'tblwrap' }, sortTable([
+      { key: 'order', label: '#', num: true },
+      { key: 'label', label: 'Segment', render: s => h('div', null, h('div', { class: 't1' }, s.label || s.id), h('div', { class: 'sub mono' }, s.id)) },
+      { key: 'mastery', label: 'Mastery', get: s => ord(MAST, s.mastery), render: s => chip(s.mastery, col(MAST_C, s.mastery)) },
+      { key: 'routes', label: 'Routes', num: true }, { key: 'runs', label: 'Runs', num: true },
+      { key: 'win', label: 'Win rate', num: true, get: s => (s.runs ? s.wins / s.runs : null), render: s => (s.runs ? h('span', { title: s.wins + ' / ' + s.runs }, pctTxt(s.wins / s.runs)) : '–') },
+      { key: 'streak', label: 'Streak', num: true }, { key: 'bestTime', label: 'Best', num: true, render: s => fmtSec(s.bestTime) },
+      { key: 'lessons', label: 'Lessons', num: true }, { key: 'friction', label: 'Friction', num: true, render: s => frBar(s.friction) },
+      { key: 'lastRun', label: 'Last run', render: s => (s.lastRun ? h('span', null, s.lastOutcome ? chip(s.lastOutcome, s.lastOutcome === 'win' ? '#0ca30c' : s.lastOutcome === 'fail' ? '#d03b3b' : '#5f5e58') : null, ' ', h('span', { class: 'mono muted' }, s.lastRun)) : '–') },
+    ], segs, { state: TS.know, key: 'order', dir: 1, onRow: s => go('knowledge', s.id) }))),
+    sec('Global lessons', les.length, lessonsView(les)));
+}
+function fmtArg(v) {
+  const r = x => (typeof x === 'number' ? +x.toFixed(2) : x);
+  if (typeof v === 'number') return String(r(v));
+  if (typeof v === 'string') return /^[\w.:/\-]+$/.test(v) ? v : JSON.stringify(v);
+  return JSON.stringify(v, (k, x) => r(x)) ?? '';
+}
+const argsOf = st => Object.keys(st).filter(k => k !== 'op' && k !== 'why').map(k => { const s = fmtArg(st[k]); return [k, s.length > 48 ? s.slice(0, 47) + '…' : s]; });
+function routeView(r, open) {
+  const steps = r.steps || [];
+  return h('details', { open },
+    h('summary', null, h('span', { class: 'mono t1' }, r.id), r.origin ? chip(r.origin, '#5f5e58') : null,
+      h('span', { class: 'muted' }, 'by ' + (r.createdBy || '?') + (r.createdAt ? ' · ' + r.createdAt : '') + (r.parent ? ' · from ' + r.parent : '')),
+      h('span', { class: 'rs mono' }, (r.wins || 0) + '/' + (r.runs || 0) + ' wins · streak ' + (r.streak || 0) + ' · best ' + fmtSec(r.bestTime) + ' · mean ' + fmtSec(r.meanTime) + ' · ' + steps.length + ' steps')),
+    steps.length ? h('ol', { class: 'steps' }, steps.map(st => h('li', { title: JSON.stringify(st) }, h('span', { class: 'op' }, st.op || '?'),
+      argsOf(st).map(([k, v]) => h('span', { class: 'arg' }, ' ', h('span', { class: 'ak' }, k + '='), v)), st.why ? h('span', { class: 'why' }, st.why) : null)))
+      : empty('No steps.'));
+}
+function qView(q) {
+  const states = Object.entries(q || {}).map(([k, acts]) => {
+    const a = Object.entries(acts || {}).map(([ak, x]) => ({ k: ak, n: +(x && x.n) || 0, v: +(x && x.value) || 0 })).sort((x, y) => y.v - x.v);
+    return { k, a, n: sum(a, 'n') };
+  }).sort((x, y) => y.n - x.n);
+  if (!states.length) return empty('Q table is empty: no exploratory runs yet.');
+  const mx = states.reduce((m, s) => s.a.reduce((mm, x) => Math.max(mm, Math.abs(x.v)), m), 1e-9);
+  const box = h('div', { class: 'q' });
+  let lim = 25;
+  const draw = () => box.replaceChildren(h('div', { class: 'lbl' }, 'state'), h('div', { class: 'lbl' }, 'top actions · value · visits'),
+    ...states.slice(0, lim).flatMap(s => [h('div', { class: 'st', title: s.k }, s.k),
+      h('div', { class: 'acts' }, s.a.slice(0, 4).map(x => h('div', { class: 'qa', title: x.k + '  value ' + x.v + '  n ' + x.n }, h('span', { class: 'ak' }, x.k),
+        h('span', { class: 'vb' }, h('i', { style: { width: Math.abs(x.v) / mx * 100 + '%', '--c': x.v < 0 ? '#e66767' : '#3987e5' } })), h('span', { class: 'n' }, fmtNum(x.v) + ' · ' + x.n))))]),
+    states.length > lim ? h('div', { style: { gridColumn: '1 / -1' } }, h('button', { class: 'btn sm', onclick: () => { lim = Infinity; draw(); } }, 'Show all ' + states.length + ' states')) : null);
+  draw();
+  return box;
+}
+function segmentPage(s) {
+  const routes = (s.routeList || []).slice().sort((a, b) => ((fin(a.bestTime) ? a.bestTime : Infinity) - (fin(b.bestTime) ? b.bestTime : Infinity)) || (b.wins || 0) - (a.wins || 0));
+  const les = s.lessons || [], hist = (s.history || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 40);
+  const outC = o => (o === 'win' ? '#0ca30c' : o === 'fail' ? '#d03b3b' : '#5f5e58');
+  return h('div', null,
+    h('div', { class: 'dh' }, h('div', null, h('div', { class: 'crumb' }, h('a', { href: '#knowledge' }, 'Knowledge'), ' / ', s.id), h('h2', null, s.label || s.id),
+      h('div', { class: 'sub' }, chip(s.mastery, col(MAST_C, s.mastery)), '  ', s.lastRun ? 'last run ' + s.lastRun + (s.lastOutcome ? ' · ' + s.lastOutcome : '') : 'never run'))),
+    h('div', { class: 'stats' }, stat('routes', routes.length || s.routes || 0), stat('runs', s.runs ?? 0), stat('win rate', s.runs ? pctTxt(s.wins / s.runs) : '–'),
+      stat('streak', s.streak ?? 0), stat('best time', fmtSec(s.bestTime)), stat('lessons', les.length), stat('friction', fin(s.friction) ? (+s.friction).toFixed(2) : '–')),
+    sec('Routes · best first', routes.length, routes.length ? h('div', { class: 'routes' }, routes.map((r, i) => routeView(r, i === 0))) : empty('No routes learned yet.')),
+    sec('Lessons', les.length, lessonsView(les)),
+    sec('Recent history', hist.length, hist.length ? h('div', { class: 'tblwrap' }, sortTable([
+      { key: 'at', label: 'When', render: x => h('span', { class: 'mono' }, x.at) }, { key: 'by', label: 'Agent' },
+      { key: 'route', label: 'Route', render: x => h('span', { class: 'mono' }, x.route) },
+      { key: 'outcome', label: 'Outcome', render: x => chip(x.outcome, outC(x.outcome)) }, { key: 'failKind', label: 'Fail kind' },
+      { key: 'time', label: 'Time', num: true, render: x => fmtSec(x.time) },
+      { key: 'video', label: 'Video', render: x => (x.video ? h('a', { href: '#videos/' + enc(x.video) }, 'watch') : '–') },
+    ], hist, { state: TS.hist })) : empty('No runs yet.')),
+    sec('Q table', Object.keys(s.q || {}).length, qView(s.q)));
+}
+
+/* ---------- players ---------- */
+function buildPlayers() {
+  const P = { list: h('div', { class: 'tblwrap' }, h('div', { class: 'loading' }, 'Loading…')), names: null, log: h('div', { class: 'log' }),
+    sel: h('select', { class: 'in', onchange: () => go('players', P.sel.value) }), ta: h('textarea', { class: 'in', rows: 7, spellcheck: 'false' }),
+    ans: h('pre', { class: 'ans' }, 'Send a command to see the answer.') };
+  P.ta.value = '{"op":"status"}';
+  P.ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendCmd(); } };
+  P.pane = h('section', { class: 'pane' },
+    h('div', { class: 'dh' }, h('div', null, h('h2', null, 'Players'), h('div', { class: 'sub' }, 'Game players driven by agents. Refreshes every 5 s.'))), P.list,
+    h('div', { class: 'cons' },
+      h('div', { class: 'card' }, h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Command to'), P.sel, h('span', { class: 'grow' }), h('span', { class: 'muted' }, 'Ctrl+Enter'),
+        h('button', { class: 'btn', onclick: sendCmd }, 'Send')), P.ta, h('div', { class: 'lbl', style: { margin: '10px 0 6px' } }, 'Answer'), P.ans),
+      h('div', { class: 'card' }, h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Activity this session')), P.log)));
+  return P;
+}
+function drawPlayers(d) {
+  const P = S.L.P, ps = d.players || [];
+  const btn = (label, fn, cls) => h('button', { class: 'btn sm' + (cls ? ' ' + cls : ''), onclick: e => { e.stopPropagation(); fn(); } }, label);
+  P.list.replaceChildren(ps.length ? sortTable([
+    { key: 'name', label: 'Player', render: p => h('b', { class: 't1' }, p.name) },
+    { key: 'state', label: 'State', render: p => chip(p.state, p.state === 'running' ? '#0ca30c' : '#5f5e58') },
+    { key: 'recording', label: 'Rec', get: p => (p.recording ? 1 : 0), render: p => (p.recording ? h('span', { class: 'rec' }, 'REC') : '–') },
+    { key: 'heartbeatAge', label: 'Heartbeat', num: true, render: p => (fin(p.heartbeatAge) ? h('span', { class: p.heartbeatAge > 10 ? 'flag' : null }, (+p.heartbeatAge).toFixed(1) + ' s ago') : '–') },
+    { key: 'detail', label: 'Detail', render: p => h('span', { class: 'muted' }, p.detail || '') },
+    { key: 'act', label: 'Actions', sort: false, render: p => h('div', { class: 'acts' }, p.state === 'running'
+      ? [p.recording ? [btn('Mark', () => recAct(p.name, 'mark')), btn('■ Stop recording', () => recAct(p.name, 'stop'), 'red')] : btn('● Start recording', () => recAct(p.name, 'start'), 'red'),
+        btn('Console', () => go('players', p.name))] : h('span', { class: 'muted' }, 'not running')) },
+  ], ps, { state: TS.players, onRow: p => go('players', p.name) }) : empty('No players yet: start a game player through agentplay.py and it appears here.'));
+  const names = ps.map(p => p.name + ':' + p.state).join('|');
+  if (names !== P.names) {
+    P.names = names;
+    const cur = S.id || P.sel.value || (ps.find(p => p.state === 'running') || {}).name;
+    P.sel.replaceChildren(...ps.map(p => h('option', { value: p.name, selected: p.name === cur }, p.name + (p.state === 'running' ? '' : ' (stopped)'))));
+  }
+}
+function logLine(text, video) {
+  S.log.unshift({ at: new Date().toLocaleTimeString(), text, video });
+  S.log.length = Math.min(S.log.length, 50);
+  renderLog();
+}
+function renderLog() {
+  const P = S.L && S.L.P;
+  if (!P) return;
+  P.log.replaceChildren(...(S.log.length ? S.log.map(l => h('div', null, h('time', null, l.at), l.text, l.video ? [' → ', h('a', { href: '#videos/' + enc(l.video.id) }, l.video.label || l.video.id)] : null))
+    : [h('div', { class: 'muted' }, 'Recording actions and commands show up here.')]));
+}
+async function recAct(name, action) {
+  const body = { action };
+  if (action === 'start') { const l = await ask('Start recording on ' + name, 'Video label (optional)'); if (l == null) return; if (l) body.label = l; }
+  if (action === 'mark') { const t = await ask('Mark the recording on ' + name, 'What is happening here?'); if (!t) return; body.text = t; }
+  try {
+    const r = await api('/api/players/' + enc(name) + '/record', body);
+    if (r.ok === false) throw new Error(r.error || 'request failed');
+    const msg = { start: 'Recording started', mark: 'Mark added', stop: 'Recording stopped' }[action] + ' on ' + name;
+    logLine(msg, r.video);
+    toast(msg, 'ok', r.video ? h('a', { href: '#videos/' + enc(r.video.id) }, 'open ' + (r.video.label || r.video.id)) : null);
+    refresh();
+  } catch (e) { logLine('✕ ' + action + ' on ' + name + ': ' + e.message); toast(e.message, 'err'); }
+}
+async function sendCmd() {
+  const P = S.L.P, name = P.sel.value;
+  if (!name) return toast('No player selected', 'err');
+  let body;
+  try { body = JSON.parse(P.ta.value); } catch (e) { P.ans.textContent = 'Invalid JSON: ' + e.message; P.ans.className = 'ans bad'; return; }
+  P.ans.textContent = 'Sending to ' + name + '…'; P.ans.className = 'ans';
+  const t0 = performance.now();
+  try {
+    const r = await api('/api/players/' + enc(name) + '/send', body);
+    P.ans.textContent = JSON.stringify(r, null, 2); P.ans.className = 'ans' + (r.ok === false ? ' bad' : '');
+    logLine('→ ' + name + ' ' + (body.op || '?') + ' · ' + Math.round(performance.now() - t0) + ' ms' + (r.ok === false ? ' · ' + (r.error || 'error') : ''));
+  } catch (e) { P.ans.textContent = e.message; P.ans.className = 'ans bad'; logLine('✕ ' + name + ' ' + (body.op || '?') + ': ' + e.message); }
+}
+
+/* ---------- boot ---------- */
+document.body.append(tipEl);
+$('#refresh').onclick = () => refresh(true);
+addEventListener('hashchange', route);
+route();
+refresh(false);
+setInterval(() => { if (!document.hidden) refresh(false); }, 5000);
+</script>
+</body>
+</html>

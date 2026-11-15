@@ -16,6 +16,14 @@ Project settings: tools/agentplay/agentplay.json; project commands: tools/agentp
   agentplay.py stop NAME | stop --all          quit players
   agentplay.py list                            show builds and running players
   agentplay.py editor status|claim|release --by NAME   the one agent slot for editor Play Mode tests
+
+  agentplay.py record NAME start|mark|snap|status|stop   record what the player sees (MP4 + captions + keyframes)
+  agentplay.py video list|info|sheet|frame|open|prune    recorded videos (Builds/AgentPlay/videos)
+  agentplay.py observe NAME / step NAME '{...}'          what the bot can see and use; one recorded exploration step
+  agentplay.py learn NAME --scope S                      learn to play segments until mastered (shared knowledge base)
+  agentplay.py playtest NAME --scope S                   play a whole chunk with the learned routes, record it, report
+  agentplay.py kb status|brief|show|lesson|route ...     the shared knowledge base other agents reuse
+  agentplay.py serve [--port 8765]                       dashboard and HTTP API: players, videos, playtests, knowledge
 """
 import argparse
 import ctypes
@@ -763,42 +771,55 @@ def require_running(name):
     return folder, pid
 
 
-def cmd_start(args):
+BEFORE_CLEAN = []  # functions(folder) run before a run folder is wiped (agentplay_video keeps unfinished recordings)
+
+
+def start_player(name, scene="", headless=False, window=False, res="640x360", fps=30, scale=1.0, script=None,
+                 timeout=180, require_current=False):
+    """Starts player NAME from the newest build and waits for its boot answer. Returns the start record (dict)."""
     build = latest_build()
     if build is None:
         fail("no build yet: run agentplay.py build", 2)
     current = build.name.endswith("-" + source_stamp())
-    if args.require_current and not current:
+    if require_current and not current:
         fail(f"build {build.name} is stale: run agentplay.py build", 2)
-    folder = run_dir(args.name)
+    folder = run_dir(name)
     pid = instance_pid(folder)
     if pid and pid_alive(pid, EXE):
-        fail("player '%s' is already running (pid %d)" % (args.name, pid))
+        fail("player '%s' is already running (pid %d)" % (name, pid))
     if folder.exists():
+        for hook in BEFORE_CLEAN:
+            hook(folder)
         shutil.rmtree(folder)  # a run folder is one session: pictures from the last one are gone
     folder.mkdir(parents=True)
-    width, height = args.res.lower().split("x")
-    cmd = [str(build / EXE), "-agent", args.name, "-agent-out", str(folder),
-           "-agent-fps", str(args.fps), "-agent-scale", str(args.scale),
+    width, height = res.lower().split("x")
+    cmd = [str(build / EXE), "-agent", name, "-agent-out", str(folder),
+           "-agent-fps", str(fps), "-agent-scale", str(scale),
            "-logFile", str(folder / "player.log"),
            "-screen-fullscreen", "0", "-screen-width", width, "-screen-height", height]
-    if not args.window:
+    if not window:
         cmd.append("-batchmode")
-    if args.headless:
+    if headless:
         cmd.append("-nographics")
-    if args.scene:
-        cmd += ["-agent-scene", args.scene]
-    if args.script:
-        cmd += ["-agent-script", str(Path(args.script).resolve())]
+    if scene:
+        cmd += ["-agent-scene", scene]
+    if script:
+        cmd += ["-agent-script", str(Path(script).resolve())]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
     (folder / "pid.txt").write_text(str(proc.pid))
     (folder / "build.txt").write_text(build.name)
     # The boot command loads the scene; wait for its answer so the first real command finds a ready game.
-    answer = wait_answer(folder, proc.pid, "boot", args.timeout)
-    print(json.dumps({"started": args.name, "pid": proc.pid, "build": build.name, "sourceMatches": current,
-                      "folder": str(folder), "boot": answer}, indent=1))
-    if not answer.get("ok"):
+    answer = wait_answer(folder, proc.pid, "boot", timeout)
+    return {"started": name, "pid": proc.pid, "build": build.name, "sourceMatches": current,
+            "folder": str(folder), "boot": answer}
+
+
+def cmd_start(args):
+    record = start_player(args.name, args.scene, args.headless, args.window, args.res, args.fps, args.scale,
+                          args.script, args.timeout, args.require_current)
+    print(json.dumps(record, indent=1))
+    if not record["boot"].get("ok"):
         sys.exit(1)
 
 
@@ -1053,9 +1074,28 @@ def main():
     p.add_argument("--files", action="store_true", help="list every changed file, not the first 25")
     p.set_defaults(func=cmd_info)
 
+    load_modules(sub)
     load_plugin(sub)
     args = parser.parse_args()
     args.func(args)
+
+
+MODULES = ("agentplay_video", "agentplay_learn", "agentplay_web")  # beside this file; each has register(sub, ap)
+
+
+def load_modules(sub):
+    """Recording, learning and the dashboard live in their own files; they get this module (ap) at register time."""
+    import importlib
+    here = str(Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    me = sys.modules[__name__]
+    for name in MODULES:
+        if not (Path(here) / (name + ".py")).is_file():
+            continue
+        module = importlib.import_module(name)
+        setattr(me, name.split("_", 1)[1], module)  # ap.video, ap.learn, ap.web
+        module.register(sub, me)
 
 
 def load_plugin(sub):

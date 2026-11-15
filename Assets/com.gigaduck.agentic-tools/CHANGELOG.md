@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.3.0 - 2026-11-15
+
+- **Gameplay video.** `agentplay.py record NAME start|mark|snap|status|stop`: the new `AgentPlayRecorder` renders the player's
+  camera, reads it back from the GPU without a stall and streams it into ffmpeg on a worker thread (constant frame rate, so a
+  hitch keeps real time), with a JPEG keyframe every 2 s and an event log (every op, its result, marks, stage labels, on-screen
+  text). `stop` stores a fast-start MP4 with those events as a captions track, WebVTT, chapters and a contact sheet in
+  `Builds/AgentPlay/videos/<id>/`. `agentplay.py video list|info|sheet|frame|events|open|prune`. Without ffmpeg: JPEG frames and
+  an MJPEG AVI. A crashed player's recording is kept when its folder is reused.
+- **Shared ops for every harness** (`AgentPlayOps`): `observe` (objects near, crosshair target, screen text, project hints),
+  `aim` (closed-loop mouse aim), `interact` (walk close, aim, check the crosshair target, press or hold), `approach`, `until`
+  (condition language `AgentPlayConditions`, extensible), `record`, `screen`, `perf`. `AgentPlayInput` is the one virtual keyboard
+  and mouse. A project with its own harness plugs them in with a few calls and gives them its hands (walker, interactor,
+  interactables, hints).
+- **Learning playtests** (`agentplay.py learn`, `playtest`, `observe`, `step`, `draft`, `kb`, `segments`): bots learn segments
+  by exploring (hint-driven autopilot with a value table per story state, so a mistake is made once), replaying with
+  human-like noise, repairing failed steps into route variants chosen by UCB1, and optimizing mastered routes. Everything goes
+  into a shared, committed knowledge base (`AgentPlayKnowledge/`, locked and merged per segment) that later agents start from.
+  `playtest` chains the learned routes through a scope, records one video and writes `report.html`/`report.json` with a verdict,
+  quality scores and findings at their video times. Parallel worker players (`--workers`).
+- **Dashboard and HTTP API**: `agentplay.py serve [--detach] [--open]` on localhost: playtests, videos (captions, event timeline,
+  keyframes), knowledge and players (record, send); JSON API for agents and tools.
+- New skill `agent-playtest`; `AGENT_PLAY.md` documents video, shared ops, learning and the API.
+
 ## 1.2.1 - 2026-11-12
 
 - **Virtual commits no longer keep their patch files forever.** Each record stored a full binary patch of every file in it under

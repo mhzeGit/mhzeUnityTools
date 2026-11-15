@@ -9,10 +9,6 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
-#if AGENTIC_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.LowLevel;
-#endif
 
 namespace Gigaduck.AgenticTools.AgentPlay
 {
@@ -28,6 +24,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
     /// pictures in <c>&lt;out&gt;/shots</c>, and a heartbeat in <c>&lt;out&gt;/heartbeat.txt</c>. Each instance has its own folder, so
     /// several players can run at once. A project adds ops with <see cref="RegisterOp"/> (a registered op replaces a built-in one
     /// of the same name), status fields with <see cref="StatusExtras"/>, and redirects its save folder in <see cref="Starting"/>.
+    /// The shared ops (observe, aim, interact, approach, until, record, screen) come from <see cref="AgentPlayOps"/>.
     /// A project with its own complete harness marks its assembly with <see cref="CustomAgentPlayHarnessAttribute"/> and this
     /// one stays off.
     /// </summary>
@@ -80,12 +77,6 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private int _frames;
         private Vector3 _lastGood;
         private bool _haveGood;
-#if AGENTIC_INPUT_SYSTEM
-        private Keyboard _keyboard;
-        private Mouse _mouse;
-        private bool _leftButton;
-        private readonly HashSet<Key> _held = new HashSet<Key>();
-#endif
 
         private sealed class Issue { public string Sev, Text, Where; public int Count; }
 
@@ -114,6 +105,10 @@ namespace Gigaduck.AgenticTools.AgentPlay
             var go = new GameObject("AgentPlayHarness");
             DontDestroyOnLoad(go);
             _instance = go.AddComponent<AgentPlayHarness>();
+            AgentPlayOps.Init(_out);
+            if (AgentPlayOps.ViewCamera == null) AgentPlayOps.ViewCamera = PictureCamera;
+            if (AgentPlayOps.Player == null) AgentPlayOps.Player = Player;
+            if (AgentPlayOps.Status == null) AgentPlayOps.Status = r => _instance?.Status(r);
             _instance.Begin(args);
         }
 
@@ -195,6 +190,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             _doing = op;
             var result = new Dictionary<string, object>();
             string error = null;
+            AgentPlayOps.CommandStarted(op, cmd);
             IEnumerator body = Dispatch(op, cmd, result, e => error = e);
             var stack = new Stack<IEnumerator>();
             stack.Push(body);
@@ -208,6 +204,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 else yield return stack.Peek().Current;
             }
 
+            AgentPlayOps.CommandFinished(op, error == null, error, result);
             Reply(id, error == null, error, result);
             _doing = "idle";
             _busy = false;
@@ -219,6 +216,12 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (Ops.TryGetValue(op, out AgentPlayOp custom))
             {
                 yield return custom(c, r, fail);
+                yield break;
+            }
+
+            if (AgentPlayOps.Handles(op))
+            {
+                yield return AgentPlayOps.Run(op, c, r, fail);
                 yield break;
             }
 
@@ -245,7 +248,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 case "quit": File.WriteAllText(Path.Combine(_out, "summary.txt"), Summary()); _quit = true; break;
                 default:
                     fail("unknown op '" + op + "' (built in: status, scene, teleport, key, hold, release, click, look, shot, shots, find, wait, " +
-                         "scale, errors, summary, quit" + (Ops.Count > 0 ? "; project: " + string.Join(", ", Ops.Keys) : "") + ")");
+                         "scale, errors, summary, quit, " + string.Join(", ", AgentPlayOps.Names) +
+                         (Ops.Count > 0 ? "; project: " + string.Join(", ", Ops.Keys) : "") + ")");
                     break;
             }
         }
@@ -293,83 +297,31 @@ namespace Gigaduck.AgenticTools.AgentPlay
             return null;
         }
 
-#if AGENTIC_INPUT_SYSTEM
-        private void EnsureInput()
+        private static IEnumerator PressKey(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail)
         {
-            if (_keyboard != null) return;
-            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
-            _keyboard = InputSystem.AddDevice<Keyboard>("AgentKeyboard");
-            _keyboard.MakeCurrent();
-            _mouse = InputSystem.AddDevice<Mouse>("AgentMouse");
-            _mouse.MakeCurrent();
+            string error = null;
+            yield return AgentPlayInput.Press(S(c, "key", ""), F(c, "s", 0.12f), e => error = e);
+            if (error != null) { fail(error); yield break; }
+            _instance.Status(r);
         }
 
-        private static bool ParseKey(Dictionary<string, object> c, Action<string> fail, out Key key)
+        private static void SetKey(Dictionary<string, object> c, bool down, Action<string> fail)
         {
-            if (Enum.TryParse(S(c, "key", ""), true, out key) && key != Key.None) return true;
-            fail("unknown key '" + S(c, "key", "") + "' (Input System names: W, E, Space, LeftShift ...)");
-            return false;
+            string error = AgentPlayInput.SetKey(S(c, "key", ""), down);
+            if (error != null) fail(error);
         }
 
-        private void SendKeys() => InputSystem.QueueStateEvent(_keyboard, new KeyboardState(_held.ToArray()));
-
-        private void SendMouse(Vector2 delta)
+        private static IEnumerator Click(Dictionary<string, object> c, Action<string> fail)
         {
-            var state = new MouseState { position = _mouse.position.ReadValue(), delta = delta };
-            InputSystem.QueueStateEvent(_mouse, state.WithButton(UnityEngine.InputSystem.LowLevel.MouseButton.Left, _leftButton));
+            if (!AgentPlayInput.Available) { fail(AgentPlayInput.Missing); yield break; }
+            yield return AgentPlayInput.Click(I(c, "button", 0), F(c, "s", 0.12f));
         }
 
-        private IEnumerator PressKey(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail)
+        private static IEnumerator Look(Dictionary<string, object> c, Action<string> fail)
         {
-            if (!ParseKey(c, fail, out Key key)) yield break;
-            EnsureInput();
-            _held.Add(key);
-            SendKeys();
-            yield return new WaitForSecondsRealtime(F(c, "s", 0.12f));
-            _held.Remove(key);
-            SendKeys();
-            yield return null;
-            Status(r);
+            if (!AgentPlayInput.Available) { fail(AgentPlayInput.Missing); yield break; }
+            yield return AgentPlayInput.Look(new Vector2(F(c, "dx", 0f), F(c, "dy", 0f)), I(c, "frames", 10));
         }
-
-        private void SetKey(Dictionary<string, object> c, bool down, Action<string> fail)
-        {
-            if (!ParseKey(c, fail, out Key key)) return;
-            EnsureInput();
-            if (down) _held.Add(key);
-            else _held.Remove(key);
-            SendKeys();
-        }
-
-        private IEnumerator Click(Dictionary<string, object> c, Action<string> fail)
-        {
-            EnsureInput();
-            _leftButton = true;
-            SendMouse(Vector2.zero);
-            yield return new WaitForSecondsRealtime(F(c, "s", 0.12f));
-            _leftButton = false;
-            SendMouse(Vector2.zero);
-            yield return null;
-        }
-
-        private IEnumerator Look(Dictionary<string, object> c, Action<string> fail)
-        {
-            EnsureInput();
-            int frames = Mathf.Max(1, I(c, "frames", 10));
-            Vector2 step = new Vector2(F(c, "dx", 0f), F(c, "dy", 0f)) / frames;
-            for (int i = 0; i < frames; i++)
-            {
-                SendMouse(step);
-                yield return null;
-            }
-        }
-#else
-        private const string NoInputSystem = "keys and mouse need the Input System package (com.unity.inputsystem)";
-        private IEnumerator PressKey(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail) { fail(NoInputSystem); yield break; }
-        private void SetKey(Dictionary<string, object> c, bool down, Action<string> fail) => fail(NoInputSystem);
-        private IEnumerator Click(Dictionary<string, object> c, Action<string> fail) { fail(NoInputSystem); yield break; }
-        private IEnumerator Look(Dictionary<string, object> c, Action<string> fail) { fail(NoInputSystem); yield break; }
-#endif
 
         private IEnumerator Shots(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail)
         {
@@ -579,6 +531,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             r["graphics"] = SystemInfo.graphicsDeviceType.ToString();
             Transform player = Player();
             if (player != null) { r["player"] = Fmt(player.position); r["yaw"] = player.eulerAngles.y; }
+            AgentPlayOps.AddStatus(r);
             try { StatusExtras?.Invoke(r); }
             catch (Exception e) { r["statusError"] = e.GetType().Name + ": " + e.Message; }
         }

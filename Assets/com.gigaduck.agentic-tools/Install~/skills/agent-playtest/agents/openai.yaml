@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Playtest"
+  short_description: "Learn to play, master and record whole chunks of the game"
+  default_prompt: "Use $agent-playtest to play-test this part of the game: learn what is not mastered, play it with video, and report."

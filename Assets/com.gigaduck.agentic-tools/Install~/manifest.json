@@ -38,7 +38,7 @@
     {
       "id": "agent-play",
       "title": "Agent play testing",
-      "description": "tools/agentplay/agentplay.py: one shared standalone build (script-only changes patched in seconds), one player per agent, driven by commands; the editor Play Mode claim; the testing policy and test deadlines. The player side is this package's AgentPlay harness and AgentPlayBuild.",
+      "description": "tools/agentplay/agentplay.py: one shared standalone build (script-only changes patched in seconds), one player per agent, driven by commands; gameplay video with captions; learning playtests with a shared knowledge base, reports, a dashboard and HTTP API; the editor Play Mode claim; the testing policy and test deadlines. The player side is this package's AgentPlay harness, shared ops, recorder and AgentPlayBuild.",
       "default": true,
       "items": [
         { "kind": "copy", "src": "files/tools/agentplay", "dst": "tools/agentplay" },
@@ -60,7 +60,7 @@
     {
       "id": "skills",
       "title": "Agent skills",
-      "description": "Gameplay, environment and asset skills (unity-gameplay-workflow, environment-design, concept-art-to-3d, model-to-textured-asset, game-prop-concept-art) for Claude Code, Codex, Kilo and Antigravity.",
+      "description": "Playtest, gameplay, environment and asset skills (agent-playtest, unity-gameplay-workflow, environment-design, concept-art-to-3d, model-to-textured-asset, game-prop-concept-art) for Claude Code, Codex, Kilo and Antigravity.",
       "default": true,
       "items": [
         { "kind": "copy", "src": "skills", "dst": ".claude/skills" },

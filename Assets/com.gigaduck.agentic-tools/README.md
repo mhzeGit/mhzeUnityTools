@@ -26,9 +26,9 @@ python <package>/Install~/install.py --project <repo> [--status] [--enable taskb
 | --- | --- |
 | **Agent rules** (always) | Shared rules injected into `AGENTS.md`; pointer files for Claude (`CLAUDE.md`, imports `AGENTS.md`), Gemini/Antigravity (`GEMINI.md`, `.agent/rules/project-rules.md`), Copilot (`.github/copilot-instructions.md`) and Cursor (`.cursor/rules/agents.mdc`); rule docs `AGENTIC_TOOLS.md` (how these tools are maintained), `PACKAGES.md` (fix packages at the source), `UNITY_PITFALLS.md` (Unity and MCP lessons). |
 | **Virtual commits** | Agents never commit: they register a record with `tools/git/agent-commit.ps1 prepare`; you review, commit and push the records you pick with `virtual-commit.bat` (one commit per record, only its files, with its version bump). Includes the worktree guard (a `post-checkout` hook that keeps the shared folder off detached HEADs), `repair-index.ps1`, `restore-worktree.ps1` and the `GIT.md` rules. |
-| **Agent play testing** | `tools/agentplay/agentplay.py`: one shared standalone build that agents start their own players from (script-only changes patched in seconds without Unity), commands sent as JSON, pictures, contact sheets, build records that say whether a build is current, and the editor Play Mode claim. The `TESTING.md` policy and `AGENT_PLAY.md` guide. The player side is this package's `AgentPlayBuild`, `AgentPlayShaders` and `AgentPlayHarness`. |
+| **Agent play testing** | `tools/agentplay/agentplay.py`: one shared standalone build that agents start their own players from (script-only changes patched in seconds without Unity), commands sent as JSON, pictures, contact sheets, build records that say whether a build is current, and the editor Play Mode claim. **Video**: `record` streams the player's camera into an MP4 with the agent's actions as captions, keyframe contact sheets for agents. **Learning playtests**: `learn` bots that master segments by trial and error (exploration with a value table per story state, noisy replays, repairs, UCB over route variants) and keep it in a committed knowledge base every agent reuses; `playtest` plays a whole chunk with it, records it and writes a quality report; `serve` is a dashboard and HTTP API. The `TESTING.md` policy, `AGENT_PLAY.md` guide and `agent-playtest` skill. The player side is this package's `AgentPlayBuild`, `AgentPlayShaders`, `AgentPlayHarness`, `AgentPlayOps`, `AgentPlayRecorder`. |
 | **Unity MCP setup** | `.mcp.json` and `.codex/config.toml` entries for MCP for Unity on `http://127.0.0.1:8080/mcp`. With `com.coplaydev.unity-mcp` installed, the package also compiles the `fast_play` MCP tool and starts the MCP server with the editor. |
-| **Agent skills** | `unity-gameplay-workflow`, `environment-design`, `concept-art-to-3d`, `model-to-textured-asset`, `game-prop-concept-art` in `.claude/skills`, `.agents/skills` (Codex), `.kilo/skills` and `.agent/skills` (Antigravity). **Skills for my user** in the window (or `install.py --personal-skills`) also copies them to your home folders. |
+| **Agent skills** | `agent-playtest`, `unity-gameplay-workflow`, `environment-design`, `concept-art-to-3d`, `model-to-textured-asset`, `game-prop-concept-art` in `.claude/skills`, `.agents/skills` (Codex), `.kilo/skills` and `.agent/skills` (Antigravity). **Skills for my user** in the window (or `install.py --personal-skills`) also copies them to your home folders. |
 | **Procedural animation rule** | `PROCEDURAL_ANIMATION.md`: motion computed in code always gets an editable curve profile. |
 | **Agent Task Board** (off by default) | `tools/taskboard` and `task-board.bat`: a local kanban that agents claim tasks from; finished tasks wait in Review until you commit their virtual commit. Open it from **Tools ▸ Agent Task Board ▸ Open Board** in Unity. |
 
@@ -68,13 +68,14 @@ The installed copies are never edited in a project. To add or change an agentic 
 | `Editor/Installer/` | The installer (no Unity dependency) and its JSON reader/writer. |
 | `Editor/AgentPlay/` | `AgentPlayBuild` (batch build of the agent player with `AGENT_PLAY`), `AgentPlayShaders` (shader stripping for that build). |
 | `Editor/Mcp/` | `fast_play` MCP tool and MCP auto-start; compiled only with MCP for Unity installed. |
-| `Runtime/` | `AgentPlayHarness`, the command server in agent players (ops, status extras, save folder hook), `CustomAgentPlayHarness` attribute. |
+| `Runtime/` | `AgentPlayHarness`, the command server in agent players (ops, status extras, save folder hook), `CustomAgentPlayHarness` attribute; `AgentPlayOps` (observe, aim, interact, approach, until, record, screen, perf, shared by every harness), `AgentPlayConditions`, `AgentPlayRecorder` (GPU readback to ffmpeg), `AgentPlayInput` (the virtual keyboard and mouse). |
 | `Install~/manifest.json` | Modules and their items (copy, block, json-merge). |
 | `Install~/blocks/`, `Install~/headers/` | Rule blocks and the headings of files the installer creates. |
 | `Install~/files/` | Tools copied into projects. |
 | `Install~/skills/` | Agent skills. |
 | `Install~/install.py`, `Install~/test_install.py` | Command-line installer and its tests (both installers, byte-identical results). |
 | `Install~/tests/cs/` | Console wrapper that runs the C# installer for the tests. |
+| `Install~/tests/agentplay/` | Offline tests of recording, learning, playtests and the HTTP API against a fake game (`python Install~/tests/agentplay/test_agentplay.py`). |
 
 ## Agent play in a new project
 
@@ -92,4 +93,9 @@ static void RegisterAgentOps()
 }
 ```
 
-`agentplay.py` needs Windows, Python 3.9+ and the project's Unity version installed by the Hub (or `UNITY_EXE`).
+For learning playtests the project names its segments (`ap.learn.set_segment_provider(...)` in `agentplay_project.py`, or
+`tools/agentplay/segments.json`) and gives the shared ops its hands (`AgentPlayOps.Walker`, `CrosshairTarget`, `Interactables`,
+`ObserveExtras` ...); see `AGENT_PLAY.md`.
+
+`agentplay.py` needs Windows, Python 3.9+ and the project's Unity version installed by the Hub (or `UNITY_EXE`). Video needs
+ffmpeg for MP4 (`python -m pip install imageio-ffmpeg` is enough; without it: MJPEG AVI) and Pillow for contact sheets.

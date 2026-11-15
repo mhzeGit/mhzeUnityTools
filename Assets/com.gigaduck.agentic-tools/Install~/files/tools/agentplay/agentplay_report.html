@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>agentplay report</title>
+<style>
+/* agentplay playtest report: static, offline, same visual language as the dashboard. */
+:root{color-scheme:dark;
+  --bg:#0f0f0e;--s1:#161615;--s2:#1d1d1b;--s3:#262624;--line:#2a2a28;--base:#383835;
+  --t1:#f0efec;--t2:#c3c2b7;--t3:#898781;--acc:#e8e1cf;--focus:#3987e5;
+  --good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --f-ui:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --f-label:Bahnschrift,"DIN Alternate","DIN Condensed","Barlow Semi Condensed","Arial Narrow",sans-serif;
+  --f-mono:"Cascadia Mono","JetBrains Mono","SF Mono",ui-monospace,Consolas,monospace}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;color:var(--t2);font:13px/1.45 var(--f-ui);background:radial-gradient(1400px 420px at 75% -12%,#ffffff08,transparent 70%),var(--bg)}
+::selection{background:#3987e566}
+a{color:var(--t1);text-decoration:underline;text-decoration-color:var(--base);text-underline-offset:2px}
+a:hover{text-decoration-color:var(--t2)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--t3)} .t1{color:var(--t1)} .grow{flex:1}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lbl{font:500 10.5px var(--f-label);letter-spacing:.11em;text-transform:uppercase;color:var(--t3)}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:20px;height:46px;padding:0 18px;background:var(--s1);border-bottom:1px solid var(--line)}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;pointer-events:none;opacity:.6;
+  background:repeating-linear-gradient(90deg,var(--base) 0 1px,transparent 1px 10px);
+  -webkit-mask:linear-gradient(90deg,#000,transparent 65%);mask:linear-gradient(90deg,#000,transparent 65%)}
+.brand{display:flex;align-items:center;gap:9px;font:600 13px var(--f-label);letter-spacing:.22em;text-transform:uppercase;color:var(--t1);white-space:nowrap}
+.brand .proj{font-weight:400;letter-spacing:.08em;color:var(--t3)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 3px #ffffff0a;flex:none}
+.hstat{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;background:var(--s2);border:1px solid var(--base);border-radius:4px;color:var(--t1);
+  cursor:pointer;text-decoration:none;white-space:nowrap;font:500 11px var(--f-label);letter-spacing:.08em;text-transform:uppercase}
+.btn:hover{background:var(--s3);border-color:#4a4945}
+.btn.sm{height:22px;padding:0 7px;font-size:10.5px}
+.in{height:26px;padding:0 8px;min-width:0;background:var(--bg);border:1px solid var(--base);border-radius:4px;color:var(--t1)}
+select.in{padding:0 4px}
+.chip{display:inline-flex;align-items:center;gap:5px;height:18px;padding:0 6px;border:1px solid var(--line);border-radius:3px;background:var(--s2);vertical-align:middle;
+  font:500 10px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--t2);white-space:nowrap}
+.chip>i{width:7px;height:7px;border-radius:2px;background:var(--c,var(--t3));flex:none}
+.chip.solid{background:var(--c);border-color:transparent;color:#fff} .chip.solid>i{display:none}
+.empty{padding:26px 16px;text-align:center;color:var(--t3)}
+.empty.big{padding:110px 20px 20px;font:500 12px var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--t2)}
+.empty.big::before{content:"";display:block;width:140px;height:9px;margin:0 auto 16px;background:repeating-linear-gradient(90deg,var(--base) 0 1px,transparent 1px 7px)}
+.errbox{margin:12px 0;padding:10px 12px;border:1px solid #d03b3b77;border-radius:4px;background:#d03b3b14;color:var(--t1)}
+.errbox::before{content:"✕  ";color:var(--crit);font-weight:700}
+.page{max-width:1380px;margin:0 auto;padding:22px 28px 56px}
+.foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;max-width:1380px;margin:0 auto;padding:14px 28px 36px;border-top:1px solid var(--line);font-size:11.5px;color:var(--t3)}
+/* detail headers & sections */
+.dh{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.dh h2{margin:0;font:600 21px/1.2 var(--f-label);letter-spacing:.01em;color:var(--t1)}
+.dh .sub{margin-top:4px;font:11.5px var(--f-mono);color:var(--t3)}
+.crumb{margin-bottom:5px;font:500 10.5px var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--t3)} .crumb a{color:var(--t3)}
+.acts{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.kv{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0}
+.kv dt{font:500 9.5px var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.kv dd{margin:1px 0 0;font:12px var(--f-mono);color:var(--t1)}
+.sec{margin-top:24px;animation:rise .3s ease-out both}
+.sec:nth-of-type(2){animation-delay:.04s} .sec:nth-of-type(3){animation-delay:.08s} .sec:nth-of-type(4){animation-delay:.12s}
+@keyframes rise{from{opacity:0;transform:translateY(5px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+.sec>h3{display:flex;align-items:center;gap:10px;margin:0 0 9px;font:500 11px var(--f-label);letter-spacing:.15em;text-transform:uppercase;color:var(--t3)}
+.sec>h3::after{content:"";flex:1;height:1px;background:var(--line)}
+.sec>h3 .cnt{font:11px var(--f-mono);letter-spacing:0;color:var(--t2)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:11.5px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;background:var(--c)} .legend b{font-weight:400;color:var(--t1)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin-bottom:14px}
+.stat{padding:8px 10px;background:var(--s1);border:1px solid var(--line);border-radius:5px}
+.stat b{display:block;margin-top:3px;font:600 19px/1.15 var(--f-label);color:var(--t1)}
+/* tables */
+.tblwrap{overflow-x:auto;background:var(--s1);border:1px solid var(--line);border-radius:6px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{padding:7px 10px;text-align:left;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--base);
+  font:500 10px var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.tbl th:hover,.tbl th.sorted{color:var(--t1)} .tbl th.sorted::after{content:" ↑"} .tbl th.sorted.desc::after{content:" ↓"}
+.tbl td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .n{text-align:right;white-space:nowrap;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tbl tr.click{cursor:pointer} .tbl tr.click:hover td{background:var(--s2)}
+.sub{margin-top:2px;font-size:11px;color:var(--t3)} .sub.err{color:var(--t2)} .sub.err::before{content:"✕ ";color:var(--crit)}
+.flag::before{content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--crit);vertical-align:1px}
+.fr{display:inline-block;position:relative;width:54px;height:5px;margin-right:6px;vertical-align:1px;background:var(--s3);border-radius:3px;overflow:hidden}
+.fr i{position:absolute;left:0;top:0;bottom:0;background:#d95926;border-radius:3px}
+/* video component */
+.vvwrap{container-type:inline-size}
+.vv{display:grid;grid-template-columns:minmax(0,1fr) 330px;background:var(--s1);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.vv-stage{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:16/9;max-height:64vh;background:#000;outline:none}
+.vv-stage>video,.vv-stage>img{display:block;width:100%;height:100%;object-fit:contain;background:#000}
+.vv-badge{position:absolute;top:8px;left:8px;padding:3px 7px;border-radius:3px;background:#000b;color:var(--t1);font:500 10px var(--f-label);letter-spacing:.12em;text-transform:uppercase}
+.vv-none{display:flex;flex-direction:column;gap:4px;text-align:center;color:var(--t3);font:500 12px var(--f-label);letter-spacing:.12em;text-transform:uppercase}
+.vv-ctrl{display:flex;align-items:center;gap:10px;padding:6px 10px;border-top:1px solid var(--line);font-size:11.5px}
+.vv-side{position:relative;border-left:1px solid var(--line)}
+.vv-side>div{position:absolute;inset:0;display:flex;flex-direction:column}
+.ev-h{display:flex;flex-direction:column;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
+.kbar{display:flex;flex-wrap:wrap;gap:4px}
+.kb{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 6px;border:1px solid var(--line);border-radius:3px;background:none;cursor:pointer;
+  font:500 10px var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.kb i{width:7px;height:7px;border-radius:2px;background:var(--c);opacity:.3} .kb b{font:400 10px var(--f-mono);color:var(--t3)}
+.kb.on{color:var(--t1);background:var(--s2);border-color:var(--base)} .kb.on i{opacity:1}
+.ev-list{position:relative;flex:1;min-height:120px;overflow:auto}
+.er{display:grid;grid-template-columns:58px auto minmax(0,1fr);gap:8px;align-items:baseline;padding:3px 10px 3px 8px;border-left:2px solid transparent;cursor:pointer;font-size:12px}
+.er:hover{background:var(--s2)} .er.cur{background:#e8e1cf14;border-left-color:var(--acc)}
+.er .x{color:var(--t1);word-break:break-word} .er .chip{height:16px;font-size:9.5px}
+.tl{padding:6px 12px 9px 80px;border-top:1px solid var(--line);background:linear-gradient(var(--s1),var(--bg))}
+.tl-a{position:relative;cursor:crosshair}
+.ln{position:relative;height:9px;margin-top:3px;background:#ffffff07;border-radius:2px}
+.ln::before{content:attr(data-n);position:absolute;right:calc(100% + 9px);top:50%;transform:translateY(-50%);white-space:nowrap;
+  font:500 9.5px var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.ln>i{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;border-radius:1px;background:var(--c)}
+.ln.off{opacity:.22}
+.ruler{height:13px;margin:0;background:none;overflow:hidden}
+.ruler span{position:absolute;top:0;padding-left:3px;border-left:1px solid var(--base);white-space:nowrap;font:9.5px/13px var(--f-mono);color:var(--t3)}
+.chl{height:16px}
+.chp{position:absolute;top:0;bottom:0;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:var(--s3);border-left:2px solid var(--t3);font:10.5px/16px var(--f-ui);color:var(--t2)}
+.chp:nth-child(even){background:var(--s2)}
+.ph{position:absolute;top:0;bottom:-3px;width:1px;background:var(--acc);pointer-events:none;box-shadow:0 0 6px #e8e1cf88}
+.ph::before{content:"";position:absolute;top:-1px;left:-4px;border:4.5px solid transparent;border-top-color:var(--acc)}
+.hv{position:absolute;top:0;bottom:0;width:1px;background:#ffffff45;pointer-events:none}
+.fs-wrap{margin-top:10px}
+.fs{position:relative;display:flex;gap:4px;overflow-x:auto;padding:6px 0 8px;scrollbar-width:thin}
+.fs figure{position:relative;flex:0 0 132px;margin:0;overflow:hidden;cursor:pointer;background:#000;border:1px solid var(--line);border-radius:3px}
+.fs figure:hover{border-color:var(--t3)} .fs figure.cur{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.fs img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--s2)}
+.fs figcaption{position:absolute;right:0;bottom:0;padding:1px 4px;background:#000b;font-size:10px;color:var(--t2)}
+.vv-foot{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-top:10px}
+.sheets{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+@container (max-width:880px){.vv{grid-template-columns:1fr}.vv-side{border-left:0;border-top:1px solid var(--line)}.vv-side>div{position:static}.ev-list{max-height:280px}}
+/* playtest */
+.verdict{position:relative;display:flex;justify-content:space-between;align-items:center;gap:14px 28px;flex-wrap:wrap;padding:15px 18px 15px 22px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 15%,transparent),transparent 55%),var(--s1);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.verdict::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.vt{font:600 21px/1.25 var(--f-label);color:var(--t1)}
+.vi{display:inline-grid;place-items:center;width:24px;height:24px;margin-right:9px;vertical-align:2px;border-radius:4px;background:var(--c);color:#0b0b0b;font:700 14px/1 var(--f-ui)}
+.vs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12px}
+.gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
+.g{padding:10px 12px 11px;background:var(--s1);border:1px solid var(--line);border-radius:6px}
+.g-v{margin:8px 0 9px;font:600 28px/1 var(--f-label);color:var(--t1);font-variant-numeric:tabular-nums} .g-v small{margin-left:2px;font-size:13px;color:var(--t3)}
+.g-bar{position:relative;height:5px;background:var(--s3);border-radius:3px}
+.g-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c);border-radius:3px}
+.g-bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(var(--a) - 1px),var(--s1) 0 var(--a),transparent 0 calc(var(--b) - 1px),var(--s1) 0 var(--b),transparent 0)}
+.g-s{margin-top:8px;font-size:11.5px} .g-s b{margin-right:3px;color:var(--c)}
+.ss{position:relative;display:flex;gap:2px;height:34px}
+.sb{position:relative;flex:1 1 0;min-width:3px;display:flex;align-items:center;padding:0 6px;overflow:hidden;cursor:pointer;border-radius:3px;background:var(--c);
+  color:#fff;white-space:nowrap;font:500 10.5px var(--f-label);letter-spacing:.04em}
+.sb span{overflow:hidden;text-overflow:ellipsis} .sb:hover{filter:brightness(1.2)}
+.sb.o-fail{background:repeating-linear-gradient(135deg,var(--c) 0 6px,#a52a2a 6px 9px)}
+.sb.o-unlearned{background:repeating-linear-gradient(45deg,#4a4945 0 4px,#3a3936 4px 8px);color:var(--t2)}
+.ss .ph{top:-4px;bottom:-4px;width:2px;border-radius:1px;box-shadow:0 0 0 1px #000a}
+.fg{margin-bottom:14px} .fg-h{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.fi{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;margin-bottom:3px;padding:6px 8px 6px 12px;
+  background:var(--s1);border:1px solid var(--line);border-left:3px solid var(--c);border-radius:3px}
+.fi .x{color:var(--t1);word-break:break-word}
+.tip{position:fixed;z-index:50;max-width:360px;padding:6px 9px;pointer-events:none;background:#0b0b0bf2;border:1px solid var(--base);border-radius:4px;box-shadow:0 8px 24px #000a;font-size:11.5px;color:var(--t2)}
+@media print{
+  :root{color-scheme:light;--bg:#fff;--s1:#fff;--s2:#f4f4f2;--s3:#e1e0d9;--line:#dddcd5;--base:#c3c2b7;--t1:#0b0b0b;--t2:#3a3a38;--t3:#6b6a66;--acc:#0b0b0b}
+  html,body{background:#fff} body{font-size:11px}
+  .top{position:static} .top::after{display:none}
+  .rec-sec,.vvwrap,.tip,.ph,.noprint,.legend .muted{display:none!important}
+  .page{max-width:none;padding:12px 0 0} .foot{padding:10px 0 0}
+  .sec{animation:none!important;margin-top:16px} .verdict,.g,.fg,.fi,.tbl tr{break-inside:avoid}
+  .tblwrap{overflow:visible} .tbl th{cursor:default}
+  .fi .btn{border:0;background:none;padding:0;height:auto;color:var(--t3)}
+  a{color:inherit;text-decoration:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{margin:14mm}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="dot"></span>agentplay<span class="proj">playtest report</span></div>
+  <div class="hstat mono muted" id="hmeta"></div>
+</header>
+<main class="page" id="main"></main>
+<footer class="foot"><span>agentplay playtest report · self-contained, works offline</span><span>Video, captions and keyframes load from paths relative to this file</span></footer>
+<script>
+'use strict';
+const REPORT = /*__REPORT_JSON__*/null;
+/* ---------- core helpers (shared with agentplay_dashboard.html) ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const enc = encodeURIComponent;
+const fin = x => x != null && x !== '' && Number.isFinite(+x);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, +v || 0));
+function h(tag, a, ...kids) { // element builder; all text goes through text nodes (escaped)
+  const e = document.createElement(tag);
+  for (const k in a || {}) {
+    const v = a[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'style') for (const s in v) s.startsWith('--') ? e.style.setProperty(s, v[s]) : (e.style[s] = v[s]);
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) if (c != null && c !== false) e.append(c instanceof Node ? c : String(c));
+  return e;
+}
+const safeUrl = u => (/^\s*(javascript|data|vbscript):/i.test(String(u ?? '')) ? '#' : String(u ?? ''));
+const pad = n => String(n).padStart(2, '0');
+function fmtDur(s) { if (!fin(s)) return '–'; s = Math.max(0, Math.round(s)); const hh = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (hh ? hh + ':' + pad(m) : m) + ':' + pad(s % 60); }
+function fmtT(s) { if (!fin(s)) return '–'; s = Math.floor(Math.max(0, s) * 10) / 10; const m = Math.floor(s / 60); return m + ':' + (s - m * 60).toFixed(1).padStart(4, '0'); }
+const fmtSec = s => (!fin(s) ? '–' : s < 60 ? (+s).toFixed(1) + ' s' : fmtDur(s));
+function fmtBytes(b) { if (!fin(b)) return '–'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; b = +b; while (b >= 1024 && i < 4) { b /= 1024; i++; } return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + ' ' + u[i]; }
+const pctTxt = v => (fin(v) ? Math.round(v * 100) + '%' : '–');
+const fmtNum = v => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2));
+function idxAt(a, t) { let lo = 0, hi = a.length - 1, r = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (a[m].t <= t + 1e-6) { r = m; lo = m + 1; } else hi = m - 1; } return r; }
+const niceStep = x => [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200].find(s => s >= x) || 7200;
+const ord = (arr, v) => { const i = arr.indexOf(v); return i < 0 ? arr.length : i; };
+function scrollInto(c, el, horiz) {
+  if (horiz) { const l = el.offsetLeft, w = el.offsetWidth; if (l < c.scrollLeft || l + w > c.scrollLeft + c.clientWidth) c.scrollLeft = l - c.clientWidth / 2 + w / 2; }
+  else { const t = el.offsetTop, hh = el.offsetHeight; if (t < c.scrollTop || t + hh > c.scrollTop + c.clientHeight) c.scrollTop = t - c.clientHeight / 3; }
+}
+/* palette: dark steps from the dataviz reference palette; status colours are reserved */
+const KINDS = ['segment', 'mark', 'label', 'finding', 'result', 'op'];
+const KIND_C = { op: '#3987e5', mark: '#c98500', label: '#199e70', result: '#9085e9', finding: '#e66767', segment: '#d55181' };
+const OUT = ['pass', 'fail', 'jumped', 'unlearned'];
+const OUT_C = { pass: '#0ca30c', fail: '#d03b3b', jumped: '#3987e5', unlearned: '#5f5e58' };
+const MAST = ['unknown', 'learning', 'competent', 'mastered', 'stale', 'needs-agent'];
+const MAST_C = { unknown: '#4a4945', learning: '#184f95', competent: '#2a78d6', mastered: '#86b6ef', stale: '#fab219', 'needs-agent': '#ec835a' };
+const SEV = ['FATAL', 'ERR', 'STALL', 'SOFT', 'WARN', 'INFO'];
+const SEV_C = { FATAL: '#d03b3b', ERR: '#e66767', STALL: '#ec835a', SOFT: '#fab219', WARN: '#c98500', INFO: '#898781' };
+const LES_C = { tip: '#199e70', pitfall: '#fab219', bug: '#d03b3b', fix: '#0ca30c', 'needs-agent': '#ec835a' };
+const col = (m, k) => m[k] || '#5f5e58';
+const chip = (t, c, cls) => h('span', { class: 'chip' + (cls ? ' ' + cls : ''), style: { '--c': c } }, h('i'), t ?? '–');
+const kv = (k, v) => h('div', null, h('dt', null, k), h('dd', null, v == null || v === '' ? '–' : v));
+const sec = (title, n, ...body) => h('section', { class: 'sec' }, h('h3', null, title, n != null ? h('span', { class: 'cnt' }, n) : null), ...body);
+const empty = (...kids) => h('div', { class: 'empty' }, ...kids);
+const errBox = msg => h('div', { class: 'errbox' }, msg);
+const tipEl = h('div', { class: 'tip', hidden: true });
+function tip(e, ...lines) {
+  tipEl.replaceChildren(...lines.filter(l => l != null && l !== '').map((l, i) => h('div', { class: i ? '' : 't1' }, l)));
+  tipEl.hidden = false;
+  const w = tipEl.offsetWidth, ht = tipEl.offsetHeight;
+  let x = e.clientX + 14, y = e.clientY + 16;
+  if (x + w > innerWidth - 8) x = e.clientX - w - 12;
+  if (y + ht > innerHeight - 8) y = e.clientY - ht - 12;
+  tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px';
+}
+const untip = () => (tipEl.hidden = true);
+function verdictTone(v) {
+  const s = String(v || '');
+  if (/fail|fatal|broken|crash|block|regress|unplayable/i.test(s)) return { c: '#d03b3b', i: '✕', w: 'failing' };
+  if (/pass|\bok\b|good|clean|green|success|healthy/i.test(s)) return { c: '#0ca30c', i: '✓', w: 'passing' };
+  return { c: '#fab219', i: '!', w: 'needs attention' };
+}
+const frBar = v => (fin(v) ? h('span', { class: 'mono' }, h('span', { class: 'fr' }, h('i', { style: { width: clamp(v) * 100 + '%' } })), (+v).toFixed(2)) : '–');
+
+/* sortable table: cols [{key,label,num,get,render,sort}] */
+function sortTable(cols, rows, opt = {}) {
+  const st = opt.state || {};
+  if (st.key === undefined) { st.key = opt.key ?? null; st.dir = opt.dir || 1; }
+  const thead = h('thead'), tbody = h('tbody'), val = (c, r) => (c.get ? c.get(r) : r[c.key]);
+  const blank = x => x == null || x === '' || (typeof x === 'number' && isNaN(x));
+  function draw() {
+    thead.replaceChildren(h('tr', null, cols.map(c => h('th', {
+      class: [c.num ? 'n' : '', c.key === st.key ? (st.dir < 0 ? 'sorted desc' : 'sorted') : ''].join(' ').trim() || null,
+      onclick: c.sort === false ? null : () => { if (st.key === c.key) st.dir = -st.dir; else { st.key = c.key; st.dir = c.num ? -1 : 1; } draw(); },
+    }, c.label))));
+    let rs = rows;
+    const c = cols.find(x => x.key === st.key);
+    if (c) rs = rows.slice().sort((a, b) => {
+      const x = val(c, a), y = val(c, b);
+      if (blank(x) || blank(y)) return blank(x) - blank(y);
+      return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * st.dir;
+    });
+    tbody.replaceChildren(...rs.map(r => h('tr', { class: opt.onRow ? 'click' : null, title: opt.title || null, onclick: opt.onRow ? () => opt.onRow(r) : null },
+      cols.map(c => { const v = c.render ? c.render(r) : val(c, r); return h('td', { class: c.num ? 'n' : null }, blank(v) ? '–' : v); }))));
+  }
+  draw();
+  return h('table', { class: 'tbl' }, thead, tbody);
+}
+
+/* ---------- video component: player (mp4 or keyframe slideshow), lane timeline, events, filmstrip ---------- */
+function videoView(v) {
+  const evs = (v.events || []).filter(e => e && fin(e.t)).sort((a, b) => a.t - b.t);
+  const kfs = (v.keyframes || []).filter(k => k && k.url && fin(k.t)).sort((a, b) => a.t - b.t);
+  const chs = (v.chapters || []).filter(c => c && fin(c.t)).sort((a, b) => a.t - b.t);
+  const D = +v.duration || Math.max(evs.length ? evs[evs.length - 1].t + 1 : 0, kfs.length ? kfs[kfs.length - 1].t + 1 : 0, 1);
+  const subs = new Set();
+  let media = { time: () => 0, seek() {}, play() {} };
+  const emit = () => { const t = media.time(); subs.forEach(f => f(t)); };
+  const stage = h('div', { class: 'vv-stage' }), ctrl = h('div', { class: 'vv-ctrl', hidden: true });
+  if (v.width && v.height) stage.style.aspectRatio = v.width + ' / ' + v.height;
+
+  function genCues(vid, mode) { // captions built from events when the .vtt is missing or cannot load (file://)
+    if (!window.VTTCue || !evs.length) return;
+    const tt = vid.addTextTrack('captions', 'Agent events', 'en');
+    evs.forEach((e, i) => {
+      const nx = evs[i + 1], end = Math.max(e.t + 0.8, Math.min(nx ? nx.t : e.t + 4, e.t + 4));
+      const txt = (e.kind === 'op' ? '' : '[' + e.kind + '] ') + String(e.text ?? '');
+      try { tt.addCue(new VTTCue(e.t, end, txt.replace(/&/g, '&amp;').replace(/</g, '&lt;'))); } catch (_) { /* ignore bad cue */ }
+    });
+    tt.mode = mode;
+  }
+  function useVideo() {
+    const vid = h('video', { controls: true, preload: 'metadata', playsinline: true });
+    vid.src = safeUrl(v.videoUrl);
+    if (v.captionsUrl) {
+      const tr = h('track', { kind: 'captions', src: safeUrl(v.captionsUrl), srclang: 'en', label: 'Agent events', default: true });
+      tr.addEventListener('error', () => { tr.remove(); genCues(vid, 'showing'); });
+      vid.append(tr);
+    } else genCues(vid, 'hidden');
+    vid.addEventListener('error', () => {
+      if (kfs.length) useFrames('The video could not be played here; showing keyframes instead.');
+      else stage.replaceChildren(h('div', { class: 'vv-none' }, 'Video could not be played', h('small', null, String(v.videoUrl))));
+    });
+    let raf = 0;
+    const loop = () => { emit(); if (!vid.paused && vid.isConnected) raf = requestAnimationFrame(loop); };
+    vid.addEventListener('play', () => { cancelAnimationFrame(raf); loop(); });
+    vid.addEventListener('timeupdate', emit); vid.addEventListener('seeked', emit);
+    stage.replaceChildren(vid); ctrl.hidden = true;
+    media = { time: () => vid.currentTime || 0, seek: t => { vid.currentTime = clamp(t, 0, D); emit(); }, play: () => vid.play().catch(() => {}) };
+  }
+  function useFrames(msg) { // "frames player": keyframe slideshow on a real clock
+    const img = h('img', { alt: 'keyframe', decoding: 'async' });
+    let t = 0, playing = false, rate = 1, last = 0, raf = 0, shown = -1;
+    const bp = h('button', { class: 'btn sm', title: 'Play / pause (space)' }, '▶');
+    const tm = h('span', { class: 'mono t1' });
+    const sp = h('select', { class: 'in', title: 'Playback speed' }, [0.5, 1, 2, 4, 8].map(r => h('option', { value: r, selected: r === 1 }, r + '×')));
+    sp.onchange = () => (rate = +sp.value);
+    const draw = () => {
+      const i = Math.max(0, idxAt(kfs, t));
+      if (i !== shown) { shown = i; img.src = safeUrl(kfs[i].url); if (kfs[i + 1]) new Image().src = safeUrl(kfs[i + 1].url); }
+      tm.textContent = fmtT(t) + ' / ' + fmtT(D); emit();
+    };
+    const stop = () => { playing = false; cancelAnimationFrame(raf); bp.textContent = '▶'; };
+    const tick = now => {
+      if (!playing || !img.isConnected) return stop();
+      t += (now - last) / 1000 * rate; last = now;
+      if (t >= D) { t = D; stop(); }
+      draw(); if (playing) raf = requestAnimationFrame(tick);
+    };
+    const start = () => { if (t >= D) t = 0; playing = true; last = performance.now(); bp.textContent = '❚❚'; cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
+    bp.onclick = () => (playing ? stop() : start());
+    img.onclick = () => bp.click();
+    stage.tabIndex = 0;
+    stage.onkeydown = e => {
+      if (e.key === ' ') { e.preventDefault(); bp.click(); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const i = idxAt(kfs, t) + (e.key === 'ArrowRight' ? 1 : -1); const k = kfs[clamp(i, 0, kfs.length - 1)]; t = k.t; draw(); }
+    };
+    stage.replaceChildren(img, h('span', { class: 'vv-badge' }, 'keyframes · ' + kfs.length));
+    ctrl.replaceChildren(bp, tm, sp, h('span', { class: 'muted ell' }, msg || 'No encoded video: keyframes play as a slideshow. Space plays, arrows step.'));
+    ctrl.hidden = false;
+    media = { time: () => t, seek: x => { t = clamp(x, 0, D); draw(); }, play: start };
+    draw();
+  }
+
+  // timeline: ruler, chapter lane, one lane per event kind
+  const lanes = [...KINDS.filter(k => evs.some(e => e.kind === k)), ...new Set(evs.map(e => e.kind).filter(k => !KINDS.includes(k)))];
+  const byKind = {}; lanes.forEach(k => (byKind[k] = evs.filter(e => e.kind === k)));
+  const pos = t => clamp(t / D) * 100 + '%';
+  const area = h('div', { class: 'tl-a' });
+  const ruler = h('div', { class: 'ln ruler' }), step = niceStep(D / 8);
+  for (let s = 0; s <= D + 1e-6; s += step) ruler.append(h('span', { style: { left: pos(s) } }, fmtDur(s)));
+  area.append(ruler);
+  if (chs.length) area.append(h('div', { class: 'ln chl', 'data-n': 'chapters', 'data-k': '#ch' },
+    chs.map((c, i) => h('div', { class: 'chp', style: { left: pos(c.t), width: clamp(((chs[i + 1] ? chs[i + 1].t : D) - c.t) / D) * 100 + '%' } }, c.title))));
+  const laneEl = {};
+  lanes.forEach(k => area.append(laneEl[k] = h('div', { class: 'ln', 'data-n': k, 'data-k': k, style: { '--c': col(KIND_C, k) } }, byKind[k].map(e => h('i', { style: { left: pos(e.t) } })))));
+  const ph = h('div', { class: 'ph' }), hv = h('div', { class: 'hv', hidden: true });
+  area.append(ph, hv);
+  const tAt = e => { const r = area.getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width) * D; };
+  function hit(e) {
+    const t = tAt(e), ln = e.target.closest('.ln'), k = ln && ln.dataset.k;
+    if (k === '#ch') { const i = idxAt(chs, t); if (i >= 0) return { t: chs[i].t, kind: 'chapter', label: chs[i].title }; }
+    else if (k && byKind[k]) {
+      const a = byKind[k], i = idxAt(a, t), tol = 5 / area.getBoundingClientRect().width * D;
+      let best = null;
+      for (const ev of [a[i], a[i + 1]]) if (ev && Math.abs(ev.t - t) <= tol && (!best || Math.abs(ev.t - t) < Math.abs(best.t - t))) best = ev;
+      if (best) return { t: best.t, kind: best.kind, label: best.text };
+    }
+    return { t };
+  }
+  area.addEventListener('mousemove', e => { const x = hit(e); hv.hidden = false; hv.style.left = pos(x.t); tip(e, fmtT(x.t) + (x.kind ? ' · ' + x.kind : ''), x.label); });
+  area.addEventListener('mouseleave', () => { hv.hidden = true; untip(); });
+  area.addEventListener('click', e => seek(hit(e).t));
+
+  // event list with kind filters and search
+  const on = new Set(lanes);
+  const q = h('input', { class: 'in', type: 'search', placeholder: 'Search ' + evs.length + ' events…' });
+  const kbar = h('div', { class: 'kbar' }, lanes.map(k => {
+    const b = h('button', { class: 'kb on', style: { '--c': col(KIND_C, k) }, title: 'Show/hide ' + k }, h('i'), k, h('b', null, byKind[k].length));
+    b.onclick = () => { on.has(k) ? on.delete(k) : on.add(k); b.classList.toggle('on', on.has(k)); laneEl[k].classList.toggle('off', !on.has(k)); drawList(); };
+    return b;
+  }));
+  const list = h('div', { class: 'ev-list' });
+  let rows = [], cur = -1;
+  function drawList() {
+    const s = q.value.trim().toLowerCase(), out = [];
+    rows = []; cur = -1;
+    for (const e of evs) {
+      if (!on.has(e.kind) || (s && !String(e.text ?? '').toLowerCase().includes(s))) continue;
+      if (rows.length >= 2000) { out.push(empty('Showing the first 2000 matches; narrow the search.')); break; }
+      const r = h('div', { class: 'er', onclick: () => seek(e.t) }, h('span', { class: 'mono muted' }, fmtT(e.t)), chip(e.kind, col(KIND_C, e.kind)), h('span', { class: 'x' }, e.text));
+      r.t = e.t; rows.push(r); out.push(r);
+    }
+    list.replaceChildren(...(out.length ? out : [empty(evs.length ? 'No events match.' : 'No events recorded.')]));
+    sync(media.time());
+  }
+  q.oninput = drawList;
+
+  // filmstrip, meta, sheets
+  const figs = kfs.map(k => { const f = h('figure', { onclick: () => seek(k.t) }, h('img', { loading: 'lazy', decoding: 'async', src: safeUrl(k.url), alt: '' }), h('figcaption', { class: 'mono' }, fmtT(k.t))); f.t = k.t; return f; });
+  const strip = h('div', { class: 'fs' }, figs);
+  let curK = -1;
+  function sync(t) {
+    ph.style.left = pos(t);
+    const i = idxAt(rows, t);
+    if (i !== cur) { if (rows[cur]) rows[cur].classList.remove('cur'); cur = i; if (rows[i]) { rows[i].classList.add('cur'); if (!list.matches(':hover')) scrollInto(list, rows[i]); } }
+    const k = idxAt(figs, t);
+    if (k !== curK) { if (figs[curK]) figs[curK].classList.remove('cur'); curK = k; if (figs[k]) { figs[k].classList.add('cur'); if (!strip.matches(':hover')) scrollInto(strip, figs[k], true); } }
+  }
+  subs.add(sync);
+  const meta = h('dl', { class: 'kv' }, kv('player', v.player), kv('created', v.created), kv('duration', fmtDur(v.duration)),
+    kv('resolution', v.width && v.height ? v.width + '×' + v.height : null), kv('fps', fin(v.fps) ? (+v.fps).toFixed(1) : null),
+    kv('frames', v.frames == null ? null : v.frames + (v.dropped ? ' (' + v.dropped + ' dropped)' : '')), kv('size', fmtBytes(v.sizeBytes)), kv('media', v.videoKind));
+  const sheets = (v.sheetUrls || []).map((u, i) => h('a', { class: 'btn sm', href: safeUrl(u), target: '_blank', rel: 'noopener' }, 'Sheet ' + (i + 1)));
+  const el = h('div', { class: 'vvwrap' },
+    h('div', { class: 'vv' }, h('div', { class: 'vv-main' }, stage, ctrl, h('div', { class: 'tl' }, area)),
+      h('div', { class: 'vv-side' }, h('div', null, h('div', { class: 'ev-h' }, q, kbar), list))),
+    kfs.length ? h('div', { class: 'fs-wrap' }, h('div', { class: 'lbl' }, 'Keyframes · ' + kfs.length), strip) : null,
+    h('div', { class: 'vv-foot' }, meta, sheets.length ? h('div', { class: 'sheets' }, h('span', { class: 'lbl' }, 'Contact sheets'), sheets) : null));
+
+  const canMp4 = !!document.createElement('video').canPlayType('video/mp4');
+  if (v.videoUrl && (canMp4 || !kfs.length)) useVideo();
+  else if (kfs.length) useFrames(v.videoUrl ? 'This viewer cannot decode mp4; playing keyframes instead.' : null);
+  else stage.replaceChildren(h('div', { class: 'vv-none' }, 'No playable media', h('small', null, (v.videoKind || 'unknown') + ' · ' + (v.frames || 0) + ' frames, no keyframes')));
+  drawList();
+  function seek(t, play) { media.seek(t); if (play) media.play(); }
+  return { el, seek(t) { seek(t, true); stage.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, onTime: f => subs.add(f) };
+}
+
+/* ---------- playtest report view (shared with agentplay_dashboard.html) ---------- */
+function gauge(name, v, inv) {
+  const ok = fin(v), g = ok ? (inv ? 1 - v : +v) : null;
+  const st = !ok ? ['–', 'no data', '#5f5e58'] : g >= 0.85 ? ['✓', 'good', '#0ca30c'] : g >= 0.6 ? ['!', 'fair', '#fab219'] : ['✕', 'poor', '#d03b3b'];
+  return h('div', { class: 'g', style: { '--c': st[2], '--a': inv ? '15%' : '60%', '--b': inv ? '40%' : '85%' } },
+    h('div', { class: 'lbl' }, name), h('div', { class: 'g-v' }, ok ? Math.round(v * 100) : '–', ok ? h('small', null, '%') : null),
+    h('div', { class: 'g-bar', title: 'marks: fair / good thresholds' }, h('i', { style: { width: (ok ? clamp(v) * 100 : 0) + '%' } })),
+    h('div', { class: 'g-s' }, h('b', null, st[0]), st[1], inv ? h('span', { class: 'muted' }, ' · lower is better') : null));
+}
+function segStrip(segs, onSeek) {
+  const bar = h('div', { class: 'ss' }), ph = h('div', { class: 'ph', hidden: true });
+  const blocks = segs.map(s => {
+    const b = h('div', { class: 'sb o-' + s.outcome, style: { '--c': col(OUT_C, s.outcome), flexGrow: Math.max(+s.duration || 0, 0.001) } }, h('span', null, s.label || s.id));
+    b.onmousemove = e => tip(e, s.label || s.id, (s.outcome || '?') + ' · ' + fmtDur(s.duration) + ' · mastery ' + (s.mastery || '?') + (s.chained ? ' · chained' : ''),
+      [s.deaths ? s.deaths + ' deaths' : '', s.errors && s.errors.length ? s.errors.length + ' errors' : '', 'starts ' + fmtT(s.start)].filter(Boolean).join(' · '));
+    b.onmouseleave = untip;
+    if (onSeek) b.onclick = () => onSeek(s.start);
+    bar.append(b); return b;
+  });
+  bar.append(ph);
+  const time = t => {
+    const i = segs.findIndex(s => t >= s.start && t < s.end);
+    if (i < 0) { ph.hidden = true; return; }
+    const s = segs[i], b = blocks[i];
+    ph.hidden = false; ph.style.left = b.offsetLeft + clamp((t - s.start) / ((s.end - s.start) || 1)) * b.offsetWidth + 'px';
+  };
+  const counts = OUT.map(o => [o, segs.filter(s => s.outcome === o).length]).filter(x => x[1]);
+  return { time, el: h('div', null, bar, h('div', { class: 'legend' }, counts.map(([o, n]) => h('span', null, h('i', { style: { '--c': col(OUT_C, o) } }), o, h('b', { class: 'mono' }, n))),
+    onSeek ? h('span', { class: 'muted' }, 'click a block to jump the video to that segment') : null)) };
+}
+function segTable(segs, onSeek) {
+  const flag = (v, bad) => h('span', { class: bad ? 'flag' : null }, v);
+  const nErr = s => (s.errors || []).length;
+  return sortTable([
+    { key: '_i', label: '#', num: true, render: s => s._i + 1 },
+    { key: 'label', label: 'Segment', render: s => h('div', null, h('div', { class: 't1' }, s.label || s.id),
+      h('div', { class: 'sub mono' }, [s.route ? 'route ' + s.route : 'no route', s.chained ? 'chained' : null, fmtT(s.start) + '–' + fmtT(s.end)].filter(Boolean).join(' · ')),
+      (s.errors || []).slice(0, 3).map(x => h('div', { class: 'sub err' }, x)), (s.notes || []).slice(0, 3).map(x => h('div', { class: 'sub' }, x))) },
+    { key: 'outcome', label: 'Outcome', get: s => ord(OUT, s.outcome), render: s => chip(s.outcome, col(OUT_C, s.outcome)) },
+    { key: 'mastery', label: 'Mastery', get: s => ord(MAST, s.mastery), render: s => chip(s.mastery, col(MAST_C, s.mastery)) },
+    { key: 'duration', label: 'Duration', num: true, render: s => fmtDur(s.duration) },
+    { key: 'deaths', label: 'Deaths', num: true, render: s => flag(s.deaths ?? '–', s.deaths > 0) },
+    { key: 'errors', label: 'Errors', num: true, get: nErr, render: s => flag(nErr(s), nErr(s) > 0) },
+    { key: 'worstFrameMs', label: 'Worst frame', num: true, render: s => (fin(s.worstFrameMs) ? flag(Math.round(s.worstFrameMs) + ' ms', s.worstFrameMs >= 100) : '–') },
+    { key: 'fpsAvg', label: 'FPS', num: true, render: s => (fin(s.fpsAvg) ? (+s.fpsAvg).toFixed(0) : '–') },
+    { key: 'blocked', label: 'Blocked', num: true, render: s => flag(s.blocked ?? '–', s.blocked > 0) },
+    { key: 'passiveRatio', label: 'Passive', num: true, render: s => (fin(s.passiveRatio) ? h('span', null, h('span', { class: 'fr' }, h('i', { style: { width: clamp(s.passiveRatio) * 100 + '%', background: '#3987e5' } })), pctTxt(s.passiveRatio)) : '–') },
+  ], segs.map((s, i) => ({ ...s, _i: i })), { onRow: onSeek ? s => onSeek(s.start) : null, title: onSeek ? 'Click to jump the video to this segment' : null });
+}
+function findingsView(finds, segs, onSeek, link) {
+  if (!finds.length) return empty('No findings: nothing was flagged during this run.');
+  const lab = id => (segs.find(s => s.id === id) || {}).label || id;
+  const groups = [...SEV, ...new Set(finds.map(f => f.sev).filter(s => !SEV.includes(s)))];
+  return h('div', null, groups.map(sv => {
+    const fs = finds.filter(f => f.sev === sv);
+    if (!fs.length) return null;
+    return h('div', { class: 'fg' }, h('div', { class: 'fg-h' }, chip(sv, col(SEV_C, sv), sv === 'FATAL' ? 'solid' : ''), h('span', { class: 'mono muted' }, fs.length)),
+      fs.map(f => h('div', { class: 'fi', style: { '--c': col(SEV_C, sv) } }, h('span', { class: 'x' }, f.text),
+        f.segment ? (link ? h('a', { class: 'muted', href: link(f.segment) }, lab(f.segment)) : h('span', { class: 'muted' }, lab(f.segment))) : h('span'),
+        fin(f.t) ? (onSeek ? h('button', { class: 'btn sm', onclick: () => onSeek(f.t), title: 'Jump the video here' }, '▶ ' + fmtT(f.t)) : h('span', { class: 'mono muted' }, fmtT(f.t))) : h('span'))));
+  }));
+}
+function playtestView(r, video, link) {
+  const segs = r.segments || [], finds = r.findings || [], Q = r.quality || {};
+  const vv = video ? videoView(video) : null, seek = vv ? t => fin(t) && vv.seek(+t) : null;
+  const passed = segs.filter(s => s.outcome === 'pass').length, tone = verdictTone(r.verdict);
+  const sevN = SEV.map(s => [s, finds.filter(f => f.sev === s).length]).filter(x => x[1]);
+  const strip = segStrip(segs, seek);
+  if (vv) vv.onTime(strip.time);
+  return h('div', null,
+    h('div', { class: 'verdict', style: { '--c': tone.c } },
+      h('div', null, h('div', { class: 'vt' }, h('span', { class: 'vi', title: tone.w }, tone.i), r.verdict || 'No verdict'),
+        h('div', { class: 'vs' }, h('span', { class: 't1' }, passed + '/' + segs.length + ' segments passed'), sevN.map(([s, n]) => chip(n + ' ' + s, SEV_C[s])))),
+      h('dl', { class: 'kv' }, kv('scope', r.scope), kv('started', r.started), kv('player', r.player), kv('build', r.build), kv('duration', fmtDur(r.duration)))),
+    h('div', { class: 'gauges' }, ['completion', 'stability', 'performance', 'pacing', 'friction'].map(k => gauge(k, Q[k], k === 'friction'))),
+    sec('Segment timeline', segs.length, segs.length ? strip.el : empty('No segments in this playtest.')),
+    h('section', { class: 'sec rec-sec' }, h('h3', null, 'Recording'), vv ? vv.el : empty(r.videoId ? 'Video ' + r.videoId + ' is not available.' : 'This playtest ran without recording.')),
+    sec('Segments', segs.length, segs.length ? h('div', { class: 'tblwrap' }, segTable(segs, seek)) : empty('No segments.')),
+    sec('Findings', finds.length, findingsView(finds, segs, seek, link)));
+}
+/* ---------- report boot ---------- */
+document.body.append(tipEl);
+(function boot() {
+  const main = $('#main'), r = REPORT;
+  if (!r || typeof r !== 'object') {
+    main.replaceChildren(h('div', { class: 'empty big' }, 'No data'), empty('This is the agentplay report template: the generator fills in a playtest report.'));
+    return;
+  }
+  document.title = 'agentplay report · ' + (r.scope || r.id || 'playtest');
+  $('#hmeta').textContent = [r.id, r.started, r.build].filter(Boolean).join('  ·  ');
+  try {
+    const v = r.video && typeof r.video === 'object' ? r.video : null;
+    main.replaceChildren(
+      h('div', { class: 'dh' },
+        h('div', null, h('div', { class: 'crumb' }, 'Playtest report'), h('h2', null, r.scope || r.id || 'Playtest'), h('div', { class: 'sub' }, r.id || '')),
+        h('div', { class: 'acts noprint' },
+          v && v.videoUrl ? h('a', { class: 'btn sm', href: safeUrl(v.videoUrl), target: '_blank', rel: 'noopener' }, 'Open video file') : null,
+          h('button', { class: 'btn sm', onclick: () => window.print() }, 'Print'))),
+      playtestView(r, v, null));
+  } catch (e) {
+    main.replaceChildren(errBox('Could not render this report: ' + e.message));
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>

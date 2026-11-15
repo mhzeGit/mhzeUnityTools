@@ -31,6 +31,82 @@ folder for a game that supports a save override).
 
 `--headless` has no GPU: lightest, for logic only; it cannot take pictures.
 
+## Play like a person (shared ops)
+
+Every harness (the package's and a project's own) also answers these, from `AgentPlayOps`:
+
+| Op | What it does |
+| --- | --- |
+| `observe {radius, max}` | What the player can see and use: status, view, the object under the crosshair, text on screen, objects near (with `usable`, `hold`, `prompt` from the project), and project parts such as `beats` (what the running story steps reference). `agentplay.py observe NAME` prints it with suggested actions. |
+| `aim {target \| point, tolerance}` | Turns the view onto an object with real mouse movement, closed loop: it learns how far the view turns per mouse unit. |
+| `interact {target, key, hold, reach, approach}` | Walks close if needed, aims, checks the object is under the crosshair (the project's interactor decides), presses the interact key (held for the object's hold time). Fails with what is under the crosshair instead. |
+| `approach {target \| pos, dist}` | Walks to a point near an object (the project's walker, e.g. NavMesh; default: W and mouse steering). |
+| `until {cond, timeout, soft}` | Waits for a condition: `{"field":"stage","gt":4}` (eq ne gt gte lt lte contains in changed exists), `near`, `exists`/`active`/`gone`, `crosshair`, `text`, `log`, `all`/`any`/`not`, plus project keys. `soft` answers `met:false` instead of failing. |
+| `record {action: start\|stop\|mark\|snap\|status}` | The recorder (below). |
+| `screen`, `perf {reset}` | Visible UI text; frame times since the last reset (fps, worst, 95th percentile). |
+
+## Record video
+
+```
+python tools/agentplay/agentplay.py record me1 start --label "what this shows"   # --fps 15 --res 960x540 --max-minutes 60
+python tools/agentplay/agentplay.py record me1 mark "the door should open now"     # a caption at this moment
+python tools/agentplay/agentplay.py record me1 stop                                # encodes and stores it; prints the paths
+python tools/agentplay/agentplay.py video sheet last --from 30 --to 60             # what an agent looks at instead of the video
+python tools/agentplay/agentplay.py video list | info ID | frame ID --at 42.5 [--exact] | events ID | open ID | prune --keep 30
+```
+
+The player renders its camera into a small render texture, reads it back from the GPU without stalling and streams frames into
+ffmpeg on a worker thread (H.264 at a constant frame rate: a hitch repeats the last frame, so the video keeps real time). It also
+saves a JPEG keyframe every 2 s and logs events: every op the agent sends and its result, marks, the project's stage label and
+on-screen text when they change. `stop` makes a fast-start MP4 with those events as a captions track (and `captions.vtt`),
+chapters from the labels and an overview contact sheet, in `Builds/AgentPlay/videos/<id>/` (`video.mp4`, `captions.vtt`,
+`keyframes/`, `sheet_*.png`, `meta.json`). Videos survive `start` (a crashed player's recording is kept too). ffmpeg comes from
+`AGENTPLAY_FFMPEG`, `agentplay.json` `"ffmpeg"`, `PATH`, or `python -m pip install imageio-ffmpeg`; without it frames are JPEGs
+and the video is an MJPEG AVI (VLC, Windows Media Player; the dashboard plays the keyframes). The camera picture has no
+screen-space UI; its text is in the captions. Agents never watch videos: they read `video sheet`/`video events` and look at frames.
+
+## Learning playtests and the knowledge base
+
+Agents learn to play the game, keep what they learned in a shared knowledge base, and play whole chunks with it. Skill
+`agent-playtest` has the workflow; the commands:
+
+```
+python tools/agentplay/agentplay.py kb brief [--scope S]               # START HERE: mastery, what needs an agent, lessons, next step
+python tools/agentplay/agentplay.py learn me1 --scope S [--workers 2]  # learn segments until mastered (starts its own players)
+python tools/agentplay/agentplay.py playtest me1 --scope S [--learn]   # play the scope with the learned routes, record, report
+python tools/agentplay/agentplay.py observe me1                        # what the bot sees, what the story waits for, suggestions
+python tools/agentplay/agentplay.py step me1 '{"op":"interact","target":"Kettle"}' --why "..." --segment S   # explore by hand
+python tools/agentplay/agentplay.py learn me1 --segment S --from-draft  # your draft -> a verified route
+python tools/agentplay/agentplay.py kb status|show S|lesson S|global "text" --kind tip|pitfall|bug|fix|route S --file steps.json
+```
+
+- **Segments** (the project defines them): a stretch of play with setup commands that put the game at its start, a goal
+  condition, a time budget and optionally `at` (the game is at its start already, so a playtest can chain segments).
+- **Routes**: replayable step lists. A learned step has `when` (wait until the story is in the state the step was learned in),
+  and may have `expect`, `optional`, `why`. **Explore**: the autopilot reads `observe` (what the running story steps point at,
+  usable objects, text) and tries actions scored by a value table per story state; an action that moves the story on is kept, one
+  that does nothing or kills the player is remembered as bad there, so a mistake is made once. **Replay** with human-like noise
+  (reaction delays, look jitter), choosing among route variants by UCB1. **Repair** a failed step into variants (detours, the door
+  in the way, approach first, wait until usable, longer timeouts, drop the step, wait out a hazard). **Mastered** = the best route
+  won `--streak` (3) times in a row; then faster variants compete. A mastered route that fails later marks the segment **stale**
+  (the game changed: a regression or an outdated route). What the autopilot cannot solve becomes **needs-agent** with a diagnosis.
+- **Knowledge base**: `agentplay.json` `"knowledgeDir"` (default `AgentPlayKnowledge/`), one JSON per segment plus `global.json`
+  and a README; commit it, so every agent and machine starts from it. Writes are locked and merged per segment, so parallel
+  agents and `--workers` share it safely. Episodes (every run, step by step) are in `Builds/AgentPlay/episodes/`.
+- **Playtest report** `Builds/AgentPlay/playtests/<id>/report.html` (+ `report.json`): verdict; completion, stability, performance,
+  pacing and friction; per segment outcome, chained or jumped, time, deaths, new errors, worst frame, blocked walks, how much was
+  waiting; findings with their time in the video, which plays embedded.
+- Learning takes real time (minutes per segment). Scope it like any test; a whole-game run only when the user asked for one.
+
+## Dashboard and HTTP API
+
+`python tools/agentplay/agentplay.py serve --detach --open` (`--stop` ends it) serves a dashboard on `http://127.0.0.1:8765/`:
+playtests (report, embedded video, segment timeline), videos (player with captions, clickable event timeline, keyframes),
+knowledge (mastery, routes, lessons, values) and players (record, mark, stop, send). The same data is an API for agents and tools:
+`GET /api/videos`, `/api/videos/<id>` (with `videoUrl`, `captionsUrl`, `keyframes[].url`), `/api/videos/<id>/frame?t=S`,
+`/api/playtests[/<id>]`, `/api/knowledge[/<segment>]`, `/api/players`, `POST /api/players/<name>/send` (a command) and
+`/api/players/<name>/record` (`{"action":"start|mark|stop"}`; stop returns the video). Localhost only.
+
 ## Build records
 
 Every build writes its own record, so an agent can judge in one read whether it needs a new build.
@@ -86,7 +162,17 @@ off): LODs pop instead of fading. Real builds never set `AGENTPLAY_BUILD`, so th
 - **Player ops**: a runtime script registers more harness ops with
   `Gigaduck.AgenticTools.AgentPlay.AgentPlayHarness.RegisterOp("name", (command, result, fail) => ...)` (an `IEnumerator`), and can
   add status fields with `AgentPlayHarness.StatusExtras += r => ...`. A project that ships its own complete harness instead marks
-  its assembly with `[assembly: Gigaduck.AgenticTools.AgentPlay.CustomAgentPlayHarness]`, and the package harness stays off.
+  its assembly with `[assembly: Gigaduck.AgenticTools.AgentPlay.CustomAgentPlayHarness]`, and the package harness stays off;
+  it calls `AgentPlayOps.Init(outFolder)`, sends unknown ops to `AgentPlayOps.Run` (`Handles(op)`), reports each command to
+  `AgentPlayOps.CommandStarted`/`CommandFinished` (recording captions), adds `AgentPlayOps.AddStatus(r)` to its status, and uses
+  `AgentPlayInput` for keys and mouse (one virtual keyboard and mouse for everything).
+- **The game's hands** (`AgentPlayOps` hooks): `Status`, `ViewCamera`, `Player`, `Walker` (e.g. NavMesh walking),
+  `CrosshairTarget` (what an interact press would use), `HoldSeconds`, `Interactables`, `DescribeObject` (usable, prompt...),
+  `ObserveExtras` (e.g. what the running story steps wait for: `AgentPlayOps.Fields(component)` turns serialized fields into
+  hints), `AgentPlayRecorder.LabelProvider` (the stage label in captions), and `AgentPlayConditions.Register("key", ...)` for
+  project conditions.
+- **Segments**: `agentplay_project.py` calls `ap.learn.set_segment_provider(segments, scope, validate)` in `register()`
+  (or the project writes `tools/agentplay/segments.json`), so `learn` and `playtest` know the game's segments.
 
 ## Limits
 
