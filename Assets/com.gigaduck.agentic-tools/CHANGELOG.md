@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.3 - 2026-11-16
+
+- A walk stops with a reason when the player is moved away (a death, a teleport) instead of walking on from the respawn.
+- `walk {direct: true}`: the straight line instead of the shortest path (a project walker honours it): a player keeps to a
+  lane beside a hazard; the shortest path can cut through it.
+- Learning: a death on a walk makes a "walk the straight line" repair, tried first; when a segment's live routes are full,
+  routes that never won after two runs retire to make room for new repairs (they used to block learning).
+
 ## 1.4.2 - 2026-11-16
 
 - Walk results carry `path` (the corners walked) and `trail` (where the player was every half second), so a death or a

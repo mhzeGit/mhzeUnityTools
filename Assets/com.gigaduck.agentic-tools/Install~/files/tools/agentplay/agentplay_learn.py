@@ -412,6 +412,15 @@ def handoff_repair(rec, route, ep):
     return ("repair:handoff:start-where-it-wins", [walk] + route["steps"], "start where it starts alone")
 
 
+def make_room(rec, wanted, keep=None):
+    """Retires live routes that never won after two runs or more (the most tried first), so new repairs fit."""
+    losers = sorted([x for x in live_routes(rec) if x.get("runs", 0) >= 2 and not x.get("wins") and x["id"] != keep],
+                    key=lambda x: -x.get("runs", 0))
+    room = REPAIR_BELOW - len(live_routes(rec))
+    for x in losers[:max(0, wanted - room)]:
+        x["retired"] = True
+
+
 def add_lesson(rec, text, kind, by, auto=False):
     for lesson in rec.setdefault("lessons", []):
         if lesson["text"] == text:
@@ -952,6 +961,9 @@ def repairs(route, ep, obs):
         out.append(("repair:%s:longer" % kind, steps[:i] + [longer] + steps[i + 1:], "longer timeouts"))
         out.append(("repair:%s:skip" % kind, steps[:i] + steps[i + 1:], "drop the step"))
     elif kind == "death":
+        if i < len(steps) and step.get("op") == "walk" and not step.get("direct"):
+            # The shortest path can cut through the danger a player would walk around (keep to the wall, not the middle).
+            out.append(("repair:death:direct", steps[:i] + [dict(step, direct=True)] + steps[i + 1:], "walk the straight line"))
         if i < len(steps):
             out.append(("repair:death:later", insert([{"op": "wait", "s": 2.5, "why": "a death followed this step: try it later"}]), "wait before"))
             out.append(("repair:death:skip", steps[:i] + steps[i + 1:], "drop the step"))
@@ -1065,10 +1077,13 @@ def learn_segment(name, seg, attempts=10, streak=None, record="none", optimize=T
 
         def add_repairs(r):
             add_lesson(r, detail, "pitfall", by, auto=True)
+            make_room(r, len(variants), keep=route["id"])
             for origin, steps, why in variants:
                 if len(live_routes(r)) >= REPAIR_BELOW:
                     break
-                add_route(r, steps, origin, by, parent=route["id"], why=why)
+                rid = add_route(r, steps, origin, by, parent=route["id"], why=why)
+                if origin.startswith("repair:death:direct"):
+                    next(x for x in r["routes"] if x["id"] == rid)["prior"] = 0.4
         KB.update(sid, add_repairs, seg, by)
         if ep["failKind"] == "goal-timeout" and explorations < 2:
             explorations += 1
@@ -1344,12 +1359,14 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
             apply_episode(r, route["id"], ep)
         if lesson:
             add_lesson(r, lesson, "pitfall", by, auto=True)
+        if variants:
+            make_room(r, len(variants), keep=route["id"])
         for origin, steps, why in variants:
             if len(live_routes(r)) >= MAX_LIVE_ROUTES - 1:
                 break
             rid = add_route(r, steps, origin.replace("repair:", "repair-chained:"), by, parent=route["id"], why=why + " (chained)")
-            if origin.startswith("repair:handoff"):
-                next(x for x in r["routes"] if x["id"] == rid)["prior"] = 0.5
+            if origin.startswith(("repair:handoff", "repair:death:direct")):
+                next(x for x in r["routes"] if x["id"] == rid)["prior"] = 0.5 if origin.startswith("repair:handoff") else 0.4
         if follow:
             add_route(r, follow, "explore-on-chained", by, parent=route["id"], why="the route ran out of steps in a chained run")
     KB.update(seg["id"], note, seg, by)

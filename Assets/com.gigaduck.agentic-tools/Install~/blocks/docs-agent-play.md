@@ -33,7 +33,9 @@ Players run in a real window (it does not take the keyboard focus), so the game 
 for a player: overlay UI, zooms, effects, frame pacing. `--batchmode` runs without a window (overlay UI is never drawn, so
 pictures and videos miss it; only for quick logic checks); `--headless` has no GPU: lightest, for logic only; it cannot take
 pictures. Recordings capture the finished screen (what the player sees, UI included); walking ops press the movement keys,
-so the game's speed, collisions and movement locks apply.
+so the game's speed, collisions and movement locks apply. A walk result has `path` (the corners walked) and `trail`
+(where the player was every half second), and stops with a reason when the player is moved away (a death, a teleport);
+`walk {direct: true}` keeps to the straight line instead of the shortest path (a lane beside a hazard).
 
 ## Play like a person (shared ops)
 

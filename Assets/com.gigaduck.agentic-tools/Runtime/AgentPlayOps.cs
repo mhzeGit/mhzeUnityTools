@@ -767,6 +767,13 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     }
 
                     if (player == null) break;
+                    if ((player.position - last).sqrMagnitude > 9f)
+                    {
+                        r["why"] = "the player was moved away (a death or a teleport)";
+                        r["movedTo"] = V(player.position);
+                        break;
+                    }
+
                     if ((player.position - last).sqrMagnitude > 0.0025f) { last = player.position; lastProgress = Time.realtimeSinceStartup; }
                     else if (hold) { still += Time.realtimeSinceStartup - now; lastProgress = Time.realtimeSinceStartup; }
                     else if (Time.realtimeSinceStartup - lastProgress > 2f)
