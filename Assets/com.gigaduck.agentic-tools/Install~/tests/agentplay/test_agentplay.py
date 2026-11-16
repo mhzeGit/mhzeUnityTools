@@ -350,6 +350,40 @@ class AgentPlayTests(unittest.TestCase):
         self.assertEqual(origins[0], "repair:no-target:until-usable")
         self.assertEqual(learn.repairs(route2, {"failStep": 0, "failKind": "crash"}, {}), [])
 
+    def test_05_background_job_wait_and_fetch_retry(self):
+        """--bg JOB runs a command detached (it outlives the agent's tool call); wait JOB blocks, prints only what is new and
+        ends with the job's own exit code. A git package that cannot be downloaded is a retryable build error."""
+        import subprocess
+        tool = [sys.executable, str(self.tmp / "Proj" / "tools" / "agentplay" / "agentplay.py")]
+        jobs = self.tmp / "Proj" / "Builds" / "AgentPlay" / "bg"
+        jobs.mkdir(parents=True, exist_ok=True)
+        (jobs / "endless.txt").write_text("never ends\n")  # a job file without a process: waiting on it blocks until --max
+
+        def run(*a):
+            return subprocess.run(tool + list(a), capture_output=True, text=True, timeout=60)
+        r = run("--bg", "slow", "wait", "endless", "--max", "6")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("STARTED job slow", r.stdout)
+        r = run("wait", "slow", "--max", "1")
+        self.assertEqual(r.returncode, 4, r.stdout)
+        self.assertIn("RUNNING slow", r.stdout)
+        r = run("wait", "slow", "--max", "30")
+        self.assertEqual(r.returncode, 4, r.stdout)  # the job's own exit code: its wait on "endless" ran out
+        self.assertIn("RUNNING endless", r.stdout)
+        self.assertIn("ENDED slow, exit 4", r.stdout)
+        r = run("wait", "slow", "--max", "1")
+        self.assertNotIn("RUNNING endless", r.stdout)  # what was printed once is not printed again
+        self.assertIn("ENDED slow", r.stdout)
+        run("--bg", "broken", "wait", "nojob")
+        r = run("wait", "broken", "--max", "30")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("ERROR: no job nojob", r.stdout)
+        self.assertIn("ENDED broken, exit 1", r.stdout)
+        log = self.tmp / "fetch.log"
+        log.write_text("  com.gigaduck.agentic-tools: Error when executing git command. fatal: unable to access "
+                       "'https://example.invalid/x.git/': schannel: next InitializeSecurityContext failed\n")
+        self.assertIn("could not be downloaded", self.ap.compile_errors(log)[0])
+
     # --------------------------------------------------------- with the fake player
     def test_10_explore_learns_and_avoids_the_trap(self):
         learn = self.ap.learn

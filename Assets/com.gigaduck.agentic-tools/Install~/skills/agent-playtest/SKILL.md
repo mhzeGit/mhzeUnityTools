@@ -24,8 +24,9 @@ Scope words: `segments --scope X` lists what X covers (ids, prefixes, `N`, `N-M`
 see `Docs/AGENT_PLAY.md`, *This project*). Report exactly what the commands printed: the verdict, each finding with its
 `@m:ss` video time, the section notes and the `VIEW` links. Do not open videos, report files or knowledge files to verify;
 the printed summary is the result. Times: playtest 20 to 60 s per section; deep test 10 to 15 min per full section, about
-1 min per section with `--only`; until-perfect one playtest per run. Run them in the background; every line prints as it
-happens.
+1 min per section with `--only`; until-perfect one playtest per run; a full build as long as `info` says the last took. Any
+command longer than your tool's time limit (a full build, a full deep test): `agentplay.py --bg JOB <command>`, then
+`agentplay.py wait JOB` (blocks up to 9 min with a 10 min call timeout; again until `ENDED`). Never end your turn to wait.
 
 - If `kb brief` shows sections not mastered, a plain playtest still plays the scope and reports them (`unlearned`: no route,
   it waited for the goal; `fail` on a stale route): that is the answer to a walkthrough request. Learn (`--learn`,

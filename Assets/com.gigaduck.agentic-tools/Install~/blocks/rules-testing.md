@@ -52,7 +52,8 @@ ask whether to test and do not pretend: write the check list you would have run 
   check in your list has its answer. A whole-game run only when the user asked for it, or the change is a system every part of
   the game uses and you say so.
 - Keep a test cheap in tokens: one summary, a contact `sheet` instead of many single pictures, and never poll a build in a
-  loop (`build` is one blocking command that prints one result).
+  loop (`build` is one blocking command that prints one result; when it outlasts your tool's time limit, run it as a job:
+  `agentplay.py --bg JOB build ...`, then `agentplay.py wait JOB`, which blocks up to 9 min a call).
 
 **Look like a player.** Agent players look where they walk and turn to what matters when something happens (attention, on by
 default; [`AGENT_PLAY.md`](../AGENT_PLAY.md)). Keep it on while you test, so the video shows what a player would see; aim it

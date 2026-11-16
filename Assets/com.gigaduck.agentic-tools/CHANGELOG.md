@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.7 - 2026-11-16
+
+- Agent play jobs: `agentplay.py --bg JOB <command>` runs any command detached (output in `Builds/AgentPlay/bg/JOB.txt`)
+  and `agentplay.py wait JOB` blocks up to 9 min, prints only what is new and ends `RUNNING` (call again) or
+  `ENDED JOB, exit N`. A full build or a full deep test outlasts an agent's tool time limit, and a sub-agent that ends its
+  turn to wait is stopped; the docs, the `agent-playtest` skill and the testing rules say so.
+- A build whose git package cannot be downloaded (a network or TLS hiccup) retries like a licensing timeout instead of
+  failing at once.
+- The docs no longer say a full build takes 2 to 3 min: as long as `info` says the last one took.
+
 ## 1.8.6 - 2026-11-16
 
 - Agent play docs, the `agent-playtest` skill and AGENTS.md's testing line say when a `STALE` build needs a rebuild: only

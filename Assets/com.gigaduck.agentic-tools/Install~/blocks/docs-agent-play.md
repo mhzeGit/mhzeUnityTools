@@ -39,8 +39,13 @@ full build takes as long as `info` says the last one took; another agent's build
   leave the files, list them in the report and the commit (the next agent starts from them).
 - **Time**: a playtest about 20 to 60 s per section; `--until-perfect` one playtest per run; a deep test about 10 s per test
   point plus 5 to 20 s per action (a full section of 40 actions 10 to 15 min; `--only door` about 1 min a section); learning
-  minutes per section; a full build 2 to 3 min, a script-only patch seconds. Run long commands in the background and read
-  their output when they end: every line is printed as it happens.
+  minutes per section; a full build as long as `info` says the last one took (minutes to half an hour), a script-only patch
+  seconds.
+- **Long commands** (a full build, a full deep test, `--until-perfect`) outlast an agent's tool time limit: run them as a job.
+  `agentplay.py --bg JOB <command ...>` (JOB = your NAME plus what it is: `claude-doors-build`) returns at once; then
+  `agentplay.py wait JOB` blocks up to 9 min (give that call a 10 min timeout), prints only what is new and ends with
+  `RUNNING` (call it again) or `ENDED JOB, exit N` below the command's result. Never end your turn to wait for a command: a
+  sub-agent that does is stopped. The job's whole output stays in `Builds/AgentPlay/bg/JOB.txt`.
 - If a build cannot resolve a package (another agent pinned an unpublished commit), `build --pin PACKAGE=committed` builds that
   one package at the last commit's revision, in the build copy only (the record and `info` say so).
 
@@ -49,6 +54,8 @@ full build takes as long as `info` says the last one took; another agent's build
 ```
 python tools/agentplay/agentplay.py info                  # ALWAYS first: age, commit, changes; CURRENT or STALE (exit 0 / 3 / 2 = none)
 python tools/agentplay/agentplay.py build --by me         # only when info says STALE with your files, code, scenes, prefabs or packages; script-only changes patch in seconds
+python tools/agentplay/agentplay.py --bg me-build build --by me   # the same as a job (a full build outlasts a tool call), then:
+python tools/agentplay/agentplay.py wait me-build         # blocks up to 9 min, prints what is new: RUNNING (call again) or ENDED
 python tools/agentplay/agentplay.py start NAME --require-current [--headless] [--scene SCENE] # unique name per agent, never another agent's
 python tools/agentplay/agentplay.py send NAME '{"op":"status"}'
 python tools/agentplay/agentplay.py shot NAME --as hall --pos=-6,2,-14 --look=-6,1,-8

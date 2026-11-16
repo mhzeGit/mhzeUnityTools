@@ -37,6 +37,7 @@ import shutil
 import subprocess
 import sys
 import time
+import traceback
 import uuid
 from pathlib import Path
 
@@ -358,6 +359,10 @@ def compile_errors(log):
     # hundreds of false "namespace not found" errors. It passes by itself, so it counts as retryable.
     if "Unknown entitlement status" in text:
         return ["Unity licensing timed out while the machine was busy (not a code problem)"]
+    # A git package that cannot be downloaded (a network or TLS hiccup) stops the build before it compiles; it passes too.
+    fetch = re.search(r"Error when executing git command\. fatal: unable to access[^\n]*", text)
+    if fetch:
+        return ["a git package could not be downloaded (network, not a code problem): " + fetch.group(0)[:200]]
     seen = []
     for line in text.splitlines():
         if "error CS" in line and not line.startswith("[AgentPlayBuild]") and line not in seen:
@@ -789,6 +794,110 @@ def cmd_info(args):
     sys.exit(3)
 
 
+# ------------------------------------------------------------------ background jobs
+
+JOBS = HOME / "bg"
+
+
+def job_file(job):
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", job or ""):
+        fail("job names may only use letters, digits, _ and -")
+    return JOBS / (job + ".txt")
+
+
+def start_job(job):
+    """`--bg JOB`: the same command, detached, so it outlives an agent's tool call (a full build can take longer than any
+    tool's time limit); its output and a last line `[agentplay exit N]` go to JOB.txt, which `wait JOB` reads."""
+    path = job_file(job)
+    pidf = path.with_suffix(".pid")
+    exe = Path(sys.executable).name
+    try:
+        old = int(pidf.read_text().split()[0])
+    except (OSError, ValueError, IndexError):
+        old = 0
+    if old and pid_alive(old, exe) and b"[agentplay exit " not in path.read_bytes():
+        fail("job %s is still running (pid %d): `agentplay.py wait %s`" % (job, old, job))
+    argv, skip = [], False
+    for a in sys.argv[1:]:
+        if skip:
+            skip = False
+        elif a == "--bg":
+            skip = True
+        elif not a.startswith("--bg="):
+            argv.append(a)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.with_suffix(".seen").unlink(missing_ok=True)
+    env = dict(os.environ, AGENTPLAY_JOB=job, PYTHONIOENCODING="utf-8")
+    with open(path, "wb") as out:
+        proc = subprocess.Popen([sys.executable, str(Path(__file__).resolve())] + argv, stdout=out, stderr=subprocess.STDOUT,
+                                stdin=subprocess.DEVNULL, env=env,
+                                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+    pidf.write_text("%d %s" % (proc.pid, exe))
+    print("STARTED job %s (pid %d): %s\nWait for it: python tools/agentplay/agentplay.py wait %s   (blocks up to 9 min a call: "
+          "give the call a 10 min timeout and call again until it prints ENDED)" % (job, proc.pid, " ".join(argv), job))
+
+
+def job_code(data):
+    m = re.search(rb"\[agentplay exit (-?\d+)\]", data)
+    return int(m.group(1)) if m else None
+
+
+def cmd_wait(args):
+    """Block until a `--bg` job ends, at most --max seconds, then print what it wrote since the last wait. Exit: the job's
+    own exit code once it ENDED, 4 while it is still RUNNING."""
+    path = job_file(args.job)
+    if not path.exists():
+        fail("no job %s: start one with `agentplay.py --bg %s <command>`" % (args.job, args.job))
+    seen = path.with_suffix(".seen")
+    try:
+        start = int(seen.read_text())
+    except (OSError, ValueError):
+        start = 0
+    try:
+        pid, exe = path.with_suffix(".pid").read_text().split()[:2]
+        pid = int(pid)
+    except (OSError, ValueError):
+        pid, exe = 0, None
+    deadline = time.time() + max(0, args.max)
+    while True:
+        data = path.read_bytes()
+        code = job_code(data)
+        if code is not None:
+            break
+        if pid and not pid_alive(pid, exe):
+            data = path.read_bytes()  # it may have written its last line just now
+            code = job_code(data)
+            code = -1 if code is None else code
+            break
+        if time.time() >= deadline:
+            break
+        time.sleep(3)
+    seen.write_text(str(len(data)))
+    lines = data[start:].decode("utf-8", errors="replace").splitlines()
+    cap = args.lines if args.lines is not None else (100 if code is not None else 15)
+    if len(lines) > cap:
+        print("(%d earlier new line(s) not shown, all in %s)" % (len(lines) - cap, path))
+        lines = lines[-cap:]
+    if lines:
+        print("\n".join(lines))
+    if code is None:
+        took = time.time() - job_started(path)
+        print("RUNNING %s (%s so far): call wait again" % (args.job, "%.0f min" % (took / 60) if took >= 120 else "%.0f s" % took))
+        sys.exit(4)
+    if code == -1:
+        print("ENDED %s without its exit line: the process was stopped from outside" % args.job)
+        sys.exit(1)
+    print("ENDED %s, exit %d" % (args.job, code))
+    sys.exit(code)
+
+
+def job_started(path):
+    try:
+        return path.with_suffix(".pid").stat().st_mtime
+    except OSError:
+        return path.stat().st_ctime
+
+
 # ------------------------------------------------------------------ instances
 
 def pid_alive(pid, program=None):
@@ -1085,7 +1194,15 @@ def main():
     except (AttributeError, ValueError):
         pass
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--bg", metavar="JOB", help="run the command detached, output in Builds/AgentPlay/bg/JOB.txt; then "
+                        "`wait JOB` (for commands longer than your tool's time limit: a full build, a full deep test)")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("wait", help="block until a --bg job ends (at most --max s); print what it wrote since the last wait")
+    p.add_argument("job")
+    p.add_argument("--max", type=int, default=540, help="seconds to block (540 fits a 10 min tool timeout)")
+    p.add_argument("--lines", type=int, help="new lines to print at most (default 15 while running, 100 once ended)")
+    p.set_defaults(func=cmd_wait)
 
     p = sub.add_parser("build")
     p.add_argument("--force", action="store_true", help="full rebuild even when the build is current")
@@ -1165,7 +1282,24 @@ def main():
     load_modules(sub)
     load_plugin(sub)
     args = parser.parse_args()
-    args.func(args)
+    if args.bg:
+        start_job(args.bg)
+        return
+    job = os.environ.pop("AGENTPLAY_JOB", None)  # popped: tools this job starts are not the job
+    if not job:
+        args.func(args)
+        return
+    code = 0
+    try:
+        args.func(args)
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
+    except BaseException:
+        traceback.print_exc()
+        code = 1
+    finally:
+        print("[agentplay exit %d]" % code, flush=True)
+    sys.exit(code)
 
 
 MODULES = ("agentplay_video", "agentplay_learn", "agentplay_deep", "agentplay_web")  # beside this file; each has register(sub, ap)
