@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.1 - 2026-11-16
+
+- Routes keep their chained record apart (`chain`: runs, wins, failures in a row): a segment played right after the one
+  before prefers routes that won chained, and a route proven alone that failed chained is not picked for its solo record (a
+  "stand still" chandelier route with 11 solo wins died twice chained before a route that walks out was tried).
+- Help texts for the player name and `--no-record` of `playtest` and `deeptest`.
+
 ## 1.8.0 - 2026-11-16
 
 - **Content Studio** (new module `content-studio`, off by default): agents make marketing video from the game.

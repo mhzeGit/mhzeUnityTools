@@ -793,7 +793,7 @@ def register(sub, ap_module):
     COVERAGE = ap.ROOT / ap.CONFIG.get("knowledgeDir", "AgentPlayKnowledge") / "coverage"
     p = sub.add_parser("deeptest", help="try everything in a section (every interactable, item combination and move) to find "
                                         "what breaks; coverage is shared in the knowledge base")
-    p.add_argument("name")
+    p.add_argument("name", help="your player's name (your own, e.g. your agent name and a number); started and stopped for you")
     p.add_argument("--scope", help="segments, as for learn and playtest")
     p.add_argument("--segment", help="one segment id")
     p.add_argument("--states", choices=("start", "all"), default="start",
@@ -804,13 +804,13 @@ def register(sub, ap_module):
     p.add_argument("--moves", action="store_true", help="with --only: also try the moves and walking probes")
     p.add_argument("--radius", type=float, default=None, help="metres around the section start to look for interactables "
                    "(default 12; 30 with --only)")
-    p.add_argument("--max", type=int, default=80, help="actions per state at most")
+    p.add_argument("--max", type=int, default=80, help="actions per test point at most (default 80)")
     p.add_argument("--combos", type=int, default=6, help="interactables to try an item in hand on")
     p.add_argument("--retest", action="store_true", help="redo actions already tested on this build")
     p.add_argument("--exhaustive", action="store_true", help="try everything, even what the effects memory says cannot "
                    "teach anything new (item moves with empty hands, look-alike objects, moves that did nothing before)")
     p.add_argument("--no-moves", action="store_true", help="interactables only")
     p.add_argument("--no-softlock", action="store_true", help="skip the can-it-still-be-finished check after story changes")
-    p.add_argument("--no-record", action="store_true")
-    p.add_argument("--by")
+    p.add_argument("--no-record", action="store_true", help="no video (the default records one video of the whole run)")
+    p.add_argument("--by", help="your agent name, kept with what you add")
     p.set_defaults(func=cmd_deeptest)

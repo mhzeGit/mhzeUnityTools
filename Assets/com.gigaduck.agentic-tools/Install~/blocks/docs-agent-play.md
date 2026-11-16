@@ -151,8 +151,9 @@ python tools/agentplay/agentplay.py kb status|show S|lesson S|global "text" --ki
 - **Playtest report** `Builds/AgentPlay/playtests/<id>/report.html` (+ `report.json`): verdict; completion, stability, performance,
   pacing and friction; per segment outcome, chained or jumped, time, deaths, new errors, worst frame, blocked walks, how much was
   waiting; findings with their time in the video, which plays embedded.
-- **Chained runs** (`playtest --until-perfect N`): a proven route (3 or more wins, 70% or more) that fails once is played
-  again before any repair (one failure can be chance); a segment that wins alone but fails chained is retried from where it
+- **Chained runs** (`playtest --until-perfect N`): routes keep a separate record of their chained runs (`chain`); a chained
+  segment prefers routes that won chained and does not trust a solo record for one that failed chained. A proven route (3 or
+  more wins, 70% or more) that fails once is played again before any repair (one failure can be chance); a segment that wins alone but fails chained is retried from where it
   starts alone (hand-off repair), and when it dies chained, the segment before gets a variant that ends there earlier (a
   hazard that already falls when its segment starts can only be escaped earlier). A click or key whose expected effect does
   not happen is pressed once more (the game was not listening yet). A death fails the attempt even when the story goes on.

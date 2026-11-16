@@ -352,6 +352,11 @@ def add_route(rec, steps, origin, by, parent=None, why=None):
 def apply_episode(rec, rid, ep):
     r = next((x for x in rec["routes"] if x["id"] == rid), None)
     win = ep["outcome"] == "win"
+    if r is not None and ep.get("chained"):  # its record in a chained run (from the segment before), kept apart
+        c = r.setdefault("chain", {"runs": 0, "wins": 0, "fails": 0})
+        c["runs"] += 1
+        c["wins"] += 1 if win else 0
+        c["fails"] = 0 if win else c.get("fails", 0) + 1
     if r is not None:
         r["runs"] = r.get("runs", 0) + 1
         r["lastOutcome"] = "win" if win else "fail"
@@ -1072,16 +1077,30 @@ def optimizations(route):
     return out
 
 
-def pick_route(rec, rng, prefer_untried=False):
+def chain_rate(r):
+    c = r.get("chain") or {}
+    return (c.get("wins", 0) + 1.0) / (c.get("runs", 0) + 2.0)
+
+
+def pick_route(rec, rng, prefer_untried=False, chained=False):
     """Win-stay, lose-shift: replay the route on a winning streak until it is mastered; after a loss (or when faster
-    variants should be tried) choose by UCB1, untried routes first, then the best mean plus an exploration bonus."""
+    variants should be tried) choose by UCB1, untried routes first, then the best mean plus an exploration bonus.
+    chained (a run that came from the segment before): a route's record when played alone is no proof there, so routes
+    that won chained go first, and one that failed chained last time is not trusted for its solo record."""
     live = live_routes(rec)
     requested = [r for r in live if r.get("prior", 0) >= 1 and r.get("runs", 0) == 0]
     if requested:  # a repair the next segment asked for: try it now, even over a route on a winning streak
         return max(requested, key=lambda r: r["prior"])
+    if chained:
+        chain_proven = [r for r in live if (r.get("chain") or {}).get("wins", 0) >= 1 and (r.get("chain") or {}).get("fails", 0) < 2
+                        and chain_rate(r) >= 0.6]
+        if chain_proven and not prefer_untried:
+            return max(chain_proven, key=lambda r: (chain_rate(r), (r.get("chain") or {}).get("wins", 0)))
+        live = [r for r in live if not (r.get("chain") or {}).get("fails")] or live  # failed chained last time: not first
     # A proven route (won often) that failed once is tried again before any repair: one failure can be chance (a click the
     # game was not ready for); two in a row mean it no longer works.
-    proven = [r for r in live if r.get("wins", 0) >= 3 and win_rate(r) >= 0.7 and r.get("fails", 0) < 2]
+    proven = [r for r in live if r.get("wins", 0) >= 3 and win_rate(r) >= 0.7 and r.get("fails", 0) < 2
+              and not (chained and (r.get("chain") or {}).get("fails"))]
     if proven and not prefer_untried:
         return max(proven, key=lambda r: (r.get("streak", 0) > 0, win_rate(r), -(r.get("bestTime") or 1e9)))
     hot = [r for r in live if r.get("streak", 0) > 0]
@@ -1368,10 +1387,6 @@ def playtest(name, segs, record=True, learn_first=False, label=None, by="agent",
 
 def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
     rec = KB.load(seg["id"], seg)
-    if adaptive:
-        route = pick_route(rec, rng or random.Random()) if live_routes(rec) else None
-    else:
-        route = best_route(rec) if mastery_of(rec) in ("mastered", "competent", "stale") else None
     at = seg.get("at")
     chained = bool(at) and check(name, at)[0]
     through = False
@@ -1379,6 +1394,11 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
         # The segment before ended already past this one's start: a checkpoint the story runs through by itself. Its goal
         # holding means it was played, chained; jumping back to its start would replay it out of order.
         through = chained = check(name, seg["goal"])[0]
+    followed = chained and bool(report["segments"])  # came from the segment before (not the run's first, set up)
+    if adaptive:
+        route = pick_route(rec, rng or random.Random(), chained=followed) if live_routes(rec) else None
+    else:
+        route = best_route(rec) if mastery_of(rec) in ("mastered", "competent", "stale") else None
     t_video = video.elapsed(name) if recording else None
     if recording:
         video.mark(name, seg.get("label", seg["id"]), "segment")
@@ -1387,6 +1407,7 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
         ep = explore_episode(name, seg, chained, by, rng)
     else:
         ep = run_episode(name, seg, route["steps"] if route else [], setup=not chained, by=by, budget=budget)
+    ep["chained"] = followed  # counted in the route's chained record (apply_episode)
     t_end = video.elapsed(name) if recording else None
     perf = ep.get("perf") or {}
     passive = sum(s.get("dt", 0) for s in ep["steps"] if s.get("op") in ("wait", "until"))
@@ -1999,13 +2020,13 @@ def register(sub, ap_module):
     p.set_defaults(func=cmd_learn)
 
     p = sub.add_parser("playtest", help="play a chunk of the game with the learned routes, record it, write a quality report")
-    p.add_argument("name")
+    p.add_argument("name", help="your player's name (your own, e.g. your agent name and a number); started and stopped for you")
     scope_args(p)
     learn_args(p)
     p.add_argument("--learn", action="store_true", help="learn segments that are not mastered first")
     p.add_argument("--until-perfect", type=int, metavar="RUNS", help="repeat whole chained runs, learning between them, "
                    "until one is perfect (every segment passed, chained, no deaths or errors); at most RUNS runs")
-    p.add_argument("--no-record", action="store_true")
+    p.add_argument("--no-record", action="store_true", help="no video (the default records one video of the run)")
     p.set_defaults(func=cmd_playtest)
 
     p = sub.add_parser("observe", help="what the bot sees and can use, what the story waits for, suggested actions")

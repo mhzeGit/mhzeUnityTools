@@ -432,6 +432,10 @@ class AgentPlayTests(unittest.TestCase):
         hot = {"routes": [{"id": "w", "runs": 5, "wins": 5, "streak": 5, "steps": []},
                           {"id": "e", "runs": 0, "wins": 0, "streak": 0, "steps": [], "prior": 1.0}]}
         self.assertEqual(learn.pick_route(hot, __import__("random").Random(3))["id"], "e", "a repair the next segment asked for beats a streak")
+        solo = {"routes": [{"id": "s", "runs": 12, "wins": 11, "streak": 3, "steps": [], "chain": {"runs": 2, "wins": 0, "fails": 2}},
+                           {"id": "c", "runs": 3, "wins": 2, "streak": 0, "steps": [], "chain": {"runs": 2, "wins": 2, "fails": 0}}]}
+        self.assertEqual(learn.pick_route(solo, __import__("random").Random(3))["id"], "s", "alone: the solo record counts")
+        self.assertEqual(learn.pick_route(solo, __import__("random").Random(3), chained=True)["id"], "c", "chained: chained proof counts")
         # A segment the story already went through (the one before ended past its start) is chained, not jumped back to.
         learn.send("bot", {"op": "stage", "n": 2}, 10)
         report = {"segments": [{"id": "fake/s0", "outcome": "pass", "chained": True}], "findings": []}
