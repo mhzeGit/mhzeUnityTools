@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.1 - 2026-11-16
+
+- **Agent players run in a real window by default** (opened without taking the keyboard focus): batch mode presents no
+  screen, so overlay UI was never drawn and pictures and videos could not show it. `start --batchmode` keeps the old
+  windowless mode for quick logic checks.
+- Agent players keep the game's own frame pacing (its vSync and target frame rate) instead of a forced 30 fps;
+  `start --fps N` caps it when an agent needs to (many players at once).
+- `KeyWalk` keeps to the line between path corners (pure pursuit), so the 8 key directions never drift it off a narrow
+  lane while the view looks elsewhere (a hammer beside the side lane).
+
 ## 1.4.0 - 2026-11-15
 
 - **Recordings show what the player sees.** The recorder captures the finished screen at the end of each frame: every

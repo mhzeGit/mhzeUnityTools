@@ -29,7 +29,11 @@ uses Input System key names: `W`, `E`, `Space`), `shot {name, pos, look_at|euler
 Results live in `Builds/AgentPlay/runs/<name>/` (`shots/`, `sheets/`, `summary.txt`, `console.txt`, `player.log`, its own `save/`
 folder for a game that supports a save override).
 
-`--headless` has no GPU: lightest, for logic only; it cannot take pictures.
+Players run in a real window (it does not take the keyboard focus), so the game draws and presents its frames exactly as
+for a player: overlay UI, zooms, effects, frame pacing. `--batchmode` runs without a window (overlay UI is never drawn, so
+pictures and videos miss it; only for quick logic checks); `--headless` has no GPU: lightest, for logic only; it cannot take
+pictures. Recordings capture the finished screen (what the player sees, UI included); walking ops press the movement keys,
+so the game's speed, collisions and movement locks apply.
 
 ## Play like a person (shared ops)
 

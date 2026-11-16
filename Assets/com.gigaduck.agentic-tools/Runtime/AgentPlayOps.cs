@@ -702,12 +702,15 @@ namespace Gigaduck.AgenticTools.AgentPlay
             KeyWalk(new[] { destination }, tolerance, timeout, r);
 
         private static readonly string[] MoveKeys = { "W", "A", "S", "D" };
+        private const float PursuitAhead = 0.6f; // metres ahead on the line: keeps within about 0.2 m of it
 
         /// <summary>
         /// Walks like a player: holds W, A, S and D for the way to the next corner as seen from where the camera looks
         /// (attention turns the view along the way: <see cref="AgentPlayAttention.Heading"/>), so the game's own movement
         /// applies: its speed, its collisions, its locks. While <paramref name="frozen"/> says the game holds the player still
         /// it lets go and waits, as a person would, instead of calling it blocked. <paramref name="run"/> holds Left Shift.
+        /// It keeps to the line between corners (pure pursuit: it heads for a point a little ahead on the line), so the 8 key
+        /// directions never drift it off a narrow lane, whatever the view looks at.
         /// Fills reached, remaining, why, stoppedAt, frozen (seconds the game held the player).
         /// </summary>
         public static IEnumerator KeyWalk(IList<Vector3> corners, float tolerance, float timeout, Dictionary<string, object> r,
@@ -717,21 +720,30 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (player == null || corners == null || corners.Count == 0) { r["reached"] = false; r["why"] = "no player"; yield break; }
             Vector3 destination = corners[corners.Count - 1];
             float until = Time.realtimeSinceStartup + timeout, lastProgress = Time.realtimeSinceStartup, still = 0f, best = float.MaxValue;
-            Vector3 last = player.position;
+            Vector3 last = player.position, from = player.position;
             string held = "";
             int i = 0;
             try
             {
                 while (player != null)
                 {
-                    Vector3 to = Horizontal(corners[i] - player.position);
+                    Vector3 toCorner = Horizontal(corners[i] - player.position);
                     bool final = i == corners.Count - 1;
-                    if (to.magnitude <= (final ? tolerance : Mathf.Max(tolerance, 0.5f)))
+                    if (toCorner.magnitude <= (final ? tolerance : Mathf.Max(tolerance, 0.5f)))
                     {
                         if (final) break;
+                        from = corners[i];
                         i++;
                         continue;
                     }
+
+                    // Head for a point a little ahead on the line from the last corner to this one.
+                    Vector3 line = Horizontal(corners[i] - from);
+                    float length = line.magnitude;
+                    Vector3 along = length > 0.01f ? line / length : toCorner.normalized;
+                    float done = Mathf.Clamp(Vector3.Dot(Horizontal(player.position - from), along), 0f, length);
+                    Vector3 to = Horizontal(from + along * Mathf.Min(length, done + PursuitAhead) - player.position);
+                    if (to.sqrMagnitude < 1e-4f) to = toCorner;
 
                     float rest = Horizontal(destination - player.position).magnitude;
                     if (final && best <= tolerance + 0.3f && rest > best + 0.05f) break; // a step past it: close enough
@@ -741,7 +753,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     bool hold = false;
                     try { hold = frozen != null && frozen(); }
                     catch (Exception) { }
-                    AgentPlayAttention.Heading = to;
+                    AgentPlayAttention.Heading = length > 0.01f ? along : to;
                     AgentPlayAttention.HeadingAt = now;
                     string keys = hold ? "" : KeysToward(to);
                     if (keys != held) { HoldKeys(held, keys, run); held = keys; }

@@ -96,8 +96,12 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
             _noGpu = SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
             Application.runInBackground = true;
-            QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = int.TryParse(Arg(args, "-agent-fps"), out int fps) ? fps : 30;
+            // The game's own frame pacing (vSync, target frame rate), as on a player's machine, unless the agent asks for a cap.
+            if (int.TryParse(Arg(args, "-agent-fps"), out int fps) && fps > 0)
+            {
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = fps;
+            }
             Time.timeScale = float.TryParse(Arg(args, "-agent-scale"), NumberStyles.Float, CultureInfo.InvariantCulture, out float scale) ? scale : 1f;
             try { Starting?.Invoke(_out); }
             catch (Exception e) { Debug.LogException(e); }

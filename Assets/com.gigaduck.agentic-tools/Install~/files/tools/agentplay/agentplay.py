@@ -774,7 +774,7 @@ def require_running(name):
 BEFORE_CLEAN = []  # functions(folder) run before a run folder is wiped (agentplay_video keeps unfinished recordings)
 
 
-def start_player(name, scene="", headless=False, window=False, res="640x360", fps=30, scale=1.0, script=None,
+def start_player(name, scene="", headless=False, window=True, res="640x360", fps=0, scale=1.0, script=None,
                  timeout=180, require_current=False):
     """Starts player NAME from the newest build and waits for its boot answer. Returns the start record (dict)."""
     build = latest_build()
@@ -797,15 +797,22 @@ def start_player(name, scene="", headless=False, window=False, res="640x360", fp
            "-agent-fps", str(fps), "-agent-scale", str(scale),
            "-logFile", str(folder / "player.log"),
            "-screen-fullscreen", "0", "-screen-width", width, "-screen-height", height]
-    if not window:
+    # A real window by default: the game draws to a real screen exactly as for a player (overlay UI, the presented frame,
+    # its frame pacing). Batch mode draws no screen at all, so overlay UI never appears in pictures or videos.
+    if headless or not window:
         cmd.append("-batchmode")
     if headless:
         cmd.append("-nographics")
+    startupinfo = None
+    if os.name == "nt" and window and not headless:
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 4  # SW_SHOWNOACTIVATE: a real window that does not take the keyboard focus
     if scene:
         cmd += ["-agent-scene", scene]
     if script:
         cmd += ["-agent-script", str(Path(script).resolve())]
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, startupinfo=startupinfo,
                             creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
     (folder / "pid.txt").write_text(str(proc.pid))
     (folder / "build.txt").write_text(build.name)
@@ -816,7 +823,7 @@ def start_player(name, scene="", headless=False, window=False, res="640x360", fp
 
 
 def cmd_start(args):
-    record = start_player(args.name, args.scene, args.headless, args.window, args.res, args.fps, args.scale,
+    record = start_player(args.name, args.scene, args.headless, not args.batchmode, args.res, args.fps, args.scale,
                           args.script, args.timeout, args.require_current)
     print(json.dumps(record, indent=1))
     if not record["boot"].get("ok"):
@@ -1026,9 +1033,11 @@ def main():
     p.add_argument("--scene", default=CONFIG.get("defaultScene", ""),
                    help="build scene to load at boot (default: agentplay.json defaultScene, else the first build scene), or 'none'")
     p.add_argument("--headless", action="store_true", help="no GPU: lightest, for logic checks, cannot take pictures")
-    p.add_argument("--window", action="store_true", help="show a window instead of running hidden")
+    p.add_argument("--window", action="store_true", help="(the default) a real window, as a player runs the game")
+    p.add_argument("--batchmode", action="store_true", help="no window: overlay UI is never drawn, so pictures and videos "
+                   "miss it; only for quick logic checks")
     p.add_argument("--res", default="640x360")
-    p.add_argument("--fps", type=int, default=30)
+    p.add_argument("--fps", type=int, default=0, help="cap the frame rate; 0 (default): the game's own pacing, as a player runs it")
     p.add_argument("--scale", type=float, default=1.0, help="Time.timeScale")
     p.add_argument("--script", help="JSON file with a list of commands to run after boot")
     p.add_argument("--timeout", type=int, default=180)
