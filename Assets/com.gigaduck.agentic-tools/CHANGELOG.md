@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.1 - 2026-11-16
+
+- Deep tests measure against a control: at each test point they first watch what happens when the player does nothing (the
+  story moving on by itself, standing still being deadly), let the story settle before each action, and credit an action
+  only with what does not happen anyway ("anyway" outcomes, which the effects memory does not learn from). Without it, a
+  section whose scenes play on a timer credited every action with the story moving and every death.
+
 ## 1.6.0 - 2026-11-16
 
 - **Clean videos.** Nothing is drawn over the video any more: the MP4 holds the picture only (the events stay in

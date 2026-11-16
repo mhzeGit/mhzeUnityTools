@@ -159,8 +159,41 @@ def wait_for_control(name, seconds=8.0):
     return False
 
 
+def baseline(name, seconds=10.0):
+    """What happens at this point when the player does nothing: the story steps it goes through by itself, and whether
+    standing still kills. The control an action's effect is measured against."""
+    st0 = learn.status(name)
+    seen, died = [], False
+    deaths0 = st0.get("deaths") or 0
+    until = time.time() + seconds
+    while time.time() < until:
+        st = learn.status(name)
+        key = learn.state_key(st)
+        if key != learn.state_key(st0) and key not in seen:
+            seen.append(key)
+        if (st.get("deaths") or 0) > deaths0 or st.get("dying"):
+            died = True
+            break
+        time.sleep(0.4)
+    return {"states": seen, "died": died, "quiet": not seen and not died}
+
+
+def settle(name, quiet=1.5, most=8.0):
+    """Waits until the story has stopped changing for `quiet` seconds (a scene finishing), at most `most` seconds."""
+    until, last, since = time.time() + most, None, time.time()
+    while time.time() < until:
+        key = learn.state_key(learn.status(name))
+        if key != last:
+            last, since = key, time.time()
+        elif time.time() - since >= quiet:
+            return True
+        time.sleep(0.3)
+    return False
+
+
 def run_action(name, act, radius, recording=False):
     wait_for_control(name)
+    settle(name)
     before = snap(name, radius)
     learn.send(name, {"op": "perf", "reset": True}, 30)
     if recording:
@@ -299,7 +332,10 @@ def seed_effects():
             continue
         for a in report.get("actions", []):
             outcome, key = a.get("outcome"), a.get("key") or ""
-            if outcome in (None, "skipped", "busy") or a.get("known") or (a.get("segment"), a.get("state"), key) in seen:
+            # Reports without a control credited actions with what happened by itself: their story and death outcomes
+            # teach nothing about the action, so they are left out.
+            if outcome in (None, "skipped", "busy", "anyway", "story", "death", "softlock") or a.get("known") \
+                    or (a.get("segment"), a.get("state"), key) in seen:
                 continue
             seen.add((a.get("segment"), a.get("state"), key))
             label = a.get("label") or ""
@@ -323,7 +359,10 @@ def seed_effects():
 
 
 def note_effect(kind, key, outcome, seg_id):
-    """Remembers what an action did (moves per context, objects per kind) across sections and agents."""
+    """Remembers what an action did (moves per context, objects per kind) across sections and agents. What happens anyway
+    (the control showed it) or could not be tried (the game had the controls) teaches nothing about the action."""
+    if outcome in ("anyway", "busy", "skipped"):
+        return
     COVERAGE.mkdir(parents=True, exist_ok=True)
     with learn.KB.lock("coverage-effects"):
         eff = load_effects()
@@ -516,6 +555,15 @@ def deep_segment(name, seg, report, args, recording):
         if not reach_state(name, seg, prefix):
             row["notes"].append("could not reach state %s" % state_label)
             continue
+        control = baseline(name)
+        if not control["quiet"]:
+            row["notes"].append("at %s, doing nothing: %s" % (state_label, "the player dies" if control["died"] else
+                                "the story moves on by itself (%s)" % " -> ".join(s.split("|")[-1] for s in control["states"][:3])))
+            if recording:
+                video.mark(name, "control: doing nothing here %s" % ("kills" if control["died"] else "moves the story"), "mark")
+            if not reach_state(name, seg, prefix):
+                row["notes"].append("could not reach state %s again" % state_label)
+                continue
         base = snap(name, args.radius)
         base_pos = pos_of(base["status"]) or [0, 0, 0]
         state = learn.state_key(base["status"])
@@ -568,6 +616,11 @@ def deep_segment(name, seg, report, args, recording):
             res.pop("before")
             entry = {"outcome": res["outcome"], "detail": res["detail"], "build": build, "at": learn.now_text(), "by": args.by,
                      "video": report.get("videoId"), "t": t_act, "state": state, "label": act["label"]}
+            # Credit the action only with what does not happen by itself (the control at this point).
+            if res["outcome"] == "death" and control["died"]:
+                entry["outcome"], entry["detail"] = "anyway", "dies here anyway (doing nothing dies too); " + entry["detail"]
+            elif res["outcome"] == "story" and learn.state_key(after["status"]) in control["states"]:
+                entry["outcome"], entry["detail"] = "anyway", "the story goes there by itself too; " + entry["detail"]
             if res["outcome"] == "paused":  # leave the game as a player could: close the menu before going on
                 for _ in range(3):
                     learn.send(name, {"op": "key", "key": "Escape", "s": 0.15}, 20)
@@ -633,7 +686,7 @@ def deep_segment(name, seg, report, args, recording):
                 queue.insert(0, dict(act, retried=True, label=act["label"] + " (again)"))  # once more from a clean start
                 dirty = True
                 continue
-            if entry["outcome"] in ("story", "softlock", "held", "death", "fell", "busy") or after["status"].get("scene") != base["status"].get("scene"):
+            if entry["outcome"] in ("story", "softlock", "held", "death", "fell", "busy", "anyway") or after["status"].get("scene") != base["status"].get("scene"):
                 dirty = True
     row["duration"] = round(time.time() - t0, 1)
     row["end"] = video.elapsed(name) if recording else None
