@@ -124,8 +124,10 @@ def object_actions(objs, limit):
         if not o.get("usable") or path in seen:
             continue
         seen.add(path)
+        parts = str(path).split("/")
+        where = parts[-2] + "/" + parts[-1] if len(parts) >= 2 else str(o.get("name"))  # "Door01 (9) Hall1_Door01/Door"
         out.append({"key": "interact:%s" % path, "kind": "interact", "label": "interact %s%s" % (
-            o.get("name"), (" (" + o["prompt"].strip() + ")") if o.get("prompt") else ""), "target": path, "obj": o,
+            where, (" (" + o["prompt"].strip() + ")") if o.get("prompt") else ""), "target": path, "obj": o,
             "cmds": [{"op": "interact", "target": path}]})
         if len(out) >= limit:
             break
@@ -544,7 +546,7 @@ def deep_segment(name, seg, report, args, recording):
     if recording:
         video.mark(name, "deep: " + seg.get("label", seg["id"]), "segment")
     cov = load_coverage(seg["id"])
-    build = learn.current_build()
+    build = learn.build_of(name)
     only = re.compile(args.only, re.I) if getattr(args, "only", None) else None
     moves = [] if args.no_moves or (only and not args.moves) else move_actions(input_moves())
     row = {"id": seg["id"], "label": seg.get("label", seg["id"]), "outcome": "pass", "mastery": None, "start": t_start,
@@ -559,6 +561,9 @@ def deep_segment(name, seg, report, args, recording):
     for state_label, prefix in states_of(seg, args.states):
         if not reach_state(name, seg, prefix):
             row["notes"].append("could not reach state %s" % state_label)
+            continue
+        if learn.check(name, seg["goal"])[0]:  # the story already left this section: testing here would test the next one
+            row["notes"].append("at %s the section has already ended by itself (nothing of its own to try)" % state_label)
             continue
         control = baseline(name)
         if not control["quiet"]:
@@ -583,8 +588,8 @@ def deep_segment(name, seg, report, args, recording):
                 mark = (o.get("path") or o.get("name"), (o.get("prompt") or "").strip())
                 if mark in seen:
                     report["actions"].append({"segment": seg["id"], "state": state_label, "key": a["key"], "label": a["label"],
-                                              "outcome": "skipped", "detail": "tried earlier in this run (%s), same prompt" % seen[mark]})
-                    row["coverage"]["skipped"] = row["coverage"].get("skipped", 0) + 1
+                                              "outcome": "repeat", "detail": "the same object, same prompt, tried in %s in this run" % seen[mark]})
+                    row["coverage"]["repeats"] = row["coverage"].get("repeats", 0) + 1
                     continue
                 seen[mark] = seg["id"]
                 picked.append(a)
@@ -690,7 +695,7 @@ def deep_segment(name, seg, report, args, recording):
             report["actions"].append(dict(entry, segment=seg["id"], state=state_label, key=act["key"], label=act["label"]))
             row["coverage"]["tested"] += 1
             row["coverage"]["outcomes"][entry["outcome"]] = row["coverage"]["outcomes"].get(entry["outcome"], 0) + 1
-            log("%-34s %-46s %-9s %s" % (seg["id"][-34:], act["label"][:46], entry["outcome"], entry["detail"][:90]))
+            log("%-28s %-62s %-8s %s" % (seg["id"].split("/")[-1][:28], act["label"][:62], entry["outcome"], entry["detail"][:110]))
             # With something in hand: that item on the other interactables (next), and the moves again.
             if entry["outcome"] == "held" and after["status"].get("held") and act["kind"] == "interact":
                 held = after["status"]["held"]
@@ -713,8 +718,8 @@ def deep_segment(name, seg, report, args, recording):
     row["duration"] = round(time.time() - t0, 1)
     row["end"] = video.elapsed(name) if recording else None
     oc = row["coverage"]["outcomes"]
-    row["notes"].insert(0, "%d action(s) tried, %d known from earlier on this build, %d skipped as not worth it: %s" % (
-        row["coverage"]["tested"], row["coverage"]["known"], row["coverage"].get("skipped", 0),
+    row["notes"].insert(0, "%d action(s) tried, %d known from earlier on this build, %d held back (not worth it, or tried already in this run): %s" % (
+        row["coverage"]["tested"], row["coverage"]["known"], row["coverage"].get("skipped", 0) + row["coverage"].get("repeats", 0),
         ", ".join("%s %d" % kv for kv in sorted(oc.items())) or "none"))
     if any(f["segment"] == seg["id"] and f["sev"] == "BUG" for f in report["findings"]):
         row["outcome"] = "fail"
@@ -729,10 +734,11 @@ def deeptest(name, segs, args):
     rid = time.strftime("%Y%m%d-%H%M%S-") + name + "-deep"
     report = {"id": rid, "kind": "deep", "scope": "deep " + (args.scope or args.segment or "?") + (" only " + args.only if getattr(args, "only", None) else ""),
               "started": learn.now_text(),
-              "player": name, "build": learn.current_build(), "by": args.by, "segments": [], "findings": [], "actions": [],
+              "player": name, "build": None, "by": args.by, "segments": [], "findings": [], "actions": [],
               "videoId": None, "video": None}
     t0 = time.time()
     recording = False
+    report["build"] = learn.build_of(name)
     try:
         if not args.no_record:
             a = video.start(name, "deep test " + (args.scope or args.segment or ""), rec_id=rid, max_minutes=240)
@@ -760,9 +766,11 @@ def deeptest(name, segs, args):
     report["perfect"] = None
     report["imperfect"] = []
     skipped = sum(r["coverage"].get("skipped", 0) for r in report["segments"])
-    report["coverage"] = {"tried": tried, "known": known, "skipped": skipped}
-    report["verdict"] = "DEEP: %d action(s) in %d section(s)%s%s: %d bug(s), %d death(s), %d warning(s)" % (
-        tried, len(report["segments"]), " (+%d known)" % known if known else "",
+    repeats = sum(r["coverage"].get("repeats", 0) for r in report["segments"])
+    report["coverage"] = {"tried": tried, "known": known, "skipped": skipped, "repeats": repeats}
+    report["verdict"] = "DEEP: %d action(s) in %d section(s)%s%s%s: %d bug(s), %d death(s), %d warning(s)" % (
+        tried, len(report["segments"]), " (+%d known from this build)" % known if known else "",
+        ", %d repeat(s) of an object already tried in this run" % repeats if repeats else "",
         ", %d skipped as not worth it" % skipped if skipped else "", bugs, deaths, warns)
     learn.write_report(report)
     return report
@@ -774,6 +782,11 @@ def cmd_deeptest(args):
     report = deeptest(args.name, segs, args)
     report.pop("onlySeen", None)
     print("\n" + report["verdict"])
+    for r in report["segments"]:
+        print("  %-40s %s" % (r["id"], "; ".join(r.get("notes", []))[:200]))
+    held_back = [a for a in report["actions"] if a.get("outcome") in ("skipped", "repeat")]
+    for a in held_back[:40]:
+        print("  %-7s %s (%s): %s" % (a["outcome"].upper(), a["label"][:70], a["segment"].split("/")[-1], a.get("detail", "")[:100]))
     for f in report["findings"][:40]:
         print("  %-5s %s%s" % (f["sev"], f["text"][:160], "  @%s" % video.clock(f["t"]) if f.get("t") is not None else ""))
     print("REPORT %s" % (learn.PLAYTESTS / report["id"] / "report.html"))

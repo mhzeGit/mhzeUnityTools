@@ -489,6 +489,18 @@ def merge_q(rec, updates):
 _build_name = None
 
 
+def build_of(name):
+    """The build player NAME runs (its run folder's build.txt), else the newest build. Coverage and reports must name the
+    build that was tested: another agent may build a newer one while a player runs."""
+    try:
+        text = (ap.run_dir(name) / "build.txt").read_text(encoding="utf-8").strip()
+        if text:
+            return text
+    except (OSError, AttributeError):
+        pass
+    return current_build()
+
+
 def current_build():
     global _build_name
     if _build_name is None:
@@ -702,7 +714,7 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
     budget = float(budget or seg.get("budget", 150))
     ep = {"id": time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4], "segment": seg["id"], "at": now_text(), "by": by,
           "player": name, "noise": noise, "outcome": "fail", "failKind": None, "failStep": None, "failDetail": "",
-          "steps": [], "time": None, "deaths": 0, "errors": [], "video": None, "build": current_build(), "states": []}
+          "steps": [], "time": None, "deaths": 0, "errors": [], "video": None, "build": build_of(name), "states": []}
     if setup:
         error = run_setup(name, seg)
         if error:
@@ -1077,6 +1089,19 @@ def optimizations(route):
     return out
 
 
+def chained_choice(rec):
+    """For a playtest segment that follows the one before: the route with the best chained record, else the best route
+    that has not failed chained. None when no route has a chained record at all (then the best route as usual)."""
+    live = [r for r in live_routes(rec) if r.get("wins", 0) > 0]
+    if not any(r.get("chain") for r in live):
+        return None
+    good = [r for r in live if (r.get("chain") or {}).get("wins", 0) >= 1 and (r.get("chain") or {}).get("fails", 0) < 2]
+    if good:
+        return max(good, key=lambda r: (chain_rate(r), (r.get("chain") or {}).get("wins", 0), win_rate(r)))
+    clean = [r for r in live if not (r.get("chain") or {}).get("fails")]
+    return max(clean, key=win_rate) if clean else None
+
+
 def chain_rate(r):
     c = r.get("chain") or {}
     return (c.get("wins", 0) + 1.0) / (c.get("runs", 0) + 2.0)
@@ -1355,7 +1380,7 @@ def playtest(name, segs, record=True, learn_first=False, label=None, by="agent",
     started = ensure_player(name)
     pt_id = time.strftime("%Y%m%d-%H%M%S-") + name
     report = {"id": pt_id, "scope": label or "%s..%s" % (segs[0]["id"], segs[-1]["id"]), "started": now_text(), "player": name,
-              "build": current_build(), "by": by, "segments": [], "findings": [], "videoId": None, "video": None}
+              "build": build_of(name), "by": by, "segments": [], "findings": [], "videoId": None, "video": None}
     if series:
         report["series"] = series
     title = "playtest " + report["scope"] + (" run %d" % series["run"] if series else "")
@@ -1399,6 +1424,8 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
         route = pick_route(rec, rng or random.Random(), chained=followed) if live_routes(rec) else None
     else:
         route = best_route(rec) if mastery_of(rec) in ("mastered", "competent", "stale") else None
+        if route is not None and followed:
+            route = chained_choice(rec) or route  # what won coming from the segment before, not only alone
     t_video = video.elapsed(name) if recording else None
     if recording:
         video.mark(name, seg.get("label", seg["id"]), "segment")
@@ -1506,7 +1533,7 @@ def explore_episode(name, seg, chained, by, rng):
           "player": name, "noise": False, "outcome": res["outcome"], "explored": True, "steps": [],
           "failKind": None if res["outcome"] == "win" else "explore", "failStep": None, "failDetail": res["reason"],
           "time": res.get("seconds", 0), "deaths": max(0, (st.get("deaths", 0) or 0) - deaths0),
-          "perf": trim(send(name, {"op": "perf"}, 30)), "video": None, "build": current_build()}
+          "perf": trim(send(name, {"op": "perf"}, 30)), "video": None, "build": build_of(name)}
     try:
         ep["errors"] = new_issues(before, issue_counts(name))
     except SystemExit:

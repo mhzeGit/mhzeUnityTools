@@ -8,18 +8,19 @@ comes from the Agentic Tools package: `AgentPlayBuild` (builds the player with t
 
 ## Quick recipes (read this first)
 
-One line of commands is the whole job: each command starts and stops its own player (the name you give), records one video
-and ends with a `VIEW` link (the report and video on the dashboard; the phone link when it is shared). Run `info` first;
-build only when it says STALE.
+One line of commands is the whole job: each command starts and stops its own standalone player (no editor claim, the editor
+may be open), records one video and ends with a `VIEW` link (the report and video on the dashboard; the phone link when it is
+shared). `NAME` is your own player name, `<tool>-<task>` (`claude-doors`), never another agent's. Run `info` first; build
+only when it says STALE (another agent's build in progress: the build command waits for it).
 
 | The request | Run (`python tools/agentplay/agentplay.py ...`) |
 | --- | --- |
-| Play through chapter X (with video) | `kb brief --scope X`, then `playtest me1 --scope X` (`--learn` first learns what brief says is not mastered) |
-| A perfect, clean play-through of X | `playtest me1 --scope X --until-perfect 6` (stops at the first perfect run) |
-| Test every door (or any one kind of thing) in X | `deeptest me1 --scope X --only door` (a regex on name, path or prompt: `--only "drawer\|wardrobe"`) |
-| Test everything in X, find bugs | `deeptest me1 --scope X` (`--states all`: also at later story states; `--exhaustive`: no smart skipping) |
-| Walkthrough of X and test every door, recorded | the two recipes above, one after the other: two videos, two `VIEW` links |
-| Record your own check | `record me1 start --label "..."`, your `send`s, `record me1 mark "..."`, `record me1 stop` |
+| Play through chapter X (with video) | `kb brief --scope X`, then `playtest NAME --scope X` (`--learn` first learns what brief says is not mastered) |
+| A perfect, clean play-through of X | `playtest NAME --scope X --until-perfect 6` (stops at the first perfect run) |
+| Test every door (or any one kind of thing) in X | `deeptest NAME --scope X --only door` (a regex on name, path or prompt: `--only "drawer\|wardrobe"`) |
+| Test everything in X, find bugs | `deeptest NAME --scope X` (`--states all`: also at later story states; `--exhaustive`: no smart skipping) |
+| Walkthrough of X and test every door, recorded | `playtest NAME --scope X`, then `deeptest NAME --scope X --only door`: two videos, two `VIEW` links |
+| Record your own check | `record NAME start --label "..."`, your `send`s, `record NAME mark "..."`, `record NAME stop` |
 
 - **Scope words** (`--scope`): segment ids or prefixes, numbers and ranges (`3`, `0-5`), comma separated; a project adds its
   own (chapters by id or title, `chapter/checkpoint`). `segments --scope X` lists what a scope covers; `kb brief --scope X`
@@ -27,10 +28,18 @@ build only when it says STALE.
 - **Report** what the command printed: the verdict line, the findings (severity, text, `@m:ss` in the video) and the `VIEW`
   link. That printed summary is the result: do not open videos, `report.json` or knowledge files to check it. Look at a
   moment only when a finding needs it: `video sheet <id> --from T-5 --to T+10` (a picture of keyframes).
+- **Not mastered** (`kb brief` says `needs-agent`, `unexplored` or `stale`): a plain playtest still plays the whole scope; a
+  section without a learned route waits for its goal and is reported `unlearned`, a stale one as `fail`: report that, it is
+  the answer. Add `--learn` (minutes per section) or use `--until-perfect N` (learns between runs) only when the user wants
+  the stretch played to the end; teaching a `needs-agent` section by hand is skill `agent-playtest` section 3.
+- **Test data is written by every run**: route statistics and lessons in the knowledge base (`AgentPlayKnowledge/`
+  segments), deep-test results in its `coverage/`. That is expected in any test task, also one that changes nothing else:
+  leave the files, list them in the report and the commit (the next agent starts from them).
 - **Time**: a playtest about 20 to 60 s per section; `--until-perfect` one playtest per run; a deep test about 10 s per test
-  point plus 5 to 20 s per action (a full section of 40 actions 10 to 15 min; `--only door` 1 to 3 min a section); learning
-  minutes per section; a full build 2 to 3 min, a script-only patch seconds.
-- If a build cannot resolve a package (another agent pinned an unpublished commit), `build --pin NAME=committed` builds that
+  point plus 5 to 20 s per action (a full section of 40 actions 10 to 15 min; `--only door` about 1 min a section); learning
+  minutes per section; a full build 2 to 3 min, a script-only patch seconds. Run long commands in the background and read
+  their output when they end: every line is printed as it happens.
+- If a build cannot resolve a package (another agent pinned an unpublished commit), `build --pin PACKAGE=committed` builds that
   one package at the last commit's revision, in the build copy only (the record and `info` say so).
 
 ## Use
@@ -38,12 +47,12 @@ build only when it says STALE.
 ```
 python tools/agentplay/agentplay.py info                  # ALWAYS first: age, commit, changes; CURRENT or STALE (exit 0 / 3 / 2 = none)
 python tools/agentplay/agentplay.py build --by me         # only when info says STALE and your changes are not in the build; script-only changes patch in seconds
-python tools/agentplay/agentplay.py start me1 --require-current [--headless] [--scene NAME] # unique name per agent, never another agent's
-python tools/agentplay/agentplay.py send me1 '{"op":"status"}'
-python tools/agentplay/agentplay.py shot me1 --as hall --pos=-6,2,-14 --look=-6,1,-8
-python tools/agentplay/agentplay.py sheet me1               # pack the pictures into labelled contact sheets (needs Pillow)
-python tools/agentplay/agentplay.py stop me1                # always stop your own player; never `stop --all` (it stops other agents')
-python tools/agentplay/agentplay.py editor claim --by me1 --why "what you test"  # Unity not busy + claim free: test in editor Fast Play instead (TESTING.md rule 1); then: editor release --by me1
+python tools/agentplay/agentplay.py start NAME --require-current [--headless] [--scene SCENE] # unique name per agent, never another agent's
+python tools/agentplay/agentplay.py send NAME '{"op":"status"}'
+python tools/agentplay/agentplay.py shot NAME --as hall --pos=-6,2,-14 --look=-6,1,-8
+python tools/agentplay/agentplay.py sheet NAME               # pack the pictures into labelled contact sheets (needs Pillow)
+python tools/agentplay/agentplay.py stop NAME                # always stop your own player; never `stop --all` (it stops other agents')
+python tools/agentplay/agentplay.py editor claim --by NAME --why "what you test"  # Unity not busy + claim free: test in editor Fast Play instead (TESTING.md rule 1); then: editor release --by NAME
 ```
 
 One build serves every agent: build only when `info` says it is stale, then everyone starts their **own instance** of it
@@ -97,9 +106,9 @@ hotspots with `AgentPlayAttention.Hotspots` and says when the game has the view 
 ## Record video
 
 ```
-python tools/agentplay/agentplay.py record me1 start --label "what this shows"   # --fps 15 --res 960x540 --max-minutes 60
-python tools/agentplay/agentplay.py record me1 mark "the door should open now"     # a caption at this moment
-python tools/agentplay/agentplay.py record me1 stop                                # encodes and stores it; prints the paths
+python tools/agentplay/agentplay.py record NAME start --label "what this shows"   # --fps 15 --res 960x540 --max-minutes 60
+python tools/agentplay/agentplay.py record NAME mark "the door should open now"     # a caption at this moment
+python tools/agentplay/agentplay.py record NAME stop                                # encodes and stores it; prints the paths
 python tools/agentplay/agentplay.py video sheet last --from 30 --to 60             # what an agent looks at instead of the video
 python tools/agentplay/agentplay.py video list | info ID | frame ID --at 42.5 [--exact] | events ID | open ID | recaption ID | prune --keep 30
 ```
@@ -125,13 +134,13 @@ Agents learn to play the game, keep what they learned in a shared knowledge base
 
 ```
 python tools/agentplay/agentplay.py kb brief [--scope S]               # START HERE: mastery, what needs an agent, lessons, next step
-python tools/agentplay/agentplay.py learn me1 --scope S [--workers 2]  # learn segments until mastered (starts its own players)
-python tools/agentplay/agentplay.py playtest me1 --scope S [--learn]   # play the scope with the learned routes, record, report
-python tools/agentplay/agentplay.py playtest me1 --scope S --until-perfect 8   # chained runs, learning between them, until one is perfect
-python tools/agentplay/agentplay.py deeptest me1 --scope S [--states all]        # try everything in each section: what breaks
-python tools/agentplay/agentplay.py observe me1                        # what the bot sees, what the story waits for, suggestions
-python tools/agentplay/agentplay.py step me1 '{"op":"interact","target":"Kettle"}' --why "..." --segment S   # explore by hand
-python tools/agentplay/agentplay.py learn me1 --segment S --from-draft  # your draft -> a verified route
+python tools/agentplay/agentplay.py learn NAME --scope S [--workers 2]  # learn segments until mastered (starts its own players)
+python tools/agentplay/agentplay.py playtest NAME --scope S [--learn]   # play the scope with the learned routes, record, report
+python tools/agentplay/agentplay.py playtest NAME --scope S --until-perfect 8   # chained runs, learning between them, until one is perfect
+python tools/agentplay/agentplay.py deeptest NAME --scope S [--states all]        # try everything in each section: what breaks
+python tools/agentplay/agentplay.py observe NAME                        # what the bot sees, what the story waits for, suggestions
+python tools/agentplay/agentplay.py step NAME '{"op":"interact","target":"Kettle"}' --why "..." --segment S   # explore by hand
+python tools/agentplay/agentplay.py learn NAME --segment S --from-draft  # your draft -> a verified route
 python tools/agentplay/agentplay.py kb status|show S|lesson S|global "text" --kind tip|pitfall|bug|fix|route S --file steps.json
 ```
 
@@ -166,9 +175,9 @@ python tools/agentplay/agentplay.py kb status|show S|lesson S|global "text" --ki
 A playtest finishes the game; a deep test tries what a player could do in each section, to find what breaks:
 
 ```
-python tools/agentplay/agentplay.py deeptest me1 --scope S                 # everything: interactables, item combinations, moves, walking probes
-python tools/agentplay/agentplay.py deeptest me1 --scope S --only door     # every door (name, path or prompt matches), nothing else
-python tools/agentplay/agentplay.py deeptest me1 --scope S --states all    # also at each story state the learned route goes through
+python tools/agentplay/agentplay.py deeptest NAME --scope S                 # everything: interactables, item combinations, moves, walking probes
+python tools/agentplay/agentplay.py deeptest NAME --scope S --only door     # every door (name, path or prompt matches), nothing else
+python tools/agentplay/agentplay.py deeptest NAME --scope S --states all    # also at each story state the learned route goes through
 ```
 
 In each section it goes to the start (the segment's setup), lets a scene that plays by itself finish (the first quiet moment),
@@ -193,6 +202,7 @@ moving and the section must still be finishable).
 | `anyway` | What followed happens without the action too (the control showed it): not credited to it |
 | `busy` | The game had the controls (a scene started on the way); tried once more from a clean start |
 | `skipped` | Not worth trying (the reason is given): see below |
+| `repeat` | With `--only`: the same object with the same prompt was already tried in this run (in another section or state) |
 
 It is smart about what it tries (`--exhaustive` turns that off; `--only` turns it off for the matches): moves for an item
 (Drop, Use, Next...) only with an item in hand; a move that did nothing twice in a context, or the same harmless thing in three
@@ -201,8 +211,11 @@ tried and the rest only if those differ; kinds that behaved the same three times
 points at go first; areas already walked around are not probed again. With `--only`, each matching object is tried once per
 prompt in a run (a door locked in one section and open in a later one is tried twice). The memory behind it is
 `<knowledgeDir>/coverage/_effects.json`; every action's outcome per section and build is in `<knowledgeDir>/coverage/<segment>.json`
-(commit both): actions tested on the same build are reported as known, not repeated (`--retest` redoes them). A segment with
-`"deep": false` is skipped (nothing to try there, e.g. a menu without a player). Moves come from
+(commit both): actions tested on the same build (the build the player runs) are reported as known, not repeated (`--retest`
+redoes them). A segment with `"deep": false` is skipped (nothing to try there, e.g. a menu without a player), and so is a
+section whose story has already moved on by itself when it is reached (its goal holds: testing there would test the next
+section). Actions are named by the object's parent and name (`interact Hall1_Door01/Door (to Open)`), so look-alike objects
+are told apart. The printout ends with each section's note and the list of `skipped` and `repeat` actions. Moves come from
 the input map; `agentplay.json` `"deepMoves"` adds others (`[{"action": "Lean", "binding": "<Keyboard>/q", "cmd": {"op": "key",
 "key": "Q"}}]`). The report (`kind: deep`) is in the playtests list: the verdict counts bugs, deaths and warnings; every action
 is listed with its outcome and video time (the phone filters Problems, Did something, Nothing, Skipped).

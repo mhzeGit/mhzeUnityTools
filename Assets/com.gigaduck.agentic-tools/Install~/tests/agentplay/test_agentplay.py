@@ -449,11 +449,11 @@ class AgentPlayTests(unittest.TestCase):
         args = argparse.Namespace(scope=None, segment="fake/s0", states="start", radius=12, max=40, combos=3, retest=False,
                                   no_moves=False, no_softlock=False, no_record=True, by="test", exhaustive=False)
         report = deep.deeptest("bot", [SEGMENTS[0]], args)
-        got = {a["label"].split(" (")[0]: a["outcome"] for a in report["actions"]}
+        got = {"interact " + a["label"].split(" (")[0].split("/")[-1]: a["outcome"] for a in report["actions"] if a["label"].startswith("interact")}
         self.assertEqual(got.get("interact Trap"), "death", got)
         self.assertEqual(got.get("interact Lamp"), "error", got)
         self.assertEqual(got.get("interact Item0"), "story", got)
-        item = next(a for a in report["actions"] if a["label"].startswith("interact Item0"))
+        item = next(a for a in report["actions"] if a["label"].startswith("interact Room/Item0"))
         self.assertIn("normal path", item["detail"], "a story moving along the learned path needs no softlock check")
         self.assertTrue(any(f["sev"] == "BUG" and "Lamp" in f["text"] for f in report["findings"]), report["findings"])
         self.assertTrue(report["verdict"].startswith("DEEP:"), report["verdict"])
@@ -479,9 +479,9 @@ class AgentPlayTests(unittest.TestCase):
         # --only: every match and nothing else, once per run (the second section's lamp is the same lamp, same prompt)
         only = argparse.Namespace(**dict(vars(args), only="lamp", moves=False, radius=None, retest=True))
         r3 = deep.deeptest("bot", [SEGMENTS[0], SEGMENTS[1]], only)
-        tried = [a["label"] for a in r3["actions"] if a["outcome"] != "skipped"]
-        self.assertEqual(tried, ["interact Lamp"], r3["actions"])
-        self.assertTrue(any("tried earlier in this run" in a.get("detail", "") for a in r3["actions"]))
+        tried = [a["label"] for a in r3["actions"] if a["outcome"] not in ("skipped", "repeat")]
+        self.assertEqual(tried, ["interact Room/Lamp"], r3["actions"])
+        self.assertTrue(any(a["outcome"] == "repeat" and "in this run" in a.get("detail", "") for a in r3["actions"]))
         self.assertIn("only lamp", r3["scope"])
 
     def test_20_video_finalize_and_avi(self):

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.8.4 - 2026-11-16
+
+- Agent play, from a sub-agent's first run of "walk through chapter X and test every door": the docs and the
+  `agent-playtest` skill name the player `<tool>-<task>`, say every playtest and deep test runs its own standalone player,
+  what to do when sections are not mastered (a plain playtest reports them), that knowledge base and coverage writes are
+  expected test data, and real timings (`--only door` about 1 min a section); AGENTS.md gives the skill's path.
+- Plain playtests pick a section's route by its chained record when it follows the section before (a route that wins
+  alone but dies chained is no longer replayed).
+- Deep tests: actions are named by the object's parent and name (doors told apart); an object already tried in the run is
+  a `repeat`, reported apart from `skipped` (not worth it); a section whose story has already moved on is skipped with a
+  note; sections without a player are skipped; reports and coverage record the build the player runs; the printout ends
+  with the section notes and the held-back actions. The phone lists `repeat` under Skipped.
+- `agentplay.py` prints line by line also into a file (background runs show progress).
+
 ## 1.8.3 - 2026-11-16
 
 - Content Studio never drops a frame: every finished GPU readback is copied out in the frame it completes (its data

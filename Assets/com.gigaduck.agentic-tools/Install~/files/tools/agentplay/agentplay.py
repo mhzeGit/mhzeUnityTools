@@ -1079,6 +1079,11 @@ def cmd_editor(args):
 
 
 def main():
+    try:  # every line shows at once, also when the output goes to a file another agent watches
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except (AttributeError, ValueError):
+        pass
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
 
