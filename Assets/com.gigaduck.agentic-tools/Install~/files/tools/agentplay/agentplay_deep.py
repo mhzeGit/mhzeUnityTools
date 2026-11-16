@@ -141,7 +141,19 @@ def pos_of(st):
     return learn.parse_pos(st.get("player")) if st else None
 
 
+def wait_for_control(name, seconds=8.0):
+    """A player waits until the game gives them control back (a scripted look or placement after a reset)."""
+    until = time.time() + seconds
+    while time.time() < until:
+        o = learn.observe(name, 2)
+        if not o.get("playerFrozen") and (o.get("attention") or {}).get("focus") != "the game has the view":
+            return True
+        time.sleep(0.3)
+    return False
+
+
 def run_action(name, act, radius, recording=False):
+    wait_for_control(name)
     before = snap(name, radius)
     learn.send(name, {"op": "perf", "reset": True}, 30)
     if recording:
@@ -196,8 +208,8 @@ def classify(act, before, after, answers, failed, perf):
         target = act.get("target")
         for path, o in after["objects"].items():
             b = before["objects"].get(path)
-            if b is None:
-                continue
+            if b is None or (path != target and not (b.get("usable") or o.get("usable"))):
+                continue  # what the player carries or cannot use sways along: not an effect
             if (b.get("prompt") or "") != (o.get("prompt") or ""):
                 changed.append("%s: '%s' -> '%s'" % (o.get("name"), (b.get("prompt") or "").strip(), (o.get("prompt") or "").strip()))
             elif b.get("pos") and o.get("pos") and math.dist(b["pos"], o["pos"]) > 0.05 and (path == target or len(changed) < 2):

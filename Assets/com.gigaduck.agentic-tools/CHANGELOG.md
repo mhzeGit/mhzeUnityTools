@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2 - 2026-11-16
+
+- Deep tests wait until the player has control before each action (a scripted look or placement after a reset made the
+  interact fail where a player would simply wait), and only usable objects (and the target) count as changed: what the
+  player carries sways with every step.
+
 ## 1.5.1 - 2026-11-16
 
 - The harness `wait` waits in real time: game time stops while a game is paused, so a wait with the pause menu open never
