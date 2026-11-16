@@ -721,6 +721,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
             Vector3 destination = corners[corners.Count - 1];
             float until = Time.realtimeSinceStartup + timeout, lastProgress = Time.realtimeSinceStartup, still = 0f, best = float.MaxValue;
             Vector3 last = player.position, from = player.position;
+            var trail = new List<object> { new List<object> { Round(from.x), Round(from.z) } };
+            float nextTrail = Time.realtimeSinceStartup + 0.5f;
             string held = "";
             int i = 0;
             try
@@ -758,6 +760,13 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     string keys = hold ? "" : KeysToward(to);
                     if (keys != held) { HoldKeys(held, keys, run); held = keys; }
                     yield return null;
+                    if (player != null && Time.realtimeSinceStartup >= nextTrail && trail.Count < 80)
+                    {
+                        nextTrail = Time.realtimeSinceStartup + 0.5f;
+                        trail.Add(new List<object> { Round(player.position.x), Round(player.position.z) });
+                    }
+
+                    if (player == null) break;
                     if ((player.position - last).sqrMagnitude > 0.0025f) { last = player.position; lastProgress = Time.realtimeSinceStartup; }
                     else if (hold) { still += Time.realtimeSinceStartup - now; lastProgress = Time.realtimeSinceStartup; }
                     else if (Time.realtimeSinceStartup - lastProgress > 2f)
@@ -774,6 +783,10 @@ namespace Gigaduck.AgenticTools.AgentPlay
             }
 
             if (still > 0.05f) r["frozen"] = Round(still);
+            var path = new List<object>();
+            foreach (Vector3 c in corners) path.Add(new List<object> { Round(c.x), Round(c.z) });
+            r["path"] = path;   // the corners walked (x, z)
+            r["trail"] = trail; // where the player was every half second (x, z)
             Vector3 left = player != null ? Horizontal(destination - player.position) : Vector3.zero;
             bool reached = player != null && left.magnitude <= tolerance + 0.5f;
             r["reached"] = reached;

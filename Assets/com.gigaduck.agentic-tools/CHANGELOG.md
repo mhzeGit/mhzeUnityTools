@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.2 - 2026-11-16
+
+- Walk results carry `path` (the corners walked) and `trail` (where the player was every half second), so a death or a
+  block can be placed exactly.
+
 ## 1.4.1 - 2026-11-16
 
 - **Agent players run in a real window by default** (opened without taking the keyboard focus): batch mode presents no
