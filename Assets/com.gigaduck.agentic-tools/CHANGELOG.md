@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1 - 2026-11-16
+
+- The harness `wait` waits in real time: game time stops while a game is paused, so a wait with the pause menu open never
+  ended and every command after it hung.
+- Deep tests: an action that leaves the game paused is a finding (`paused`), and the menu is closed before going on; the
+  pause test waits on the tool's side.
+
 ## 1.5.0 - 2026-11-16
 
 - **Deep tests** (`agentplay.py deeptest NAME --scope S`): the second kind of play-testing. A playtest finishes the game; a

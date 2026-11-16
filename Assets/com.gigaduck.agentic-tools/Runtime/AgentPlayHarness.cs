@@ -245,7 +245,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 case "shot": yield return Shot(c, r, fail); break;
                 case "shots": yield return Shots(c, r, fail); break;
                 case "find": Find(S(c, "name", ""), r); break;
-                case "wait": yield return new WaitForSeconds(F(c, "s", 1f)); break;
+                case "wait": yield return new WaitForSecondsRealtime(F(c, "s", 1f)); break; // real time: game time stops while paused
                 case "scale": Time.timeScale = F(c, "value", 1f); r["scale"] = Time.timeScale; break;
                 case "errors": r["issues"] = IssueLines(); break;
                 case "summary": File.WriteAllText(Path.Combine(_out, "summary.txt"), Summary()); r["file"] = "summary.txt"; break;

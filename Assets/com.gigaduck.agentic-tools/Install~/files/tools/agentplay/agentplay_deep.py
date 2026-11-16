@@ -33,7 +33,7 @@ NOT_MOVES = {"move", "look", "interact", "point", "click", "scrollwheel", "navig
 HOLD_MOVES = re.compile(r"sprint|run|crouch|walk|aim|block|slide", re.I)
 FAR_MOVES = 3.5          # metres of a walking probe
 SETTLE = 1.2             # seconds an action is given to show its effect
-SEVERITY = {"error": "BUG", "fell": "BUG", "softlock": "BUG", "death": "SOFT", "failed": "WARN", "hitch": "WARN"}
+SEVERITY = {"error": "BUG", "fell": "BUG", "softlock": "BUG", "paused": "BUG", "death": "SOFT", "failed": "WARN", "hitch": "WARN"}
 
 
 def log(text):
@@ -89,7 +89,7 @@ def move_actions(moves):
         out.append({"key": "move:%s" % m["action"], "kind": "move", "label": "%s (%s)" % (m["action"], m["binding"].split("/")[-1]),
                     "cmds": [cmd]})
         if m["action"].lower() == "pause" or cmd.get("key") == "Escape":
-            out[-1]["cmds"] = [cmd, {"op": "wait", "s": 1.0}, dict(cmd)]  # open and close again
+            out[-1]["cmds"] = [cmd, {"sleep": 1.0}, dict(cmd)]  # open and close again (the wait on this side: game time stops)
             out[-1]["label"] = m["action"] + " (open and close)"
         elif HOLD_MOVES.search(m["action"]) and cmd["op"] == "key":
             out.append({"key": "move:%s+walk" % m["action"], "kind": "move", "label": "%s held while walking" % m["action"],
@@ -148,12 +148,17 @@ def run_action(name, act, radius, recording=False):
         video.mark(name, act["label"], "mark")
     answers, failed = [], None
     for cmd in act["cmds"]:
+        if "sleep" in cmd:
+            time.sleep(float(cmd["sleep"]))
+            continue
         a = learn.send(name, cmd, learn.op_timeout(cmd))
         answers.append(a)
         if not a.get("ok") and failed is None:
             failed = a.get("error") or "failed"
-    learn.send(name, {"op": "until", "cond": {"field": "running", "changed": True}, "timeout": SETTLE, "soft": True}, 30)
+    time.sleep(SETTLE)  # on this side: game time may be stopped (a pause menu left open)
     after = snap(name, radius)
+    if (after["status"].get("timeScale") == 0) != (before["status"].get("timeScale") == 0):
+        answers.append({"ok": True, "paused": after["status"].get("timeScale") == 0})
     perf = learn.send(name, {"op": "perf"}, 30)
     res = classify(act, before, after, answers, failed, perf)
     res["before"], res["after"] = before, after
@@ -165,7 +170,10 @@ def classify(act, before, after, answers, failed, perf):
     notes, outcome = [], None
     errors = learn.new_issues(before["issues"], after["issues"])
     pb, pa = pos_of(sb), pos_of(sa)
-    if errors:
+    if sa.get("timeScale") == 0 and sb.get("timeScale") != 0:
+        outcome = "paused"
+        notes.append("the game is still paused afterwards (time scale 0)")
+    elif errors:
         outcome = "error"
         notes.append("; ".join(errors)[:300])
     elif (sa.get("deaths") or 0) > (sb.get("deaths") or 0) or sa.get("dying"):
@@ -321,6 +329,13 @@ def deep_segment(name, seg, report, args, recording):
             res.pop("before")
             entry = {"outcome": res["outcome"], "detail": res["detail"], "build": build, "at": learn.now_text(), "by": args.by,
                      "video": report.get("videoId"), "t": t_act, "state": state}
+            if res["outcome"] == "paused":  # leave the game as a player could: close the menu before going on
+                for _ in range(3):
+                    learn.send(name, {"op": "key", "key": "Escape", "s": 0.15}, 20)
+                    time.sleep(1.0)
+                    if learn.status(name).get("timeScale") != 0:
+                        break
+                dirty = True
             if res["outcome"] == "story" and not args.no_softlock:
                 ep = softlock_check(name, seg)
                 if ep is not None and ep["outcome"] != "win":
