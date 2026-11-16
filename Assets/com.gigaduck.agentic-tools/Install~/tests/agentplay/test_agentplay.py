@@ -428,6 +428,9 @@ class AgentPlayTests(unittest.TestCase):
         untried = {"routes": [{"id": "a", "runs": 0, "wins": 0, "streak": 0, "steps": []},
                               {"id": "b", "runs": 0, "wins": 0, "streak": 0, "steps": [], "prior": 0.5}]}
         self.assertEqual(learn.pick_route(untried, __import__("random").Random(3))["id"], "b", "an untried route with a prior goes first")
+        hot = {"routes": [{"id": "w", "runs": 5, "wins": 5, "streak": 5, "steps": []},
+                          {"id": "e", "runs": 0, "wins": 0, "streak": 0, "steps": [], "prior": 1.0}]}
+        self.assertEqual(learn.pick_route(hot, __import__("random").Random(3))["id"], "e", "a repair the next segment asked for beats a streak")
         # A segment the story already went through (the one before ended past its start) is chained, not jumped back to.
         learn.send("bot", {"op": "stage", "n": 2}, 10)
         report = {"segments": [{"id": "fake/s0", "outcome": "pass", "chained": True}], "findings": []}

@@ -35,7 +35,10 @@ pictures and videos miss it; only for quick logic checks); `--headless` has no G
 pictures. Recordings capture the finished screen (what the player sees, UI included); walking ops press the movement keys,
 so the game's speed, collisions and movement locks apply. A walk result has `path` (the corners walked) and `trail`
 (where the player was every half second), and stops with a reason when the player is moved away (a death, a teleport);
-`walk {direct: true}` keeps to the straight line instead of the shortest path (a lane beside a hazard).
+`walk {direct: true}` keeps to the straight line instead of the shortest path (a lane beside a hazard). Keys are pressed
+relative to the player's body (what first-person controllers move along; `AgentPlayOps.MoveForward` changes it), and a
+project's `AgentPlayOps.Dying` hook stops a walk when the player dies. Count deaths from the game's own death event in the
+harness: a save's counter can be restored with the checkpoint on a death, so a status after the respawn would miss it.
 
 ## Play like a person (shared ops)
 

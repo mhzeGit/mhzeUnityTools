@@ -421,6 +421,38 @@ def make_room(rec, wanted, keep=None):
         x["retired"] = True
 
 
+def end_elsewhere(seg, report, by):
+    """A chained death soon after the hand-off: the segment before left the player where this one kills them, and by the
+    time this segment starts it can be too late to move (the game holds the player, the hazard is already falling).
+    Adds to the previous segment a variant that walks to where this segment starts when played alone, during the previous
+    segment's last story state ("earlier"). prior 1.0: tried on the next run even over a winning route."""
+    prev = report["segments"][-1] if report.get("segments") else None
+    start = KB.load(seg["id"], seg).get("startPos")
+    if not prev or prev.get("outcome") != "pass" or not prev.get("route") or not start:
+        return
+    last = prev.get("lastRunning") or []
+    gate = {"all": [{"field": "running", "contains": b} for b in sorted(last)[:2]]} if last else None
+    prev_seg = segment(prev["id"])
+
+    def apply(r):
+        base = next((x for x in r["routes"] if x["id"] == prev["route"]), None)
+        if base is None:
+            return
+        walk = {"op": "walk", "pos": start, "tolerance": 0.5, "timeout": 30, "optional": True,
+                "why": "end where %s starts when played alone: arriving elsewhere the player died there (%s)" % (
+                    seg["id"], "during " + ", ".join(sorted(last)[:2]) if last else "at the end")}
+        if gate:
+            walk["when"] = gate
+        if base["steps"] and base["steps"][-1].get("pos") == start:
+            return
+        rid = add_route(r, base["steps"] + [walk], "repair-chained:end-elsewhere", by, parent=base["id"],
+                        why="the next segment (%s) died chained: end where it starts alone" % seg["id"])
+        next(x for x in r["routes"] if x["id"] == rid)["prior"] = 1.0
+        add_lesson(r, "Chained, %s died right after this segment: end the route where it starts when played alone (%s)%s." % (
+            seg["id"], start, " during " + ", ".join(sorted(last)[:2]) if last else ""), "pitfall", by, auto=True)
+    KB.update(prev["id"], apply, prev_seg, by)
+
+
 def add_lesson(rec, text, kind, by, auto=False):
     for lesson in rec.setdefault("lessons", []):
         if lesson["text"] == text:
@@ -519,7 +551,7 @@ def classify(cmd, ans):
 def trim(answer, limit=600):
     out = {k: v for k, v in answer.items() if k not in ("status", "id", "issues", "objects", "texts", "beats")}
     if isinstance(out.get("trail"), list):  # a walk: keep where it ended up (a death, a block) and the corners
-        out["trail"] = out["trail"][-4:]
+        out["trail"] = out["trail"][:3] + out["trail"][-3:] if len(out["trail"]) > 6 else out["trail"]
         if isinstance(out.get("path"), list):
             out["path"] = out["path"][:10]
     text = json.dumps(out)
@@ -641,7 +673,7 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
     budget = float(budget or seg.get("budget", 150))
     ep = {"id": time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4], "segment": seg["id"], "at": now_text(), "by": by,
           "player": name, "noise": noise, "outcome": "fail", "failKind": None, "failStep": None, "failDetail": "",
-          "steps": [], "time": None, "deaths": 0, "errors": [], "video": None, "build": current_build()}
+          "steps": [], "time": None, "deaths": 0, "errors": [], "video": None, "build": current_build(), "states": []}
     if setup:
         for cmd in seg.get("setup", []):
             a = send(name, cmd, op_timeout(cmd))
@@ -723,8 +755,22 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
         remaining = max(3.0, deadline - time.time())
         if final_wait is not None:
             remaining = min(remaining, final_wait)
-        a = send(name, {"op": "until", "cond": seg["goal"], "timeout": remaining, "soft": True}, remaining + 40)
-        st = a.get("status") or st
+        # Wait for the goal, noting each story state on the way (how the segment ends: what the next one starts from).
+        wait_until = time.time() + remaining
+        a = {}
+        while True:
+            left = max(0.5, wait_until - time.time())
+            a = send(name, {"op": "until", "cond": {"any": [seg["goal"], {"field": "running", "changed": True}]},
+                            "timeout": left, "soft": True}, left + 40)
+            st = a.get("status") or st
+            met_now = holds(seg["goal"], st)
+            if met_now is None:
+                met_now = check(name, seg["goal"])[0]
+            if met_now or not a.get("met") or time.time() >= wait_until or len(ep["states"]) >= 40:
+                break
+            if isinstance(st.get("running"), list) and (not ep["states"] or ep["states"][-1][1] != st["running"]):
+                ep["states"].append([round(time.time() - t0, 1), st["running"]])
+        a = dict(a, met=bool(met_now)) if a else a
         if a.get("met"):
             won = True
         elif (st.get("deaths", deaths0) or 0) > deaths0:
@@ -1002,6 +1048,9 @@ def pick_route(rec, rng, prefer_untried=False):
     """Win-stay, lose-shift: replay the route on a winning streak until it is mastered; after a loss (or when faster
     variants should be tried) choose by UCB1, untried routes first, then the best mean plus an exploration bonus."""
     live = live_routes(rec)
+    requested = [r for r in live if r.get("prior", 0) >= 1 and r.get("runs", 0) == 0]
+    if requested:  # a repair the next segment asked for: try it now, even over a route on a winning streak
+        return max(requested, key=lambda r: r["prior"])
     hot = [r for r in live if r.get("streak", 0) > 0]
     if hot and not prefer_untried:
         return max(hot, key=lambda r: (r["streak"], win_rate(r), -(r.get("bestTime") or 1e9)))
@@ -1318,7 +1367,9 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
            "worstFrameMs": perf.get("worstMs"), "p95FrameMs": perf.get("p95Ms"), "fpsAvg": perf.get("fps"),
            "blocked": sum(1 for s in ep["steps"] if s.get("kind") == "blocked"),
            "passiveRatio": round(min(1.0, (passive + max(0.0, waited)) / active_time), 2), "notes": [],
-           "friction": friction(rec), "episode": ep["id"]}
+           "friction": friction(rec), "episode": ep["id"],
+           "lastRunning": (ep.get("states") or [[0, None]])[-1][1] or next(
+               (s.get("running") for s in reversed(ep["steps"]) if s.get("running")), None)}
     if through:
         row["notes"].append("the story went through it by itself (the segment before ended past its start)")
     if ep.get("explored"):
@@ -1356,6 +1407,8 @@ def play_segment(name, seg, recording, report, by, adaptive=False, rng=None):
             fix = handoff_repair(KB.load(seg["id"], seg), route, ep)
             if fix:
                 variants.insert(0, fix)
+            if ep["failKind"] == "death":
+                end_elsewhere(seg, report, by)
         if ep["failKind"] == "goal-timeout":  # the route ran out of steps here: explore on from where it left the game
             res = explore(name, seg, min(seg.get("budget", 150), 120), by=by, rng=rng, setup=False)
             record_exploration(seg["id"], seg, res, by)

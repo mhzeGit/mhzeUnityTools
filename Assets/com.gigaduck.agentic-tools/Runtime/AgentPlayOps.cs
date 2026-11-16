@@ -723,6 +723,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             Vector3 last = player.position, from = player.position;
             float closest = float.MaxValue; // progress is getting closer to the corner, not any movement (jitter at a wall)
             var trail = new List<object> { new List<object> { Round(from.x), Round(from.z) } };
+            float started = Time.realtimeSinceStartup, frozenFrom = -1f, frozenTo = -1f;
             float nextTrail = Time.realtimeSinceStartup + 0.5f;
             string held = "";
             int i = 0;
@@ -769,6 +770,16 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     }
 
                     if (player == null) break;
+                    bool dying = false;
+                    try { dying = Dying != null && Dying(); }
+                    catch (Exception) { }
+                    if (dying)
+                    {
+                        r["why"] = "the player died";
+                        r["diedAt"] = V(player.position);
+                        break;
+                    }
+
                     if ((player.position - last).sqrMagnitude > 9f)
                     {
                         r["why"] = "the player was moved away (a death or a teleport)";
@@ -780,6 +791,11 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     float gap = Horizontal(corners[i] - player.position).magnitude;
                     if (gap < closest - 0.1f) { closest = gap; lastProgress = Time.realtimeSinceStartup; }
                     else if (hold) { still += Time.realtimeSinceStartup - now; lastProgress = Time.realtimeSinceStartup; }
+                    if (hold)
+                    {
+                        if (frozenFrom < 0f) frozenFrom = now - started;
+                        frozenTo = Time.realtimeSinceStartup - started;
+                    }
                     else if (Time.realtimeSinceStartup - lastProgress > 2f)
                     {
                         r["why"] = "blocked: no progress for 2 s (NPC, door or story barrier in the way)";
@@ -794,6 +810,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             }
 
             if (still > 0.05f) r["frozen"] = Round(still);
+            if (frozenFrom >= 0f) r["frozenSpan"] = new List<object> { Round(frozenFrom), Round(frozenTo) }; // seconds into the walk
             var path = new List<object>();
             foreach (Vector3 c in corners) path.Add(new List<object> { Round(c.x), Round(c.z) });
             r["path"] = path;   // the corners walked (x, z)
@@ -807,12 +824,21 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (player != null) r["stoppedAt"] = V(player.position);
         }
 
-        /// <summary>The movement keys for a direction, relative to where the camera looks (8 directions).</summary>
+        /// <summary>
+        /// The forward the movement keys move along. Default: the player's body (first-person controllers move relative to
+        /// the body; a scripted camera can look elsewhere while the body stays put). A project whose keys follow the camera
+        /// sets it to the camera's forward.
+        /// </summary>
+        public static Func<Vector3> MoveForward;
+
+        /// <summary>True while the player is dying (the project's death sequence): a walk stops and says so.</summary>
+        public static Func<bool> Dying;
+
+        /// <summary>The movement keys for a direction, relative to what the keys move along (8 directions).</summary>
         public static string KeysToward(Vector3 to)
         {
-            Camera cam = Cam();
             Transform player = PlayerTransform();
-            Vector3 forward = cam != null ? cam.transform.forward : player != null ? player.forward : Vector3.forward;
+            Vector3 forward = MoveForward != null ? MoveForward() : player != null ? player.forward : Cam() != null ? Cam().transform.forward : Vector3.forward;
             float a = Mathf.DeltaAngle(Yaw(forward), Yaw(to));
             string keys = "";
             if (Mathf.Abs(a) <= 67.5f) keys += "W";

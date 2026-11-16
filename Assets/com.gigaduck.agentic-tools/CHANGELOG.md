@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.6 - 2026-11-16
+
+- **Walking keys follow the body.** `KeyWalk` picks W/A/S/D relative to the player's body (first-person controllers move
+  relative to it), not the camera: while the game turns the camera itself (a reveal, a scripted look) camera-relative keys
+  walked the wrong way. `AgentPlayOps.MoveForward` overrides it for a game whose keys follow the camera.
+- `AgentPlayOps.Dying` (project hook): a walk stops with "the player died" instead of walking on from the respawn; walk
+  results carry `frozenSpan` (when, within the walk, the game held the player).
+- **Learning "earlier".** Episodes record the story states after their last step (`states`); a playtest row says how its
+  segment ended (`lastRunning`). When a chained segment dies, the segment before gets a variant that walks to where the
+  dying segment starts when played alone, during that last story state: tried on the next run even over a winning route
+  (`prior` 1.0). A hazard that is already falling when its segment starts can only be escaped earlier.
+- Episodes keep the start and the end of each walk's trail.
+
 ## 1.4.5 - 2026-11-16
 
 - An attempt in which the player died fails even when the story went on after the respawn (it used to count as a win, so
