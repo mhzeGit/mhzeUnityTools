@@ -96,6 +96,7 @@ python tools/agentplay/agentplay.py kb brief [--scope S]               # START H
 python tools/agentplay/agentplay.py learn me1 --scope S [--workers 2]  # learn segments until mastered (starts its own players)
 python tools/agentplay/agentplay.py playtest me1 --scope S [--learn]   # play the scope with the learned routes, record, report
 python tools/agentplay/agentplay.py playtest me1 --scope S --until-perfect 8   # chained runs, learning between them, until one is perfect
+python tools/agentplay/agentplay.py deeptest me1 --scope S [--states all]        # try everything in each section: what breaks
 python tools/agentplay/agentplay.py observe me1                        # what the bot sees, what the story waits for, suggestions
 python tools/agentplay/agentplay.py step me1 '{"op":"interact","target":"Kettle"}' --why "..." --segment S   # explore by hand
 python tools/agentplay/agentplay.py learn me1 --segment S --from-draft  # your draft -> a verified route

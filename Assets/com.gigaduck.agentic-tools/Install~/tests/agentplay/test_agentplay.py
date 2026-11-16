@@ -75,6 +75,7 @@ class FakeGame:
         return {"status": self.status(), "objects": objs, "beats": beats, "texts": ["Stage %d" % self.stage], "crosshair": None}
 
     def interact(self, target):
+        target = target.split("/")[-1]  # the harness finds an object by name or by the end of its path
         if target == "Trap":
             self.deaths += 1
             self.jump(self.stage)
@@ -437,6 +438,25 @@ class AgentPlayTests(unittest.TestCase):
         row = learn.play_segment("bot", SEGMENTS[1], False, report, "test")
         self.assertEqual((row["outcome"], row["chained"]), ("pass", True), row)
         self.assertEqual(learn.status("bot")["stage"], 2, "no jump back to the segment's start")
+
+    def test_14_deeptest_tries_everything_and_shares_coverage(self):
+        import argparse
+        deep = self.ap.deep
+        args = argparse.Namespace(scope=None, segment="fake/s0", states="start", radius=12, max=40, combos=3, retest=False,
+                                  no_moves=False, no_softlock=False, no_record=True, by="test")
+        report = deep.deeptest("bot", [SEGMENTS[0]], args)
+        got = {a["label"].split(" (")[0]: a["outcome"] for a in report["actions"]}
+        self.assertEqual(got.get("interact Trap"), "death", got)
+        self.assertEqual(got.get("interact Lamp"), "error", got)
+        self.assertEqual(got.get("interact Item0"), "story", got)
+        item = next(a for a in report["actions"] if a["label"].startswith("interact Item0"))
+        self.assertIn("can still be finished", item["detail"])
+        self.assertTrue(any(f["sev"] == "BUG" and "Lamp" in f["text"] for f in report["findings"]), report["findings"])
+        self.assertTrue(report["verdict"].startswith("DEEP:"), report["verdict"])
+        self.assertTrue((deep.COVERAGE / "fake__s0.json").exists(), "coverage is shared in the knowledge base")
+        again = deep.deeptest("bot", [SEGMENTS[0]], args)
+        self.assertEqual(again["coverage"]["tried"], 0, "same build: nothing is tested twice")
+        self.assertEqual(again["coverage"]["known"], report["coverage"]["tried"])
 
     def test_20_video_finalize_and_avi(self):
         if Image is None:

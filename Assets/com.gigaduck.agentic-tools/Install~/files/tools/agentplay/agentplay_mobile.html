@@ -249,7 +249,11 @@ function splitLabel(label, id) {
 }
 const OUT = { pass: 'var(--pass)', fail: 'var(--fail)', unlearned: '#4b3f39', jumped: 'var(--warn)' };
 const MAST = { mastered: 'var(--m-mastered)', competent: 'var(--m-competent)', 'needs-agent': 'var(--m-needs)', learning: 'var(--m-learning)', stale: 'var(--m-stale)', unknown: 'var(--m-unknown)' };
-const SEV = { FATAL: 'var(--fail)', ERR: 'var(--fail)', STALL: 'var(--rec)', SOFT: 'var(--warn)', WARN: 'var(--warn)', INFO: 'var(--info)' };
+const SEV = { FATAL: 'var(--fail)', BUG: 'var(--fail)', ERR: 'var(--fail)', STALL: 'var(--rec)', SOFT: 'var(--warn)', WARN: 'var(--warn)', INFO: 'var(--info)' };
+/* deep tests: what each tried action did */
+const ACT = { error: 'var(--fail)', fell: 'var(--fail)', softlock: 'var(--fail)', death: 'var(--warn)', failed: 'var(--warn)', blocked: 'var(--t3)',
+  story: 'var(--info)', held: 'var(--m-learning)', changed: 'var(--pass)', moved: 'var(--pass)', nothing: 'var(--t3)' };
+const PROBLEM = ['error', 'fell', 'softlock', 'death', 'failed'];
 const KIND = { op: 'var(--info)', result: 'var(--m-learning)', mark: 'var(--warn)', segment: 'var(--rec)', label: 'var(--pass)', text: 'var(--t3)', finding: 'var(--fail)', look: 'var(--m-mastered)' };
 const chip = (text, c, solid) => h('span', { class: 'chip' + (solid ? ' solid' : ''), style: { '--c': c } }, h('i'), h('span', { class: 'ct' }, text));
 const outChip = o => o === 'unlearned' ? h('span', { class: 'chip' }, 'not learned') : chip(o, OUT[o] || 'var(--t3)', true);
@@ -389,7 +393,7 @@ async function testsView() {
     return h('a', { class: 'card rise', href: '#/tests/' + encodeURIComponent(p.id), style: { animationDelay: Math.min(i * 40, 300) + 'ms' } },
       h('div', { class: 'pt-top' },
         h('div', { class: 'score' }, h('div', null, h('b', { style: { color: bad ? 'var(--warn)' : 'var(--pass)' } }, (p.passed ?? '–') + ''), h('span', null, 'of ' + p.segments))),
-        h('div', { class: 'pt-t' }, h('h3', null, (p.scope === 'all' ? 'Whole game' : 'Scope ' + p.scope) + (p.series ? ' · run ' + p.series.run : ''),
+        h('div', { class: 'pt-t' }, h('h3', null, (p.kind === 'deep' ? 'Deep test ' + String(p.scope || '').replace(/^deep /, '') : p.scope === 'all' ? 'Whole game' : 'Scope ' + p.scope) + (p.series ? ' · run ' + p.series.run : ''),
           p.perfect ? h('span', { class: 'perfect' }, 'perfect') : null),
           h('p', null, (p.verdict || '').replace(/^\w+:\s*/, '')),
           h('p', { class: 'muted', style: { marginTop: '4px' } }, ago(p.started) + ' · ' + dur(p.duration) + (p.videoId ? ' · video' : '')))),
@@ -400,10 +404,11 @@ async function testsView() {
 async function testView(id) {
   const r = await api('/api/playtests/' + encodeURIComponent(id));
   const segs = r.segments || [];
-  title(r.scope === 'all' ? 'Whole-game playtest' : 'Playtest ' + r.scope, ago(r.started) + ' · ' + dur(r.duration));
+  const deep = r.kind === 'deep';
+  title(deep ? 'Deep test ' + String(r.scope || '').replace(/^deep /, '') : r.scope === 'all' ? 'Whole-game playtest' : 'Playtest ' + r.scope, ago(r.started) + ' · ' + dur(r.duration));
   const p = player(r.video, segs);
   const q = r.quality || {};
-  const bad = !/^(PASS|PERFECT)/.test(r.verdict || '');
+  const bad = deep ? (r.findings || []).some(f => ['BUG', 'SOFT', 'ERR', 'FATAL'].includes(f.sev)) : !/^(PASS|PERFECT)/.test(r.verdict || '');
   const meter = (name, v, invert, wide) => {
     const good = invert ? v <= 0.15 : v >= 0.85, ok = invert ? v <= 0.4 : v >= 0.6;
     const c = good ? 'var(--pass)' : ok ? 'var(--warn)' : 'var(--fail)';
@@ -445,7 +450,26 @@ async function testView(id) {
     lastSeg = s;
     if (s && cards.get(s.id)) cards.get(s.id).classList.add('on');
   });
-  const order = ['FATAL', 'ERR', 'STALL', 'SOFT', 'WARN', 'INFO'];
+  const order = ['FATAL', 'BUG', 'ERR', 'STALL', 'SOFT', 'WARN', 'INFO'];
+  // Deep test: every action tried, with what it did; filter by problems; tap one to watch it.
+  const acts = deep ? (r.actions || []) : [];
+  let aFilter = 'problems';
+  const aCount = { problems: acts.filter(a => PROBLEM.includes(a.outcome)).length, changed: acts.filter(a => !PROBLEM.includes(a.outcome) && a.outcome !== 'nothing').length,
+    nothing: acts.filter(a => a.outcome === 'nothing').length, all: acts.length };
+  const aBox = h('div');
+  const aTabs = h('div', { class: 'seg' });
+  function drawActs() {
+    const pick = acts.filter(a => aFilter === 'all' || (aFilter === 'problems' ? PROBLEM.includes(a.outcome) : aFilter === 'nothing' ? a.outcome === 'nothing' : !PROBLEM.includes(a.outcome) && a.outcome !== 'nothing'));
+    aBox.replaceChildren(...pick.slice(0, 300).map(a => {
+      const row = h('div', { class: 'fd' }, chip(a.outcome, ACT[a.outcome] || 'var(--t3)', true),
+        h('div', { class: 'tx' }, h('b', null, a.label + (a.known ? ' · known' : '')), (a.segment || '') + (a.state && a.state !== 'start' ? ' · ' + a.state : '') + (a.detail ? ' — ' + a.detail : '')),
+        fin(a.t) && r.video && !a.known ? goBtn(a.t, p) : null);
+      return tap(row, () => row.classList.toggle('open'));
+    }));
+    aTabs.replaceChildren(...[['problems', 'Problems'], ['changed', 'Did something'], ['nothing', 'Nothing'], ['all', 'All']].map(([k, t]) =>
+      tap(h('button', { class: aFilter === k ? 'on' : '' }, t, h('b', null, aCount[k])), () => { aFilter = k; drawActs(); })));
+  }
+  if (deep) { if (!aCount.problems) aFilter = 'changed'; drawActs(); }
   const findings = (r.findings || []).slice().sort((a, b) => order.indexOf(a.sev) - order.indexOf(b.sev) || (a.t || 0) - (b.t || 0));
   const fBox = h('div', null, findings.slice(0, 60).map(f => {
     const row = h('div', { class: 'fd' }, chip(f.sev, SEV[f.sev] || 'var(--t3)', true),
@@ -457,8 +481,9 @@ async function testView(id) {
       h('h2', null, r.verdict || ''),
       h('div', { class: 'meta' }, h('div', null, 'Passed', h('b', null, (r.passed ?? '–') + ' / ' + segs.length)),
         h('div', null, 'Length', h('b', null, clock(r.duration))), h('div', null, 'Player', h('b', null, r.player || '–')))),
-    h('div', { class: 'meters' }, meter('Completion', q.completion), meter('Stability', q.stability), meter('Performance', q.performance),
+    deep ? null : h('div', { class: 'meters' }, meter('Completion', q.completion), meter('Stability', q.stability), meter('Performance', q.performance),
       meter('Pacing', q.pacing), meter('Friction', q.friction, true, true)),
+    deep ? [h('div', { class: 'h' }, 'Actions tried', h('b', null, acts.length)), aTabs, aBox] : null,
     h('div', { class: 'h' }, 'Segments', h('b', null, segs.length), h('span', { class: 'sp' }), h('span', { class: 'small', style: { textTransform: 'none', letterSpacing: 0, fontWeight: 500 } }, 'tap to watch')),
     tabs, listBox,
     findings.length ? [h('div', { class: 'h' }, 'Findings', h('b', null, findings.length)), fBox] : null,

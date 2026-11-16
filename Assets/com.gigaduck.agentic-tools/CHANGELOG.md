@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.0 - 2026-11-16
+
+- **Deep tests** (`agentplay.py deeptest NAME --scope S`): the second kind of play-testing. A playtest finishes the game; a
+  deep test tries everything in each section with real inputs: every interactable in reach, an item in hand on the other
+  interactables, every move of the project's input map (`Assets/**/*.inputactions`; held while walking for sprint and
+  crouch; pause opened and closed), walking probes in 8 directions; `--states all` also at each story state of the learned
+  route. Each action is classified (error, death, fell, story, held, changed, moved, blocked, failed, nothing); a story change
+  gets a softlock check (the learned route must still finish the section). It resets to the section start after anything
+  that changes the story, the item in hand or the player's life. Coverage is shared in `<knowledgeDir>/coverage/` (skipped on
+  the same build, retested on a new one). Report with one video (a caption per action) in the Playtests list; the phone shows
+  every action, filtered by problems, each one tap away in the video. `agentplay.json` `"deepMoves"` adds moves.
+
 ## 1.4.6 - 2026-11-16
 
 - **Walking keys follow the body.** `KeyWalk` picks W/A/S/D relative to the player's body (first-person controllers move

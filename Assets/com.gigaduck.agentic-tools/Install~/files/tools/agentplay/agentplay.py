@@ -22,6 +22,7 @@ Project settings: tools/agentplay/agentplay.json; project commands: tools/agentp
   agentplay.py observe NAME / step NAME '{...}'          what the bot can see and use; one recorded exploration step
   agentplay.py learn NAME --scope S                      learn to play segments until mastered (shared knowledge base)
   agentplay.py playtest NAME --scope S                   play a whole chunk with the learned routes, record it, report
+  agentplay.py deeptest NAME --scope S                   try everything in a section (interactables, items, moves): find bugs
   agentplay.py kb status|brief|show|lesson|route ...     the shared knowledge base other agents reuse
   agentplay.py serve [--port 8765]                       dashboard and HTTP API: players, videos, playtests, knowledge
 """
@@ -1089,7 +1090,7 @@ def main():
     args.func(args)
 
 
-MODULES = ("agentplay_video", "agentplay_learn", "agentplay_web")  # beside this file; each has register(sub, ap)
+MODULES = ("agentplay_video", "agentplay_learn", "agentplay_deep", "agentplay_web")  # beside this file; each has register(sub, ap)
 
 
 def load_modules(sub):
