@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.6 - 2026-11-16
+
+- Agent play docs, the `agent-playtest` skill and AGENTS.md's testing line say when a `STALE` build needs a rebuild: only
+  when the change list holds your files, code, scenes, prefabs or packages; other agents' lighting, textures or fonts
+  alone do not (test the build as it is and say so), as TESTING.md already said. Saves a full build per test task.
+
 ## 1.8.5 - 2026-11-16
 
 - AGENTS.md's testing line is shorter again (1.8.4 put a project's AGENTS.md over its 14000 byte budget); it still names

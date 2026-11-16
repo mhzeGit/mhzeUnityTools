@@ -10,8 +10,10 @@ comes from the Agentic Tools package: `AgentPlayBuild` (builds the player with t
 
 One line of commands is the whole job: each command starts and stops its own standalone player (no editor claim, the editor
 may be open), records one video and ends with a `VIEW` link (the report and video on the dashboard; the phone link when it is
-shared). `NAME` is your own player name, `<tool>-<task>` (`claude-doors`), never another agent's. Run `info` first; build
-only when it says STALE (another agent's build in progress: the build command waits for it).
+shared). `NAME` is your own player name, `<tool>-<task>` (`claude-doors`), never another agent's. Run `info` first.
+`CURRENT`: play. `STALE`: build only when a listed file is yours or is code, a scene, a prefab or a package (play may differ);
+when it lists only other assets (lighting, textures, fonts, materials), test the build as it is and say so in the report. A
+full build takes as long as `info` says the last one took; another agent's build in progress: the build command waits for it.
 
 | The request | Run (`python tools/agentplay/agentplay.py ...`) |
 | --- | --- |
@@ -46,7 +48,7 @@ only when it says STALE (another agent's build in progress: the build command wa
 
 ```
 python tools/agentplay/agentplay.py info                  # ALWAYS first: age, commit, changes; CURRENT or STALE (exit 0 / 3 / 2 = none)
-python tools/agentplay/agentplay.py build --by me         # only when info says STALE and your changes are not in the build; script-only changes patch in seconds
+python tools/agentplay/agentplay.py build --by me         # only when info says STALE with your files, code, scenes, prefabs or packages; script-only changes patch in seconds
 python tools/agentplay/agentplay.py start NAME --require-current [--headless] [--scene SCENE] # unique name per agent, never another agent's
 python tools/agentplay/agentplay.py send NAME '{"op":"status"}'
 python tools/agentplay/agentplay.py shot NAME --as hall --pos=-6,2,-14 --look=-6,1,-8

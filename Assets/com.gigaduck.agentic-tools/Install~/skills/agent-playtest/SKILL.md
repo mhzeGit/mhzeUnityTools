@@ -9,7 +9,8 @@ description: Play-test a chapter, a stretch or the whole game with bots that pla
 
 `python tools/agentplay/agentplay.py ...` Each command starts and stops its own standalone player (no editor claim needed),
 records one video and prints a `VIEW` link. `NAME` is your own player name, `<tool>-<task>` (`claude-doors`). Run `info`
-first; build only when it says STALE.
+first: `CURRENT` plays; `STALE` needs a build only when it lists your files, code, a scene, a prefab or a package; only other
+assets (lighting, textures, fonts): test the build as it is and say so.
 
 | The request | Run |
 | --- | --- |
@@ -49,7 +50,7 @@ and only improve it.** Commit the knowledge base with your work so every agent a
 ## 1. Read what is known (always first)
 
 ```
-python tools/agentplay/agentplay.py info                 # build CURRENT? (build only when STALE; see AGENT_PLAY.md)
+python tools/agentplay/agentplay.py info                 # build CURRENT? (STALE: build only for your files, code, scenes, prefabs, packages)
 python tools/agentplay/agentplay.py kb brief --scope S   # mastery per segment, needs-agent list, lessons, the next command
 python tools/agentplay/agentplay.py segments --scope S   # the segments a scope names
 ```
