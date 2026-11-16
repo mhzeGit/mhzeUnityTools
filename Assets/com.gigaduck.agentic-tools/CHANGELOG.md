@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.4 - 2026-11-16
+
+- Deep tests: a softlock is a story that stops moving. The check waits for the story while it still moves (a slow scene,
+  someone in the way) and retries the learned route from there; it only runs when the story went somewhere the learned
+  routes and recent episodes never go (a story moving along its normal path needs no check), which made deep tests of
+  sections whose start triggers a scene much faster.
+
 ## 1.5.3 - 2026-11-16
 
 - Deep tests: an action the game interrupts (a scene starts on the way and takes the controls) is "busy", not a failure,

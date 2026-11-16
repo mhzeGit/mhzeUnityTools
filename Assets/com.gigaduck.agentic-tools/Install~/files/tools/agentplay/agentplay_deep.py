@@ -295,17 +295,52 @@ def states_of(seg, which):
     return out
 
 
-def softlock_check(name, seg, base_pos):
-    """After the story moved on its own way: can the section still be finished? The learned route from here; failing that,
-    from back where the section starts (the route's walks assume it), once more. Returns the last episode."""
+def normal_path(seg):
+    """The story steps a section normally goes through: the learned routes' gates and what recent episodes saw."""
+    beats = set()
+    for r in learn.live_routes(learn.KB.load(seg["id"], seg)):
+        for step in r.get("steps", []):
+            for c in (step.get("when") or {}).get("all", []):
+                if c.get("contains"):
+                    beats.add(c["contains"])
+    folder = learn.EPISODES / learn.Knowledge.slug(seg["id"])
+    for path in sorted(folder.glob("*.json"))[-12:] if folder.exists() else []:
+        try:
+            ep = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for row in ep.get("steps", []):
+            beats.update(b for b in str(row.get("state", "")).split("running=")[-1].split("+") if b)
+        for _, running in ep.get("states", []):
+            beats.update(running or [])
+    return beats
+
+
+def softlock_check(name, seg, base_pos, rounds=4, quiet=30):
+    """After the story moved on its own way: can the section still be finished? A softlock is a story that stops moving.
+    Tries the learned route; while it fails but the story still moves (a slow scene, someone in the way), waits for the next
+    change and tries again from there (and once from back where the section starts). Only a story that does not move for
+    `quiet` seconds after a failed try is reported. Returns the last episode (outcome "win" when finished)."""
     route = learn.best_route(learn.KB.load(seg["id"], seg))
     if not route:
         return None
-    ep = learn.run_episode(name, seg, route["steps"], setup=False, by="deep", budget=min(seg.get("budget", 150), 90))
-    if ep["outcome"] == "win" or not base_pos:
-        return ep
-    learn.send(name, {"op": "walk", "pos": base_pos, "timeout": 25}, 60)
-    return learn.run_episode(name, seg, route["steps"], setup=False, by="deep", budget=min(seg.get("budget", 150), 90))
+    ep = None
+    for k in range(rounds):
+        ep = learn.run_episode(name, seg, route["steps"], setup=False, by="deep", budget=min(seg.get("budget", 150), 90))
+        if ep["outcome"] == "win":
+            return ep
+        if k == 0 and base_pos:
+            learn.send(name, {"op": "walk", "pos": base_pos, "timeout": 25}, 60)
+            continue
+        moved = learn.send(name, {"op": "until", "cond": {"any": [seg["goal"], {"field": "running", "changed": True},
+                                                                  {"field": "stage", "changed": True}]},
+                                  "timeout": quiet, "soft": True}, quiet + 30)
+        if learn.check(name, seg["goal"])[0]:
+            return dict(ep, outcome="win")
+        if not moved.get("met"):
+            ep["failDetail"] = "the story did not move for %d s after the route failed (%s)" % (quiet, ep["failDetail"][:120])
+            return ep
+    return ep
 
 
 def deep_segment(name, seg, report, args, recording):
@@ -320,6 +355,7 @@ def deep_segment(name, seg, report, args, recording):
            "p95FrameMs": None, "fpsAvg": None, "blocked": 0, "passiveRatio": 0, "notes": [], "friction": 0, "episode": None,
            "coverage": {"tested": 0, "known": 0, "outcomes": {}}}
     t0 = time.time()
+    known_path = normal_path(seg)
     for state_label, prefix in states_of(seg, args.states):
         if not reach_state(name, seg, prefix):
             row["notes"].append("could not reach state %s" % state_label)
@@ -357,11 +393,14 @@ def deep_segment(name, seg, report, args, recording):
                     if learn.status(name).get("timeScale") != 0:
                         break
                 dirty = True
-            if res["outcome"] == "story" and not args.no_softlock:
+            off_path = [b for b in (after["status"].get("running") or []) if b not in known_path]
+            if res["outcome"] == "story" and not off_path:
+                entry["detail"] += "; along the section's normal path"
+            if res["outcome"] == "story" and off_path and not args.no_softlock:
                 ep = softlock_check(name, seg, base_pos)
                 if ep is not None and ep["outcome"] != "win":
                     entry["outcome"] = "softlock"
-                    entry["detail"] += "; possible softlock: the learned route could not finish the section after it, twice "                                        "(%s: %s); watch the video" % (ep["failKind"], ep["failDetail"][:140])
+                    entry["detail"] += "; possible softlock: the section could not be finished after it (%s: %s); watch the "                                        "video" % (ep["failKind"], ep["failDetail"][:160])
                 elif ep is not None:
                     entry["detail"] += "; the section can still be finished"
             if res["hitch"]:
