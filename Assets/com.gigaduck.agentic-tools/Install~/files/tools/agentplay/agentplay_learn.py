@@ -60,6 +60,7 @@ REPAIR_BELOW = 6     # failed routes make repair variants only while fewer route
 HISTORY_KEEP = 40
 SCHEMA = 1
 STATE_FIELDS = ("scene", "stage", "running")
+RETRY_OPS = {"point", "click", "key", "interact"}  # a press that did nothing is pressed again once
 META_KEYS = {"why", "expect", "expect_timeout", "optional", "when", "when_timeout", "note"}
 OP_TIMEOUT = {"walk": 45, "approach": 45, "interact": 50, "aim": 12, "key": 10, "stage": 60, "scene": 150, "teleport": 15,
               "look": 10, "click": 10, "observe": 30, "status": 30, "hold": 10, "release": 10, "point": 60}
@@ -678,7 +679,7 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
         for cmd in seg.get("setup", []):
             a = send(name, cmd, op_timeout(cmd))
             if not a.get("ok"):
-                ep.update(failKind="setup", failDetail=a.get("error", "setup failed"))
+                ep.update(failKind="setup", failDetail=a.get("error", "setup failed"), time=0.0)
                 return save_episode(ep)
     before = issue_counts(name)
     send(name, {"op": "perf", "reset": True}, 30)
@@ -732,6 +733,12 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
             kind, detail = classify(cmd, a)
             if kind is None and step.get("expect"):
                 e = send(name, {"op": "until", "cond": step["expect"], "timeout": float(step.get("expect_timeout", 4)), "soft": True}, 60)
+                if not e.get("met") and cmd.get("op") in RETRY_OPS:
+                    # A click or a key that did nothing (the game was not listening yet): a player presses it again.
+                    a = send(name, cmd, op_timeout(cmd))
+                    e = send(name, {"op": "until", "cond": step["expect"], "timeout": float(step.get("expect_timeout", 4)), "soft": True}, 60)
+                    if e.get("met"):
+                        row["retried"] = True
                 if not e.get("met"):
                     kind, detail = "expect", "expected %s" % json.dumps(step["expect"])[:200]
         met, st = check(name, seg["goal"])
@@ -1320,7 +1327,7 @@ def playtest(name, segs, record=True, learn_first=False, label=None, by="agent",
         for seg in segs:
             report["segments"].append(play_segment(name, seg, recording, report, by, adaptive, rng))
             row = report["segments"][-1]
-            log("%-48s %-9s %5.0fs  %s%s" % (seg.get("label", seg["id"])[:48], row["outcome"].upper(), row["duration"],
+            log("%-48s %-9s %5.0fs  %s%s" % (seg.get("label", seg["id"])[:48], row["outcome"].upper(), row["duration"] or 0,
                                             "chained" if row["chained"] else "jumped", ("  " + "; ".join(row["notes"])) if row["notes"] else ""))
         if recording:
             meta = video.stop(name, extra={"playtest": pt_id, "label": title})

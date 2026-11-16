@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.3 - 2026-11-16
+
+- A click, key, point or interact whose expected effect does not happen is pressed once more before the step fails (the game
+  was not listening yet, e.g. a menu still fading in), as a player would.
+- A playtest no longer crashes on a segment whose setup failed (no duration).
+
 ## 1.6.2 - 2026-11-16
 
 - **Aiming like a hand.** `aim` (and `interact`) calibrates the mouse once per session (a small nudge per axis, measured),
