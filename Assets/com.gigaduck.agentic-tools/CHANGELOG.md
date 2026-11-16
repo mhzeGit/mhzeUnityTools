@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.4 - 2026-11-16
+
+- Walks measure progress as getting closer to the next corner, so jittering against a wall or a door frame reports
+  "blocked" after 2 s instead of using up the timeout.
+- Episodes keep the end of each walk's trail and its corners (they were cut off with the rest of long results).
+
 ## 1.4.3 - 2026-11-16
 
 - A walk stops with a reason when the player is moved away (a death, a teleport) instead of walking on from the respawn.

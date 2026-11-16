@@ -518,6 +518,10 @@ def classify(cmd, ans):
 
 def trim(answer, limit=600):
     out = {k: v for k, v in answer.items() if k not in ("status", "id", "issues", "objects", "texts", "beats")}
+    if isinstance(out.get("trail"), list):  # a walk: keep where it ended up (a death, a block) and the corners
+        out["trail"] = out["trail"][-4:]
+        if isinstance(out.get("path"), list):
+            out["path"] = out["path"][:10]
     text = json.dumps(out)
     return out if len(text) <= limit else {"ok": answer.get("ok"), "truncated": text[:limit]}
 

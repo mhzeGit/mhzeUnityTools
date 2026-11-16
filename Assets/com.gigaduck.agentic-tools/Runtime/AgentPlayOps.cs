@@ -721,6 +721,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             Vector3 destination = corners[corners.Count - 1];
             float until = Time.realtimeSinceStartup + timeout, lastProgress = Time.realtimeSinceStartup, still = 0f, best = float.MaxValue;
             Vector3 last = player.position, from = player.position;
+            float closest = float.MaxValue; // progress is getting closer to the corner, not any movement (jitter at a wall)
             var trail = new List<object> { new List<object> { Round(from.x), Round(from.z) } };
             float nextTrail = Time.realtimeSinceStartup + 0.5f;
             string held = "";
@@ -736,6 +737,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                         if (final) break;
                         from = corners[i];
                         i++;
+                        closest = float.MaxValue;
                         continue;
                     }
 
@@ -774,7 +776,9 @@ namespace Gigaduck.AgenticTools.AgentPlay
                         break;
                     }
 
-                    if ((player.position - last).sqrMagnitude > 0.0025f) { last = player.position; lastProgress = Time.realtimeSinceStartup; }
+                    last = player.position;
+                    float gap = Horizontal(corners[i] - player.position).magnitude;
+                    if (gap < closest - 0.1f) { closest = gap; lastProgress = Time.realtimeSinceStartup; }
                     else if (hold) { still += Time.realtimeSinceStartup - now; lastProgress = Time.realtimeSinceStartup; }
                     else if (Time.realtimeSinceStartup - lastProgress > 2f)
                     {
