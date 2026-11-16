@@ -62,8 +62,8 @@ DEFAULT_CONFIG = {
     "contentDir": "Marketing",
     "brand": {"gameName": "", "cta": "Wishlist now on Steam", "font": "", "background": "#000000", "foreground": "#ffffff",
               "accent": "#ffcc33"},
-    "defaults": {"format": "vertical", "fps": 30, "outro": "", "player": "studio", "scale": 1},
-    "hide": [], "hideUi": [], "stemRules": {},
+    "defaults": {"format": "vertical", "fps": 30, "outro": "", "player": "studio", "scale": 1, "loudness": -14},
+    "hide": [], "hideUi": [], "stemRules": {}, "captionDrop": [],
     "formats": {}, "platforms": {},
     "blender": "", "ffmpeg": "",
 }
@@ -357,7 +357,7 @@ def run_steps(player, steps, in_take):
     """Runs recipe steps: agentplay ops, plus {"wait": s}, {"at": s, ...}, {"mark": text}, {"camera": {...}}, {"hide": [...]}."""
     for step in steps or []:
         step = dict(step)
-        if "at" in step and in_take:
+        if isinstance(step.get("at"), (int, float)) and in_take:
             at = float(step.pop("at"))
             st = send(player, {"op": "studio", "action": "status"})
             if not st.get("take"):
@@ -616,6 +616,14 @@ def map_arg(label):
     return label[1:-1] if re.fullmatch(r"\[\d+:[av]\]", label) else label
 
 
+def loudness_filter(target=None):
+    """Loudness normalisation (EBU R128) to the platforms' usual level; 0 or "off" keeps the game's level."""
+    lufs = CFG["defaults"].get("loudness", -14) if target is None else target
+    if lufs in (0, "off", None):
+        return None
+    return "loudnorm=I=%s:TP=-1.5:LRA=11" % float(lufs)
+
+
 def preview(folder, t):
     """preview.mp4: UI and sound included, small, for people to watch."""
     inputs, parts, v, a, _ = layer_inputs(folder, t)
@@ -828,6 +836,10 @@ def cmd_export(args):
                 parts.append("%s[pa]concat=n=2:v=0:a=1[ax]" % a)
             a = "[ax]"
         n += 1
+    ln = loudness_filter(args.loudness)
+    if a and ln:
+        parts.append("%s%s,aresample=48000[an]" % (a, ln))
+        a = "[an]"
     out = Path(args.output) if args.output else out_dir() / "exports" / ("%s_%s%s%s.mp4" % (
         folder.name, args.platform or "%dx%d" % (tw, th), "" if ui else "_noui", "" if audio != "none" else "_silent"))
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -884,7 +896,9 @@ def plan_timeline(edit):
             dur = float(t.get("duration") or 0)
             cin = float(item.get("in", 0))
             cout = float(item.get("out", dur)) if item.get("out") is not None else dur
+            kinds = set((edit.get("captions") or {}).get("kinds") or ["text"])
             clips.append({"kind": "take", "folder": str(folder), "take": t, "in": cin, "out": min(cout, dur),
+                          "captionLines": caption_lines(folder, kinds, min(cout, dur)),
                           "ui": item.get("ui", True), "audio": item.get("audio", "master"), "volume": item.get("volume", 1.0),
                           "fadeIn": item.get("fadeIn", 0), "fadeOut": item.get("fadeOut", 0)})
         elif "piece" in item:
@@ -1015,8 +1029,12 @@ def cmd_publish(args):
             fail("unknown platform " + pl)
         w, h = size_of(spec["format"])
         target = base / ("%s_%s.mp4" % (d["name"], pl))
+        ln = loudness_filter(spec.get("loudness"))
         cmd = [ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(src), "-t", str(spec["maxSeconds"]),
-               "-vf", "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1,fps=%d" % (w, h, w, h, spec.get("fps", 30)),
+               "-vf", "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1,fps=%d" % (w, h, w, h, spec.get("fps", 30))]
+        if ln and info.get("audio"):
+            cmd += ["-af", ln + ",aresample=48000"]
+        cmd += [
                "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
                "-movflags", "+faststart", str(target)]
         run(cmd)
@@ -1040,6 +1058,43 @@ def cmd_publish(args):
     say({"folder": str(base), "files": pubs, "thumbnail": str(thumb), "captions": str(srt) if srt else None, "post": str(base / "post.txt")})
 
 
+def caption_lines(folder, kinds, end):
+    """Clean subtitle lines of a take from its on-screen text events: parts matching studio.json "captionDrop" (prompts
+    such as "Click to continue") are removed, a line still typing itself out is merged into its full text, and each line
+    lasts until the next one. Returns [(start, end, text)] in take seconds."""
+    evf = Path(folder) / "events.jsonl"
+    events = []
+    if evf.exists():
+        for line in evf.read_text(encoding="utf-8").splitlines():
+            try:
+                events.append(json.loads(line))
+            except ValueError:
+                pass
+    drops = [re.compile(x, re.I) for x in CFG.get("captionDrop") or []]
+    texts = []
+    for ev in events:
+        if ev.get("kind") not in kinds:
+            continue
+        parts = [p.strip() for p in str(ev.get("text", "")).split(" | ")]
+        parts = [p for p in parts if p and p != "(none)" and not any(d.search(p) for d in drops)]
+        texts.append((float(ev["t"]), " | ".join(parts)))
+    merged = []
+    for t, text in texts:
+        prev = merged[-1][1].rstrip(" \"'”’»)]") if merged else ""
+        if merged and text and prev and text.startswith(prev) and t - merged[-1][0] < 3:
+            merged[-1] = (merged[-1][0], text)  # the same line, typed further
+        elif merged and text == merged[-1][1]:
+            continue
+        else:
+            merged.append((t, text))
+    lines = []
+    for i, (t, text) in enumerate(merged):
+        t1 = merged[i + 1][0] if i + 1 < len(merged) else end
+        if text and t1 > t:
+            lines.append((t, t1, text))
+    return lines
+
+
 def captions_srt(edit, target):
     """Subtitles from the takes' on-screen text events, timed on the edit's timeline (the outro adds no captions)."""
     plan = plan_timeline(edit)
@@ -1047,22 +1102,11 @@ def captions_srt(edit, target):
     offset, lines = 0.0, []
     for e in plan["sequence"]:
         if e["kind"] == "take":
-            evf = Path(e["folder"]) / "events.jsonl"
-            events = []
-            if evf.exists():
-                for line in evf.read_text(encoding="utf-8").splitlines():
-                    try:
-                        events.append(json.loads(line))
-                    except ValueError:
-                        pass
-            texts = [ev for ev in events if ev.get("kind") in kinds]
-            for i, ev in enumerate(texts):
-                t0 = float(ev["t"])
-                t1 = float(texts[i + 1]["t"]) if i + 1 < len(texts) else e["out"]
-                if ev.get("text") in ("", "(none)") or t1 <= e["in"] or t0 >= e["out"]:
+            for t0, t1, text in caption_lines(e["folder"], kinds, e["out"]):
+                if t1 <= e["in"] or t0 >= e["out"]:
                     continue
                 a, b = max(t0, e["in"]) - e["in"] + offset, min(t1, e["out"]) - e["in"] + offset
-                lines.append((a, b, ev["text"]))
+                lines.append((a, b, text))
             offset += e["out"] - e["in"]
         elif e["kind"] == "piece":
             offset += e.get("duration", 0)
@@ -1123,6 +1167,7 @@ def main(argv=None):
     s.add_argument("--audio", help="master (default), none, or stems joined by + (voice+sfx)")
     s.add_argument("--outro", help="piece to end with (default: defaults.outro), none for no outro")
     s.add_argument("--platform")
+    s.add_argument("--loudness", help="target LUFS (default defaults.loudness, -14); off keeps the game's level")
     s.add_argument("--in", dest="start", type=float)
     s.add_argument("--out", dest="end", type=float)
     s.add_argument("-o", "--output")

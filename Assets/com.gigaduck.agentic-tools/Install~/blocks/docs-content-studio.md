@@ -86,7 +86,7 @@ in real time instead (sound from the listener). Folder `outputDir/takes/SHOT/SHO
 | `ui/ui_00000.png...` | The overlay UI alone with straight alpha, laid out for this aspect ratio: overlay canvases move to a private UI camera during the take (put back after), which draws them over black and over white; the difference gives exact alpha whatever the render pipeline does with a camera's alpha. |
 | `audio.wav` | The game's sound, 32-bit float. |
 | `stems/voice.wav`... | With `--stems`: one extra pass per stem with every other audio source muted. |
-| `events.jsonl` | On-screen text (captions), stage labels, marks and cuts, with times. |
+| `events.jsonl` | On-screen text (captions), stage labels, marks and cuts, with times. Captions are cleaned when used: a line still typing out merges into its full text, and parts matching `studio.json` `captionDrop` regexes (prompts like "Click to continue") are dropped. |
 | `take.json` | Settings, the recipe used, the commit, frames, errors. |
 | `preview.mp4`, `sheet.jpg` | For people (UI and sound on) and for agents (up to 24 frames). |
 

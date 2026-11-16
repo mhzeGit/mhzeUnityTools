@@ -296,16 +296,12 @@ def add_take(scene, e, cursor, fps, captions, show_captions, font):
                 events.append(json.loads(line))
             except ValueError:
                 pass
-        kinds = set(captions.get("kinds") or ["text"])
-        texts = [ev for ev in events if ev.get("kind") in kinds]
-        for i, ev in enumerate(texts):
-            a = frames(ev["t"], fps)
-            b = frames(texts[i + 1]["t"], fps) if i + 1 < len(texts) else cout
-            a, b = max(a, cin), min(b, cout)
-            if b <= a or ev.get("text") in ("", "(none)"):
+        for t0, t1, text in e.get("captionLines") or []:  # cleaned by studio.py
+            a, b = max(frames(t0, fps), cin), min(frames(t1, fps), cout)
+            if b <= a:
                 continue
             c = st.new_effect(name="caption", type="TEXT", channel=CH_CAPTIONS, frame_start=cursor + a - cin, length=b - a)
-            c.text = ev["text"]
+            c.text = text
             c.font_size = 0.045 * min(scene.render.resolution_x, scene.render.resolution_y)
             c.location = (0.5, 0.22)
             c.wrap_width = 0.85
