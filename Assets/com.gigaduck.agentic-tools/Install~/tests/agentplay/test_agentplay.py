@@ -450,7 +450,7 @@ class AgentPlayTests(unittest.TestCase):
         self.assertEqual(got.get("interact Lamp"), "error", got)
         self.assertEqual(got.get("interact Item0"), "story", got)
         item = next(a for a in report["actions"] if a["label"].startswith("interact Item0"))
-        self.assertIn("can still be finished", item["detail"])
+        self.assertIn("normal path", item["detail"], "a story moving along the learned path needs no softlock check")
         self.assertTrue(any(f["sev"] == "BUG" and "Lamp" in f["text"] for f in report["findings"]), report["findings"])
         self.assertTrue(report["verdict"].startswith("DEEP:"), report["verdict"])
         self.assertTrue((deep.COVERAGE / "fake__s0.json").exists(), "coverage is shared in the knowledge base")
