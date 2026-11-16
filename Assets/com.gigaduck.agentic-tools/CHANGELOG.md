@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.5 - 2026-11-16
+
+- AGENTS.md's testing line is shorter again (1.8.4 put a project's AGENTS.md over its 14000 byte budget); it still names
+  the `agent-playtest` skill's path.
+
 ## 1.8.4 - 2026-11-16
 
 - Agent play, from a sub-agent's first run of "walk through chapter X and test every door": the docs and the
