@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.2 - 2026-11-16
+
+- Content Studio, after its first real use: the UI layer is matted from renders over black and white (exact straight
+  alpha; URP writes camera alpha opaque); `probe` reports a character's bone, facing and size for framing; a take with a
+  length stops on its last frame; per-format overrides for piece layouts (`formats`) and shot cameras (`cameraByFormat`);
+  exports and publish normalise loudness to `defaults.loudness` (-14 LUFS); captions merge typewriter partials and drop
+  `captionDrop` prompts; take metadata keeps its camera and canvases; image `pop` animates relative to the element's size.
+
 ## 1.8.1 - 2026-11-16
 
 - Routes keep their chained record apart (`chain`: runs, wins, failures in a row): a segment played right after the one
