@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.8 - 2026-11-16
+
+- Skill `make-video-content`: a *Custom end screen (outro)* section (find what exists, copy the closest piece, size logos by the
+  artwork inside the file, one layout per ratio, match an existing end card by measuring it, leave a trail in the project's
+  marketing notes), and the intro says where to look for a project's marketing notes and art.
+
 ## 1.8.7 - 2026-11-16
 
 - Agent play jobs: `agentplay.py --bg JOB <command>` runs any command detached (output in `Builds/AgentPlay/bg/JOB.txt`)
