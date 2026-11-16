@@ -59,10 +59,20 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private Dictionary<string, List<string>> _stemRules;
         private readonly Dictionary<AudioSource, bool> _muted = new Dictionary<AudioSource, bool>();
         private readonly Dictionary<string, int> _stemCounts = new Dictionary<string, int>();
-        private readonly Queue<Pending> _pending = new Queue<Pending>();
+        private readonly List<Pending> _pending = new List<Pending>();
+        private int _readbackErrors;
         private Dictionary<string, object> _options;
 
-        private struct Pending { public AsyncGPUReadbackRequest Req, Over; public bool Matte; public FrameSink Sink; public int Copies; }
+        /// <summary>One layer of one frame on its way back from the GPU (a UI frame is a pair: over black and over white).</summary>
+        private sealed class Pending
+        {
+            public AsyncGPUReadbackRequest Req, Over;
+            public bool Matte, GotReq, GotOver, Failed;
+            public byte[] Data, OverData;
+            public FrameSink Sink;
+            public int Copies;
+            public bool Complete => GotReq && (!Matte || GotOver);
+        }
 
         /// <summary>What the last take wrote to its take.json (also when it stopped by itself at its length).</summary>
         public static Dictionary<string, object> LastMeta { get; private set; }
@@ -304,7 +314,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 // pipeline does with the alpha channel of a camera target (URP writes it opaque).
                 _rig.RenderUi(_uiRt, Color.black);
                 _rig.RenderUi(_uiRtWhite, Color.white);
-                _pending.Enqueue(new Pending
+                _pending.Add(new Pending
                 {
                     Req = AsyncGPUReadback.Request(_uiRt, 0, TextureFormat.RGBA32),
                     Over = AsyncGPUReadback.Request(_uiRtWhite, 0, TextureFormat.RGBA32), Matte = true, Sink = _uiSink, Copies = copies,
@@ -318,26 +328,71 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
         private void Request(RenderTexture rt, FrameSink sink, int copies)
         {
-            _pending.Enqueue(new Pending { Req = AsyncGPUReadback.Request(rt, 0, TextureFormat.RGBA32), Sink = sink, Copies = copies });
+            _pending.Add(new Pending { Req = AsyncGPUReadback.Request(rt, 0, TextureFormat.RGBA32), Sink = sink, Copies = copies });
         }
 
-        /// <summary>Hands finished readbacks to their encoders in order; waits when too many are in flight (never drops a frame).</summary>
+        /// <summary>
+        /// Copies out every finished readback now (its data is only valid in the frame it completes, so none may wait behind
+        /// a slower one), then hands complete frames to their encoders in frame order. With <paramref name="all"/>, or when too
+        /// many are in flight, it waits for them. A readback that fails repeats the layer's previous frame, so every layer keeps
+        /// exactly one frame per tick and the layers stay in sync.
+        /// </summary>
         private void Drain(bool all)
         {
-            while (_pending.Count > 0)
+            bool wait = all || _pending.Count >= 12;
+            foreach (Pending p in _pending)
             {
-                Pending p = _pending.Peek();
-                if (!p.Req.done || (p.Matte && !p.Over.done))
-                {
-                    if (!all && _pending.Count < 8) return;
-                    p.Req.WaitForCompletion();
-                    if (p.Matte) p.Over.WaitForCompletion();
-                }
+                if (!p.GotReq) p.GotReq = Collect(ref p.Req, wait, ref p.Data, ref p.Failed);
+                if (p.Matte && !p.GotOver) p.GotOver = Collect(ref p.Over, wait, ref p.OverData, ref p.Failed);
+            }
 
-                _pending.Dequeue();
-                if (p.Req.hasError || (p.Matte && p.Over.hasError)) { _error = _error ?? "a GPU readback failed"; continue; }
-                if (p.Matte) p.Sink.WriteMatte(p.Req.GetData<byte>(), p.Over.GetData<byte>(), p.Copies);
-                else p.Sink.Write(p.Req.GetData<byte>(), p.Copies);
+            int written = 0;
+            while (written < _pending.Count && _pending[written].Complete)
+            {
+                Pending p = _pending[written++];
+                if (p.Failed)
+                {
+                    _readbackErrors++;
+                    _error = "GPU readback failed " + _readbackErrors + " time(s); the previous frame was repeated";
+                    p.Sink.Repeat(p.Copies);
+                }
+                else if (p.Matte) p.Sink.WriteMatte(p.Data, p.OverData, p.Copies);
+                else p.Sink.Write(p.Data, p.Copies);
+            }
+
+            if (written > 0) _pending.RemoveRange(0, written);
+        }
+
+        private static bool Collect(ref AsyncGPUReadbackRequest req, bool wait, ref byte[] data, ref bool failed)
+        {
+            if (!req.done)
+            {
+                if (!wait) return false;
+                req.WaitForCompletion();
+            }
+
+            if (req.hasError) { failed = true; return true; }
+            NativeArray<byte> src = req.GetData<byte>();
+            data = FramePool.Rent(src.Length);
+            src.CopyTo(data);
+            return true;
+        }
+
+        /// <summary>Frame buffers, reused between frames (large arrays: allocating three per frame would churn the heap).</summary>
+        private static class FramePool
+        {
+            private static readonly System.Collections.Concurrent.ConcurrentBag<byte[]> Bag = new System.Collections.Concurrent.ConcurrentBag<byte[]>();
+
+            public static byte[] Rent(int length)
+            {
+                while (Bag.TryTake(out byte[] b))
+                    if (b.Length == length) return b;
+                return new byte[length];
+            }
+
+            public static void Return(byte[] b)
+            {
+                if (b != null && Bag.Count < 48) Bag.Add(b);
             }
         }
 
@@ -698,7 +753,6 @@ namespace Gigaduck.AgenticTools.AgentPlay
             private readonly Stream _stdin;
             private readonly Thread _thread;
             private readonly Queue<(byte[] data, int copies)> _queue = new Queue<(byte[], int)>();
-            private readonly Stack<byte[]> _pool = new Stack<byte[]>();
             private readonly object _gate = new object();
             private readonly StringBuilder _err = new StringBuilder();
             private bool _closed;
@@ -725,30 +779,28 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 _thread.Start();
             }
 
-            public void Write(NativeArray<byte> data, int copies)
+            /// <summary>Queues a frame (a pooled buffer; the sink returns it to the pool).</summary>
+            public void Write(byte[] data, int copies) => Enqueue((data, copies));
+
+            /// <summary>Queues a frame rendered over black and over white; the worker thread mattes it.</summary>
+            public void WriteMatte(byte[] black, byte[] white, int copies)
             {
-                byte[] buffer;
-                lock (_gate) buffer = _pool.Count > 0 ? _pool.Pop() : null;
-                if (buffer == null || buffer.Length != data.Length) buffer = new byte[data.Length];
-                data.CopyTo(buffer);
                 lock (_gate)
                 {
-                    _queue.Enqueue((buffer, copies));
+                    _queue.Enqueue((black, -copies)); // negative: a matte pair, its white half follows
+                    _queue.Enqueue((white, 0));
                     Monitor.Pulse(_gate);
                 }
             }
 
-            /// <summary>Queues a frame rendered over black and over white; the worker thread mattes it.</summary>
-            public void WriteMatte(NativeArray<byte> black, NativeArray<byte> white, int copies)
+            /// <summary>Writes the last frame again (a readback that failed keeps its slot, so layers stay in step).</summary>
+            public void Repeat(int copies) => Enqueue((Array.Empty<byte>(), copies));
+
+            private void Enqueue((byte[], int) item)
             {
-                var b = new byte[black.Length];
-                var w = new byte[white.Length];
-                black.CopyTo(b);
-                white.CopyTo(w);
                 lock (_gate)
                 {
-                    _queue.Enqueue((b, -copies)); // negative: a matte pair, its white half follows
-                    _queue.Enqueue((w, 0));
+                    _queue.Enqueue(item);
                     Monitor.Pulse(_gate);
                 }
             }
@@ -768,6 +820,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
             private void Work()
             {
+                byte[] last = null; // kept for Repeat; returned to the pool when a newer frame replaces it
                 while (true)
                 {
                     (byte[] data, int copies) item;
@@ -778,7 +831,14 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     }
 
                     if (item.data == null) break;
-                    if (item.copies < 0)
+                    byte[] frame = item.data;
+                    int copies = item.copies;
+                    if (frame.Length == 0)
+                    {
+                        frame = last; // a repeat
+                        if (frame == null) continue;
+                    }
+                    else if (copies < 0)
                     {
                         (byte[] data, int copies) white;
                         lock (_gate)
@@ -787,13 +847,14 @@ namespace Gigaduck.AgenticTools.AgentPlay
                             white = _queue.Dequeue();
                         }
 
-                        Matte.Combine(item.data, white.data, item.data);
-                        item.copies = -item.copies;
+                        Matte.Combine(frame, white.data, frame);
+                        FramePool.Return(white.data);
+                        copies = -copies;
                     }
 
                     try
                     {
-                        for (int i = 0; i < item.copies; i++) _stdin.Write(item.data, 0, item.data.Length);
+                        for (int i = 0; i < copies; i++) _stdin.Write(frame, 0, frame.Length);
                     }
                     catch (Exception e)
                     {
@@ -801,7 +862,11 @@ namespace Gigaduck.AgenticTools.AgentPlay
                         break;
                     }
 
-                    lock (_gate) _pool.Push(item.data);
+                    if (!ReferenceEquals(frame, last))
+                    {
+                        FramePool.Return(last);
+                        last = frame;
+                    }
                 }
 
                 try { _stdin.Flush(); _stdin.Dispose(); } catch (IOException) { }

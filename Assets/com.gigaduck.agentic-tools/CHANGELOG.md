@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.3 - 2026-11-16
+
+- Content Studio never drops a frame: every finished GPU readback is copied out in the frame it completes (its data
+  expires after that frame; a strict in-order queue let some expire, so a take lost 2-3 frames and its layers drifted),
+  then frames are written in order; a readback that fails repeats the layer's previous frame. Frame buffers are pooled.
+
 ## 1.8.2 - 2026-11-16
 
 - Content Studio, after its first real use: the UI layer is matted from renders over black and white (exact straight
