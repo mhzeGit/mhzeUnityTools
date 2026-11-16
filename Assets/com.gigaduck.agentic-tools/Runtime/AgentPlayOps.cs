@@ -495,8 +495,28 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (cam == null) { fail("aim: no camera"); yield break; }
             float until = Time.realtimeSinceStartup + timeout;
             int still = 0, steps = 0;
+            float gameHadView = 0f;
             while (true)
             {
+                // A player does not fight a scripted look (a dialog turning the view to the speaker): wait it out.
+                bool gameView = false;
+                try { gameView = AgentPlayAttention.GameHasView != null && AgentPlayAttention.GameHasView(); }
+                catch (Exception) { }
+                if (gameView)
+                {
+                    gameHadView += Time.unscaledDeltaTime;
+                    until += Time.unscaledDeltaTime;
+                    if (gameHadView > 8f)
+                    {
+                        r["aimed"] = false;
+                        fail("aim: the game has the view (a scripted look) for more than 8 s");
+                        yield break;
+                    }
+
+                    yield return null;
+                    continue;
+                }
+
                 Vector3 f = cam.transform.forward, d = (point - cam.transform.position).normalized;
                 float err = Vector3.Angle(f, d);
                 if (err <= tolerance)
@@ -516,7 +536,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 }
 
                 float yawErr = Mathf.DeltaAngle(Yaw(f), Yaw(d)), pitchErr = Pitch(d) - Pitch(f);
-                float dx = Mathf.Clamp(yawErr * 0.75f / _kx, -1500f, 1500f), dy = Mathf.Clamp(pitchErr * 0.75f / _ky, -1500f, 1500f);
+                // At most 25 degrees a step, like a hand: never a whip, whatever the gain thinks.
+                float dx = Mathf.Clamp(yawErr, -25f, 25f) * 0.75f / _kx, dy = Mathf.Clamp(pitchErr, -25f, 25f) * 0.75f / _ky;
                 if (Mathf.Abs(yawErr) < tolerance * 0.5f) dx = 0f;
                 if (Mathf.Abs(pitchErr) < tolerance * 0.5f) dy = 0f;
                 float yaw0 = Yaw(f), pitch0 = Pitch(f);
@@ -541,9 +562,23 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (Mathf.Abs(input) < 0.5f || Mathf.Abs(turned) < 0.01f) return false;
             float ratio = turned / input;
             if (Mathf.Abs(ratio) < 1e-4f || Mathf.Abs(ratio) > 50f) return true;
+            // The view moved, but not the way this input would move it (the game turned it too): learn nothing from it,
+            // unless it keeps saying so (an inverted axis: three readings in a row).
+            if (Mathf.Sign(ratio) != Mathf.Sign(k))
+            {
+                if (++_flipVotes < 3) return true;
+                _flipVotes = 0;
+                k = ratio;
+                return true;
+            }
+
+            _flipVotes = 0;
+            if (Mathf.Abs(ratio) > Mathf.Abs(k) * 10f || Mathf.Abs(ratio) < Mathf.Abs(k) * 0.1f) return true;
             k = Mathf.Lerp(k, ratio, 0.6f);
             return true;
         }
+
+        private static int _flipVotes;
 
         // ------------------------------------------------------------------ point: the mouse pointer, for menus and pointer UIs
 
@@ -807,6 +842,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             {
                 HoldKeys(held, "", run);
                 AgentPlayAttention.Heading = null;
+                _keySector = int.MinValue;
             }
 
             if (still > 0.05f) r["frozen"] = Round(still);
@@ -834,12 +870,22 @@ namespace Gigaduck.AgenticTools.AgentPlay
         /// <summary>True while the player is dying (the project's death sequence): a walk stops and says so.</summary>
         public static Func<bool> Dying;
 
-        /// <summary>The movement keys for a direction, relative to what the keys move along (8 directions).</summary>
+        private static int _keySector = int.MinValue;
+
+        /// <summary>
+        /// The movement keys for a direction, relative to what the keys move along (8 directions). Keeps the keys it holds
+        /// until the way is clearly in another direction (12 degrees past the boundary), so it does not flicker between W and
+        /// W+D, which makes a strafing camera lean back and forth.
+        /// </summary>
         public static string KeysToward(Vector3 to)
         {
             Transform player = PlayerTransform();
             Vector3 forward = MoveForward != null ? MoveForward() : player != null ? player.forward : Cam() != null ? Cam().transform.forward : Vector3.forward;
             float a = Mathf.DeltaAngle(Yaw(forward), Yaw(to));
+            int sector = Mathf.RoundToInt(a / 45f);
+            if (_keySector != int.MinValue && Mathf.Abs(Mathf.DeltaAngle(a, _keySector * 45f)) <= 22.5f + 12f) sector = _keySector;
+            _keySector = sector;
+            a = sector * 45f;
             string keys = "";
             if (Mathf.Abs(a) <= 67.5f) keys += "W";
             if (Mathf.Abs(a) >= 112.5f) keys += "S";

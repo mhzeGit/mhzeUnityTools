@@ -79,6 +79,9 @@ story change out of order gets a softlock check (can the learned route still fin
 `AgentPlayKnowledge/coverage/` (nothing is tested twice on the same build; a new build retests); the report (one video, a
 caption per action, findings at their time) is on the dashboard and phone. Use it when asked to test everything, find
 bugs, or check a section after a change; `--states all` also tests at each story state the learned route goes through.
+It is smart about what it tries: item moves only with an item in hand, no repeats of moves that did nothing or the same
+harmless thing before, two of each kind of look-alike object (the rest only if those differ), story objects first, areas
+already walked around not probed again; every skip has its reason in the report. `--exhaustive` tries everything.
 
 **A perfect play-through.** Segments mastered one at a time can still fail when played in one go (the run before leaves an
 NPC a step further, a door already open). When the user wants to see a whole stretch played cleanly:

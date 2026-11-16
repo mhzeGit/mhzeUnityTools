@@ -225,10 +225,9 @@ def finalize(src, player="", extra=None, keep_frames=False):
     ff = ffmpeg()
     if raw.exists() and raw.stat().st_size > 0:
         video, kind = "video.mp4", "mp4"
-        if ff:  # fast start (plays while loading) and the captions as a subtitle track players can switch on
+        if ff:  # fast start (plays while loading); video only: the events are shown beside the video, never over it
             tmp = dst / "video.tmp.mp4"
-            proc = run([ff, "-hide_banner", "-loglevel", "error", "-y", "-i", raw, "-i", dst / "captions.vtt",
-                        "-map", "0:v", "-map", "1", "-c:v", "copy", "-c:s", "mov_text", "-metadata:s:s:0", "language=eng",
+            proc = run([ff, "-hide_banner", "-loglevel", "error", "-y", "-i", raw, "-map", "0:v", "-c:v", "copy",
                         "-movflags", "+faststart", tmp], 900)
             if proc.returncode == 0 and tmp.exists() and tmp.stat().st_size > 0:
                 os.replace(tmp, raw)
@@ -293,8 +292,8 @@ def encode_frames(dst, frames, fps, ff, notes):
     codec = encoder() or "mpeg4"
     quality = ["-preset", "veryfast", "-crf", "26"] if codec == "libx264" else ["-q:v", "5"]
     proc = run([ff, "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", dst / "frames.ffconcat",
-                "-i", dst / "captions.vtt", "-map", "0:v", "-map", "1", "-fps_mode", "cfr", "-r", str(fps), "-c:v", codec,
-                *quality, "-pix_fmt", "yuv420p", "-c:s", "mov_text", "-movflags", "+faststart", dst / "video.mp4"], 3600)
+                "-map", "0:v", "-fps_mode", "cfr", "-r", str(fps), "-c:v", codec,
+                *quality, "-pix_fmt", "yuv420p", "-movflags", "+faststart", dst / "video.mp4"], 3600)
     (dst / "frames.ffconcat").unlink(missing_ok=True)
     if proc.returncode != 0:
         notes.append("ffmpeg could not encode the frames: " + proc.stderr.strip()[-300:])
@@ -398,15 +397,16 @@ def write_avi(path, jpegs, times, fps, width, height):
 
 
 def recaption(meta):
-    """Rebuilds a stored video's captions from its event log (after a captions change) and swaps the MP4's subtitle track."""
+    """Rebuilds a stored video's captions.vtt from its event log, and leaves the MP4 with the video track only (videos
+    made before 1.6 carried the captions inside, which some players draw over the picture)."""
     folder = folder_of(meta)
     events = clean_events(read_events(folder))
     vtt = folder / "captions.vtt"
     vtt.write_text(captions(events, float(meta.get("duration") or 0)), encoding="utf-8")
     if meta.get("videoKind") == "mp4" and ffmpeg():
         tmp = folder / "video.tmp.mp4"
-        proc = run([ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", folder / meta["video"], "-i", vtt, "-map", "0:v",
-                    "-map", "1", "-c:v", "copy", "-c:s", "mov_text", "-metadata:s:s:0", "language=eng", "-movflags", "+faststart", tmp], 900)
+        proc = run([ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", folder / meta["video"], "-map", "0:v",
+                    "-c:v", "copy", "-movflags", "+faststart", tmp], 900)
         if proc.returncode == 0 and tmp.exists() and tmp.stat().st_size > 0:
             os.replace(tmp, folder / meta["video"])
         else:

@@ -162,7 +162,9 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
             string op = AgentPlayOps.CurrentOp;
             if (Current == Mode.Off) { SetFocus("off"); _sentX = _sentY = 0f; return; }
-            if (op != null && HandsOff.Contains(op)) { SetFocus("the agent aims (" + op + ")"); _sentX = _sentY = 0f; return; }
+            // Ops that aim leave the view alone, except while they walk (an interact's approach): then look along the way.
+            bool walking = Heading.HasValue && Time.realtimeSinceStartup - HeadingAt < 0.3f;
+            if (op != null && HandsOff.Contains(op) && !walking) { SetFocus("the agent aims (" + op + ")"); _sentX = _sentY = 0f; return; }
             bool gameView = false;
             try { gameView = GameHasView != null && GameHasView(); }
             catch (Exception) { }

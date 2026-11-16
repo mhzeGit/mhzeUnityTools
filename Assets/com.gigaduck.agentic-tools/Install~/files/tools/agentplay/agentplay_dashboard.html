@@ -125,6 +125,12 @@ main{flex:1;min-height:0;display:flex}
 .vv-badge{position:absolute;top:8px;left:8px;padding:3px 7px;border-radius:3px;background:#000b;color:var(--t1);font:500 10px var(--f-label);letter-spacing:.12em;text-transform:uppercase}
 .vv-none{display:flex;flex-direction:column;gap:4px;text-align:center;color:var(--t3);font:500 12px var(--f-label);letter-spacing:.12em;text-transform:uppercase}
 .vv-ctrl{display:flex;align-items:center;gap:10px;padding:6px 10px;border-top:1px solid var(--line);font-size:11.5px}
+.vv-now{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;padding:8px 12px;border-top:1px solid var(--line);font-size:12px;line-height:1.35;min-height:72px}
+.vv-now b{font:600 10px var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--t3);padding-top:2px}
+.vv-now span{color:var(--t1);overflow-wrap:anywhere}
+.vv-now span.dim{color:var(--t3)}
+.vv-now span.hot{color:var(--fail)}
+
 .vv-side{position:relative;border-left:1px solid var(--line)}
 .vv-side>div{position:absolute;inset:0;display:flex;flex-direction:column}
 .ev-h{display:flex;flex-direction:column;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
@@ -354,7 +360,19 @@ function videoView(v) {
   const stage = h('div', { class: 'vv-stage' }), ctrl = h('div', { class: 'vv-ctrl', hidden: true });
   if (v.width && v.height) stage.style.aspectRatio = v.width + ' / ' + v.height;
 
-  function genCues(vid, mode) { // captions built from events when the .vtt is missing or cannot load (file://)
+
+  // What happens at the playhead, beside the video, never over it: the section, the action, the text on screen, the look.
+  const nowEl = h('div', { class: 'vv-now' });
+  const lastOf = (kinds, t, within) => { let best = null; for (const e of evs) { if (e.t > t) break; if (kinds.includes(e.kind)) best = e; } return best && (!within || t - best.t <= within) ? best : null; };
+  function drawNow(t) {
+    const sec = lastOf(['segment', 'label'], t), act = lastOf(['op', 'mark'], t), res = act ? lastOf(['result'], t) : null;
+    const scr = lastOf(['text'], t, 4), look = lastOf(['look'], t), fnd = lastOf(['finding'], t, 6);
+    const row = (k, v, cls) => [h('b', null, k), h('span', { class: cls || (v ? '' : 'dim') }, v || '–')];
+    nowEl.replaceChildren(...row('Section', sec && sec.text), ...row('Action', act && (act.text + (res && res.t >= act.t ? '  →  ' + res.text : ''))),
+      ...row('On screen', scr && scr.text), ...row('Looks', look && look.text), ...(fnd ? row('Finding', fnd.text, 'hot') : []));
+  }
+  subs.add(drawNow);
+  function genCues(vid, mode) { // (unused: events are shown beside the video) captions built from events
     if (!window.VTTCue || !evs.length) return;
     const tt = vid.addTextTrack('captions', 'Agent events', 'en');
     evs.forEach((e, i) => {
@@ -367,11 +385,8 @@ function videoView(v) {
   function useVideo() {
     const vid = h('video', { controls: true, preload: 'metadata', playsinline: true });
     vid.src = safeUrl(v.videoUrl);
-    if (v.captionsUrl) {
-      const tr = h('track', { kind: 'captions', src: safeUrl(v.captionsUrl), srclang: 'en', label: 'Agent events', default: true });
-      tr.addEventListener('error', () => { tr.remove(); genCues(vid, 'showing'); });
-      vid.append(tr);
-    } else genCues(vid, 'hidden');
+    // The picture stays clean: no caption track, and any subtitles inside an older file are switched off.
+    vid.addEventListener('loadedmetadata', () => { for (const tt of vid.textTracks || []) tt.mode = 'disabled'; });
     vid.addEventListener('error', () => {
       if (kfs.length) useFrames('The video could not be played here; showing keyframes instead.');
       else stage.replaceChildren(h('div', { class: 'vv-none' }, 'Video could not be played', h('small', null, String(v.videoUrl))));
@@ -488,7 +503,7 @@ function videoView(v) {
     kv('frames', v.frames == null ? null : v.frames + (v.dropped ? ' (' + v.dropped + ' dropped)' : '')), kv('size', fmtBytes(v.sizeBytes)), kv('media', v.videoKind));
   const sheets = (v.sheetUrls || []).map((u, i) => h('a', { class: 'btn sm', href: safeUrl(u), target: '_blank', rel: 'noopener' }, 'Sheet ' + (i + 1)));
   const el = h('div', { class: 'vvwrap' },
-    h('div', { class: 'vv' }, h('div', { class: 'vv-main' }, stage, ctrl, h('div', { class: 'tl' }, area)),
+    h('div', { class: 'vv' }, h('div', { class: 'vv-main' }, stage, ctrl, nowEl, h('div', { class: 'tl' }, area)),
       h('div', { class: 'vv-side' }, h('div', null, h('div', { class: 'ev-h' }, q, kbar), list))),
     kfs.length ? h('div', { class: 'fs-wrap' }, h('div', { class: 'lbl' }, 'Keyframes · ' + kfs.length), strip) : null,
     h('div', { class: 'vv-foot' }, meta, sheets.length ? h('div', { class: 'sheets' }, h('span', { class: 'lbl' }, 'Contact sheets'), sheets) : null));

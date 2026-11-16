@@ -79,12 +79,15 @@ python tools/agentplay/agentplay.py video list | info ID | frame ID --at 42.5 [-
 The player renders its camera into a small render texture, reads it back from the GPU without stalling and streams frames into
 ffmpeg on a worker thread (H.264 at a constant frame rate: a hitch repeats the last frame, so the video keeps real time). It also
 saves a JPEG keyframe every 2 s and logs events: every op the agent sends and its result, marks, the project's stage label and
-on-screen text when they change. `stop` makes a fast-start MP4 with those events as a captions track (and `captions.vtt`),
-chapters from the labels and an overview contact sheet, in `Builds/AgentPlay/videos/<id>/` (`video.mp4`, `captions.vtt`,
+on-screen text when they change. `stop` makes a clean fast-start MP4 (the picture only: nothing is drawn over it), the events
+as `captions.vtt` beside it, chapters from the labels and an overview contact sheet, in `Builds/AgentPlay/videos/<id>/`
+(`video.mp4`, `captions.vtt`,
 `keyframes/`, `sheet_*.png`, `meta.json`). Videos survive `start` (a crashed player's recording is kept too). ffmpeg comes from
 `AGENTPLAY_FFMPEG`, `agentplay.json` `"ffmpeg"`, `PATH`, or `python -m pip install imageio-ffmpeg`; without it frames are JPEGs
-and the video is an MJPEG AVI (VLC, Windows Media Player; the dashboard plays the keyframes). The camera picture has no
-screen-space UI; its text is in the captions. Agents never watch videos: they read `video sheet`/`video events` and look at frames.
+and the video is an MJPEG AVI (VLC, Windows Media Player; the dashboard plays the keyframes). The picture is the finished screen
+(UI included); the dashboard, reports and phone show the section, the action, the text on screen and where the player looks
+in a live panel beside the video, never over it. Agents never watch videos: they read `video sheet`/`video events` and look at
+frames.
 
 ## Learning playtests and the knowledge base
 

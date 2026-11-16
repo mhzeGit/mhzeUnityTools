@@ -443,7 +443,7 @@ class AgentPlayTests(unittest.TestCase):
         import argparse
         deep = self.ap.deep
         args = argparse.Namespace(scope=None, segment="fake/s0", states="start", radius=12, max=40, combos=3, retest=False,
-                                  no_moves=False, no_softlock=False, no_record=True, by="test")
+                                  no_moves=False, no_softlock=False, no_record=True, by="test", exhaustive=False)
         report = deep.deeptest("bot", [SEGMENTS[0]], args)
         got = {a["label"].split(" (")[0]: a["outcome"] for a in report["actions"]}
         self.assertEqual(got.get("interact Trap"), "death", got)
@@ -457,6 +457,18 @@ class AgentPlayTests(unittest.TestCase):
         again = deep.deeptest("bot", [SEGMENTS[0]], args)
         self.assertEqual(again["coverage"]["tried"], 0, "same build: nothing is tested twice")
         self.assertEqual(again["coverage"]["known"], report["coverage"]["tried"])
+        # Smart: the effects memory now knows these kinds and this area; a third look at the same section tries nothing
+        # new and says why (look-alikes, areas walked); --exhaustive would try them anyway.
+        eff = deep.load_effects()
+        self.assertTrue(eff["kinds"] and eff["probed"], eff)
+        self.assertTrue(deep.ITEM_MOVES.search("Drop") and not deep.ITEM_MOVES.search("Jump"))
+        acts = [{"key": "move:Drop", "kind": "move", "label": "Drop"}, {"key": "move:Jump", "kind": "move", "label": "Jump"}]
+        keep, _, skipped = deep.plan(acts, None, "Fake", [0, 0, 0], set(), False)
+        self.assertEqual([a["key"] for a in keep], ["move:Jump"])
+        self.assertIn("needs something in hand", skipped[0][1])
+        objs = [{"name": "Handle", "path": "D%d/Handle" % i, "usable": True, "prompt": "to Open", "dist": i} for i in range(5)]
+        keep, sib, _ = deep.plan(deep.object_actions(objs, 10), None, "Fake", [50, 0, 50], set(), False)
+        self.assertEqual((len(keep), len(sib.get("handle|open", []))), (2, 3), "two look-alikes first, the rest held back")
 
     def test_20_video_finalize_and_avi(self):
         if Image is None:
@@ -517,7 +529,7 @@ class AgentPlayTests(unittest.TestCase):
         meta = video.finalize(out, player="t")
         self.assertEqual(meta["videoKind"], "mp4")
         probe = video.run([ff, "-hide_banner", "-i", video.VIDEOS / meta["id"] / "video.mp4"], 60)
-        self.assertIn("Subtitle: mov_text", probe.stderr, "captions are embedded")
+        self.assertNotIn("Subtitle", probe.stderr, "the video is clean: the events stay in captions.vtt beside it")
         self.assertFalse(meta["notes"], meta["notes"])
 
     def test_30_http_api(self):

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.6.0 - 2026-11-16
+
+- **Clean videos.** Nothing is drawn over the video any more: the MP4 holds the picture only (the events stay in
+  `captions.vtt` beside it), the dashboard and reports show no caption track and switch off subtitles inside older files, and
+  a live panel under the player shows the section, the action and its result, the text on screen, where the player looks and
+  findings at the playhead. `video recaption` strips the subtitles out of an older MP4.
+- **A steady camera.** `aim` (and `interact`) waits while the game has the view (a scripted look, a dialog turning the view
+  to the speaker) instead of fighting it, and turns at most 25 degrees a step; the mouse-gain learning ignores turns the game
+  made (an inverted axis is accepted after three readings in a row); during an op's walk (an interact's approach) attention
+  looks along the way; walking keys keep their direction until the way is clearly elsewhere (no flicker between W and W+D,
+  which made a strafing camera lean back and forth).
+- **Smart deep tests.** A shared effects memory (`coverage/_effects.json`: what each move did in which context, how each kind
+  of object behaved, which areas were walked around; seeded from earlier deep tests) and a planner: item moves only with an
+  item in hand; a move that did nothing twice in a context, or the same harmless thing in three sections, is not repeated;
+  two of each kind of look-alike object, the rest only if those differ; kinds that behaved the same three times elsewhere
+  are not retried; objects the running story points at go first; areas walked around are not probed again. Every skip has
+  its reason (a Skipped tab on the phone); `--exhaustive` tries everything.
+
 ## 1.5.4 - 2026-11-16
 
 - Deep tests: a softlock is a story that stops moving. The check waits for the story while it still moves (a slow scene,

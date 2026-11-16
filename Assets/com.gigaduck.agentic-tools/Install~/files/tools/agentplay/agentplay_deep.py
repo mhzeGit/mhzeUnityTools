@@ -10,6 +10,11 @@ with the same real inputs a player has:
 - walking probes in 8 directions (blocks, falls through the floor, getting stuck).
 After anything that changes the story, what is held or the player's life it resets to the section's start. When the story
 moved in a way the learned route does not, it checks the section can still be finished (a softlock check).
+It is smart about what it tries (`--exhaustive` turns that off): moves for an item (drop, next, use...) only with an item
+in hand; a move that did nothing in a context twice, or the same harmless thing in three sections, is not repeated; of
+look-alike objects (a dresser's drawers) two are tried and the rest only if those differ; kinds that behaved the same three
+times elsewhere are not retried; objects the running story points at go first; areas already walked around are not probed
+again. Every skip is listed with its reason. The effects memory is AgentPlayKnowledge/coverage/_effects.json.
 Results are shared: AgentPlayKnowledge/coverage/<segment>.json keeps every action's outcome with its build, so the next
 agent skips what was tested on the same build (`--retest` to redo) and retests after a new build. The report (with one
 video, a caption per action) is in Builds/AgentPlay/playtests/<id>-deep/ and on the dashboard and phone.
@@ -119,7 +124,7 @@ def object_actions(objs, limit):
             continue
         seen.add(path)
         out.append({"key": "interact:%s" % path, "kind": "interact", "label": "interact %s%s" % (
-            o.get("name"), (" (" + o["prompt"].strip() + ")") if o.get("prompt") else ""), "target": path,
+            o.get("name"), (" (" + o["prompt"].strip() + ")") if o.get("prompt") else ""), "target": path, "obj": o,
             "cmds": [{"op": "interact", "target": path}]})
         if len(out) >= limit:
             break
@@ -136,7 +141,7 @@ def snap(name, radius):
         issues = learn.issue_counts(name)
     except SystemExit:
         issues = {}
-    return {"status": st, "objects": objs, "texts": list(o.get("texts") or []), "issues": issues}
+    return {"status": st, "objects": objs, "texts": list(o.get("texts") or []), "issues": issues, "beats": o.get("beats") or []}
 
 
 def pos_of(st):
@@ -265,6 +270,157 @@ def save_result(seg_id, key, result):
         learn.atomic_write(coverage_file(seg_id), json.dumps(cov, indent=1, sort_keys=True))
 
 
+# ------------------------------------------------------------------ being smart: what is still worth trying
+
+ITEM_MOVES = re.compile(r"drop|throw|use|next|previous|prev|item|inventory|equip|switch", re.I)
+HARMLESS = {"nothing", "changed", "moved", "blocked"}
+SIBLINGS_FIRST = 2   # look-alike objects tested before the rest are judged by them
+
+
+def effects_file():
+    return COVERAGE / "_effects.json"
+
+
+def load_effects():
+    try:
+        return json.loads(effects_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"moves": {}, "kinds": {}, "probed": {}}
+
+
+def seed_effects():
+    """The first time: learn the effects memory from the coverage already recorded (so earlier deep tests count)."""
+    if effects_file().exists():
+        return
+    eff = {"moves": {}, "kinds": {}, "probed": {}}
+    seen = set()
+    for report in learn.all_playtests():  # the deep tests' reports keep every action with its label
+        if report.get("kind") != "deep":
+            continue
+        for a in report.get("actions", []):
+            outcome, key = a.get("outcome"), a.get("key") or ""
+            if outcome in (None, "skipped", "busy") or a.get("known") or (a.get("segment"), a.get("state"), key) in seen:
+                continue
+            seen.add((a.get("segment"), a.get("state"), key))
+            label = a.get("label") or ""
+            if key.startswith("move:"):
+                cell_key = "%s|%s" % (key.split("+with:")[0], "holding" if "+with:" in key else "empty-handed")
+                table = eff["moves"]
+            elif key.startswith("interact:"):
+                name = label[len("interact "):].split(" (")[0].split(" holding ")[0]
+                prompt = label[label.find("(") + 1:label.find(")")] if "(" in label else ""
+                cell_key = kind_of({"name": name, "prompt": prompt})
+                table = eff["kinds"]
+            else:
+                continue
+            cell = table.setdefault(cell_key, {"tries": 0, "outcomes": {}, "sections": []})
+            cell["tries"] += 1
+            cell["outcomes"][outcome] = cell["outcomes"].get(outcome, 0) + 1
+            if a.get("segment") and a["segment"] not in cell["sections"]:
+                cell["sections"].append(a["segment"])
+    COVERAGE.mkdir(parents=True, exist_ok=True)
+    learn.atomic_write(effects_file(), json.dumps(eff, indent=1, sort_keys=True))
+
+
+def note_effect(kind, key, outcome, seg_id):
+    """Remembers what an action did (moves per context, objects per kind) across sections and agents."""
+    COVERAGE.mkdir(parents=True, exist_ok=True)
+    with learn.KB.lock("coverage-effects"):
+        eff = load_effects()
+        cell = eff.setdefault(kind, {}).setdefault(key, {"tries": 0, "outcomes": {}, "sections": []})
+        cell["tries"] += 1
+        cell["outcomes"][outcome] = cell["outcomes"].get(outcome, 0) + 1
+        if seg_id not in cell["sections"]:
+            cell["sections"] = (cell["sections"] + [seg_id])[-12:]
+        learn.atomic_write(effects_file(), json.dumps(eff, indent=1, sort_keys=True))
+
+
+def note_probed(scene, pos):
+    with learn.KB.lock("coverage-effects"):
+        eff = load_effects()
+        spots = eff.setdefault("probed", {}).setdefault(scene or "?", [])
+        spots.append([round(pos[0], 1), round(pos[2], 1)])
+        eff["probed"][scene or "?"] = spots[-200:]
+        learn.atomic_write(effects_file(), json.dumps(eff, indent=1, sort_keys=True))
+
+
+def kind_of(obj):
+    """Look-alike objects share a kind: the name without numbers and copies, and the verb of the prompt ("to Open")."""
+    name = re.sub(r"\(\d+\)|\.\d+|\d+", "", obj.get("name") or "")
+    name = re.sub(r"[\s_]+", "", name).lower()
+    words = (obj.get("prompt") or "").strip().split()
+    verb = words[1].lower() if len(words) > 1 and words[0].lower() == "to" else (words[0].lower() if words else "")
+    return name + "|" + verb
+
+
+def story_objects(observation):
+    """Names of the objects the running story steps point at (they matter most, and are always tried)."""
+    names = set()
+
+    def walk(v):
+        if isinstance(v, dict):
+            if v.get("obj"):
+                names.add(str(v["obj"]))
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+    for b in observation.get("beats") or []:
+        walk(b.get("fields"))
+    return names
+
+
+def plan(queue, held, scene, base_pos, story, exhaustive):
+    """Orders the candidate actions by what they can teach and drops what cannot teach anything new.
+    Returns (actions to try, {kind: look-alike objects held back}, [(action, reason) skipped])."""
+    if exhaustive:
+        return queue, {}, []
+    eff = load_effects()
+    keep, skipped, siblings, per_kind = [], [], {}, {}
+    ctx = "holding" if held else "empty-handed"
+    for act in queue:
+        if act["kind"] == "move":
+            name = act["key"].split(":", 1)[1].split("+")[0]
+            if ITEM_MOVES.search(name) and not held:
+                skipped.append((act, "needs something in hand"))
+                continue
+            cell = eff.get("moves", {}).get("%s|%s" % (act["key"].split("+with:")[0], ctx))
+            outs = set((cell or {}).get("outcomes", {}))
+            if cell and cell["tries"] >= 2 and outs <= {"nothing"}:
+                skipped.append((act, "did nothing %s in %d earlier tries" % (ctx, cell["tries"])))
+                continue
+            if cell and len(cell.get("sections", [])) >= 3 and outs <= HARMLESS:
+                skipped.append((act, "the same harmless effect in %d sections already (%s)" % (len(cell["sections"]), ", ".join(sorted(outs)))))
+                continue
+            keep.append((2, act))
+        elif act["kind"] == "probe":
+            spots = eff.get("probed", {}).get(scene or "?", [])
+            if any(math.hypot(p[0] - base_pos[0], p[1] - base_pos[2]) < 3.0 for p in spots):
+                skipped.append((act, "this area was walked around before"))
+                continue
+            keep.append((3, act))
+        else:
+            obj = act.get("obj") or {}
+            k = kind_of(obj)
+            act["kindKey"] = k
+            if obj.get("name") in story or str(act.get("target", "")).split("/")[-1] in story:
+                keep.append((0, dict(act, why="the story step points at it")))
+                continue
+            cell = eff.get("kinds", {}).get(k)
+            outs = set((cell or {}).get("outcomes", {}))
+            if cell and cell["tries"] >= 3 and len(outs) == 1 and outs <= HARMLESS:
+                skipped.append((act, "behaved the same in %d earlier tries of its kind (%s)" % (cell["tries"], next(iter(outs)))))
+                continue
+            per_kind[k] = per_kind.get(k, 0) + 1
+            if per_kind[k] > SIBLINGS_FIRST:
+                siblings.setdefault(k, []).append(act)
+                continue
+            keep.append((1 if not cell else 2, act))
+    keep.sort(key=lambda pa: pa[0])
+    return [a for _, a in keep], siblings, skipped
+
+
 # ------------------------------------------------------------------ a section
 
 def reach_state(name, seg, prefix):
@@ -363,10 +519,36 @@ def deep_segment(name, seg, report, args, recording):
         base = snap(name, args.radius)
         base_pos = pos_of(base["status"]) or [0, 0, 0]
         state = learn.state_key(base["status"])
-        queue = moves + (probe_actions(base_pos) if not args.no_moves else []) + object_actions(list(base["objects"].values()), args.max)
+        candidates = moves + (probe_actions(base_pos) if not args.no_moves else []) + object_actions(list(base["objects"].values()), 400)
+        known_now = [a for a in candidates if not args.retest and (cov["actions"].get("%s|%s" % (state_label, a["key"])) or {}).get("build") == build]
+        fresh = [a for a in candidates if a not in known_now]
+        queue, siblings, skipped = plan(fresh, base["status"].get("held"), base["status"].get("scene"), base_pos,
+                                        story_objects(base), args.exhaustive)
+        queue = known_now + queue  # reported as known from earlier on this build
+        sibling_results = {}
+        for act, why in skipped:
+            report["actions"].append({"segment": seg["id"], "state": state_label, "key": act["key"], "label": act["label"],
+                                      "outcome": "skipped", "detail": why})
+        row["coverage"]["skipped"] = row["coverage"].get("skipped", 0) + len(skipped)
+        probed = False
         dirty = False
         done = 0
-        while queue and done < args.max:
+        while (queue or siblings) and done < args.max:
+            if not queue:  # the look-alike objects held back: tried only when the ones tried behaved differently
+                for k, rest in list(siblings.items()):
+                    seen = sibling_results.get(k, set())
+                    if len(seen) > 1 or (seen - HARMLESS):
+                        queue += rest
+                    else:
+                        for act in rest:
+                            report["actions"].append({"segment": seg["id"], "state": state_label, "key": act["key"],
+                                                      "label": act["label"], "outcome": "skipped",
+                                                      "detail": "same kind as the %d tried here, which all did the same (%s)" % (
+                                                          SIBLINGS_FIRST, ", ".join(sorted(seen)) or "untried")})
+                            row["coverage"]["skipped"] = row["coverage"].get("skipped", 0) + 1
+                    del siblings[k]
+                if not queue:
+                    break
             act = queue.pop(0)
             key = "%s|%s" % (state_label, act["key"])
             old = cov["actions"].get(key)
@@ -385,7 +567,7 @@ def deep_segment(name, seg, report, args, recording):
             after = res.pop("after")
             res.pop("before")
             entry = {"outcome": res["outcome"], "detail": res["detail"], "build": build, "at": learn.now_text(), "by": args.by,
-                     "video": report.get("videoId"), "t": t_act, "state": state}
+                     "video": report.get("videoId"), "t": t_act, "state": state, "label": act["label"]}
             if res["outcome"] == "paused":  # leave the game as a player could: close the menu before going on
                 for _ in range(3):
                     learn.send(name, {"op": "key", "key": "Escape", "s": 0.15}, 20)
@@ -419,6 +601,17 @@ def deep_segment(name, seg, report, args, recording):
             if entry["outcome"] == "blocked":
                 row["blocked"] += 1
             save_result(seg["id"], key, entry)
+            if act["kind"] == "move":
+                note_effect("moves", "%s|%s" % (act["key"].split("+with:")[0], "holding" if "+with:" in act["key"] or base["status"].get("held")
+                                                 else "empty-handed"), entry["outcome"], seg["id"])
+            elif act["kind"] == "interact" and act.get("kindKey"):
+                note_effect("kinds", act["kindKey"], entry["outcome"], seg["id"])
+                sibling_results.setdefault(act["kindKey"], set()).add(entry["outcome"])
+            elif act["kind"] == "probe" and not probed:
+                probed = True
+                note_probed(base["status"].get("scene"), base_pos)
+            if act.get("why"):
+                entry["why"] = act["why"]
             report["actions"].append(dict(entry, segment=seg["id"], state=state_label, key=act["key"], label=act["label"]))
             row["coverage"]["tested"] += 1
             row["coverage"]["outcomes"][entry["outcome"]] = row["coverage"]["outcomes"].get(entry["outcome"], 0) + 1
@@ -430,7 +623,11 @@ def deep_segment(name, seg, report, args, recording):
                           for a in object_actions(list(after["objects"].values()), args.combos) if a.get("target") != act.get("target")]
                 drops = [dict(m, key="%s+with:%s" % (m["key"], held), label="%s holding %s" % (m["label"], held))
                          for m in moves if m["key"].startswith("move:") and "+walk" not in m["key"]][:4]
-                queue[:0] = combos + drops
+                planned, _, skipped_c = plan(combos + drops, held, after["status"].get("scene"), base_pos, set(), args.exhaustive)
+                for a, why in skipped_c:
+                    report["actions"].append({"segment": seg["id"], "state": state_label, "key": a["key"], "label": a["label"],
+                                              "outcome": "skipped", "detail": why})
+                queue[:0] = planned
                 continue
             if entry["outcome"] == "busy" and not act.get("retried"):
                 queue.insert(0, dict(act, retried=True, label=act["label"] + " (again)"))  # once more from a clean start
@@ -441,14 +638,16 @@ def deep_segment(name, seg, report, args, recording):
     row["duration"] = round(time.time() - t0, 1)
     row["end"] = video.elapsed(name) if recording else None
     oc = row["coverage"]["outcomes"]
-    row["notes"].insert(0, "%d action(s) tried, %d known from earlier on this build: %s" % (
-        row["coverage"]["tested"], row["coverage"]["known"], ", ".join("%s %d" % kv for kv in sorted(oc.items())) or "none"))
+    row["notes"].insert(0, "%d action(s) tried, %d known from earlier on this build, %d skipped as not worth it: %s" % (
+        row["coverage"]["tested"], row["coverage"]["known"], row["coverage"].get("skipped", 0),
+        ", ".join("%s %d" % kv for kv in sorted(oc.items())) or "none"))
     if any(f["segment"] == seg["id"] and f["sev"] == "BUG" for f in report["findings"]):
         row["outcome"] = "fail"
     return row
 
 
 def deeptest(name, segs, args):
+    seed_effects()
     started = learn.ensure_player(name)
     rid = time.strftime("%Y%m%d-%H%M%S-") + name + "-deep"
     report = {"id": rid, "kind": "deep", "scope": "deep " + (args.scope or args.segment or "?"), "started": learn.now_text(),
@@ -481,9 +680,11 @@ def deeptest(name, segs, args):
     warns = sum(1 for f in report["findings"] if f["sev"] == "WARN")
     report["perfect"] = None
     report["imperfect"] = []
-    report["coverage"] = {"tried": tried, "known": known}
-    report["verdict"] = "DEEP: %d action(s) in %d section(s)%s: %d bug(s), %d death(s), %d warning(s)" % (
-        tried, len(report["segments"]), " (+%d known)" % known if known else "", bugs, deaths, warns)
+    skipped = sum(r["coverage"].get("skipped", 0) for r in report["segments"])
+    report["coverage"] = {"tried": tried, "known": known, "skipped": skipped}
+    report["verdict"] = "DEEP: %d action(s) in %d section(s)%s%s: %d bug(s), %d death(s), %d warning(s)" % (
+        tried, len(report["segments"]), " (+%d known)" % known if known else "",
+        ", %d skipped as not worth it" % skipped if skipped else "", bugs, deaths, warns)
     learn.write_report(report)
     return report
 
@@ -517,6 +718,8 @@ def register(sub, ap_module):
     p.add_argument("--max", type=int, default=80, help="actions per state at most")
     p.add_argument("--combos", type=int, default=6, help="interactables to try an item in hand on")
     p.add_argument("--retest", action="store_true", help="redo actions already tested on this build")
+    p.add_argument("--exhaustive", action="store_true", help="try everything, even what the effects memory says cannot "
+                   "teach anything new (item moves with empty hands, look-alike objects, moves that did nothing before)")
     p.add_argument("--no-moves", action="store_true", help="interactables only")
     p.add_argument("--no-softlock", action="store_true", help="skip the can-it-still-be-finished check after story changes")
     p.add_argument("--no-record", action="store_true")
