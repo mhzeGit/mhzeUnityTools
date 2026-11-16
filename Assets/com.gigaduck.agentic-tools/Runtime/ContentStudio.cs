@@ -49,7 +49,9 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private float _began, _nextScan, _nextText;
         private string _lastLabel, _lastText, _error;
         private StudioRig _rig;
-        private RenderTexture _cleanRt, _uiRt;
+        private RenderTexture _cleanRt, _uiRt, _uiRtWhite;
+        private Dictionary<string, object> _cameraSpec;
+        private List<object> _canvasNames;
         private FrameSink _cleanSink, _uiSink;
         private WavWriter _wav;
         private ListenerTap _tap;
@@ -60,11 +62,14 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private readonly Queue<Pending> _pending = new Queue<Pending>();
         private Dictionary<string, object> _options;
 
-        private struct Pending { public AsyncGPUReadbackRequest Req; public FrameSink Sink; public int Copies; }
+        private struct Pending { public AsyncGPUReadbackRequest Req, Over; public bool Matte; public FrameSink Sink; public int Copies; }
+
+        /// <summary>What the last take wrote to its take.json (also when it stopped by itself at its length).</summary>
+        public static Dictionary<string, object> LastMeta { get; private set; }
 
         // ------------------------------------------------------------------ the op
 
-        /// <summary>The <c>studio</c> op: action start | stop | wait | mark | camera | hide | still | stems | status.</summary>
+        /// <summary>The <c>studio</c> op: action start | stop | wait | mark | camera | hide | still | stems | probe | status.</summary>
         public static IEnumerator Op(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail)
         {
             string action = AgentPlayOps.S(c, "action", "status");
@@ -77,7 +82,13 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     yield return null; // the first frame is rendered before the answer
                     break;
                 case "stop":
-                    if (Active == null) { fail("no take is running"); yield break; }
+                    if (Active == null)
+                    {
+                        // A take that reached its length stopped by itself: answer with what it wrote.
+                        if (LastMeta != null && AgentPlayOps.B(c, "last", true)) { foreach (var kv in LastMeta) r[kv.Key] = kv.Value; yield break; }
+                        fail("no take is running");
+                        yield break;
+                    }
                     yield return Active.Stop(r);
                     break;
                 case "wait":
@@ -112,12 +123,15 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 case "stems":
                     r["sources"] = DescribeStems(Rules(c));
                     break;
+                case "probe":
+                    StudioRig.Probe(c, r, fail);
+                    break;
                 case "status":
                     if (Active != null) Active.StatusInto(r);
                     else r["take"] = false;
                     break;
                 default:
-                    fail("studio action is start, stop, wait, mark, camera, hide, still, stems or status (got '" + action + "')");
+                    fail("studio action is start, stop, wait, mark, camera, hide, still, stems, probe or status (got '" + action + "')");
                     break;
             }
         }
@@ -126,6 +140,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
         private static string Begin(Dictionary<string, object> c)
         {
+            LastMeta = null;
             if (Active != null && !Active._finished) return "take '" + Active._id + "' is running (studio stop first)";
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null) return "this player has no GPU: start it with a window to render";
             if (!SystemInfo.supportsAsyncGPUReadback) return "this graphics device has no async GPU readback";
@@ -179,6 +194,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (_wantUi)
             {
                 _uiRt = NewRt("ContentStudioUi");
+                _uiRtWhite = NewRt("ContentStudioUiWhite");
                 Directory.CreateDirectory(Path.Combine(folder, "ui"));
             }
 
@@ -284,8 +300,15 @@ namespace Gigaduck.AgenticTools.AgentPlay
             Request(_cleanRt, _cleanSink, copies);
             if (_wantUi)
             {
-                _rig.RenderUi(_uiRt);
-                Request(_uiRt, _uiSink, copies);
+                // The UI over black and over white: the difference gives its true alpha and colour, whatever the render
+                // pipeline does with the alpha channel of a camera target (URP writes it opaque).
+                _rig.RenderUi(_uiRt, Color.black);
+                _rig.RenderUi(_uiRtWhite, Color.white);
+                _pending.Enqueue(new Pending
+                {
+                    Req = AsyncGPUReadback.Request(_uiRt, 0, TextureFormat.RGBA32),
+                    Over = AsyncGPUReadback.Request(_uiRtWhite, 0, TextureFormat.RGBA32), Matte = true, Sink = _uiSink, Copies = copies,
+                });
             }
 
             _frames += _offline ? 1 : copies;
@@ -304,15 +327,17 @@ namespace Gigaduck.AgenticTools.AgentPlay
             while (_pending.Count > 0)
             {
                 Pending p = _pending.Peek();
-                if (!p.Req.done)
+                if (!p.Req.done || (p.Matte && !p.Over.done))
                 {
                     if (!all && _pending.Count < 8) return;
                     p.Req.WaitForCompletion();
+                    if (p.Matte) p.Over.WaitForCompletion();
                 }
 
                 _pending.Dequeue();
-                if (p.Req.hasError) { _error = _error ?? "a GPU readback failed"; continue; }
-                p.Sink.Write(p.Req.GetData<byte>(), p.Copies);
+                if (p.Req.hasError || (p.Matte && p.Over.hasError)) { _error = _error ?? "a GPU readback failed"; continue; }
+                if (p.Matte) p.Sink.WriteMatte(p.Req.GetData<byte>(), p.Over.GetData<byte>(), p.Copies);
+                else p.Sink.Write(p.Req.GetData<byte>(), p.Copies);
             }
         }
 
@@ -365,10 +390,13 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (_audioOffline) AudioRenderer.Stop();
             if (_tap != null) Destroy(_tap);
             _wav?.Close();
+            _cameraSpec = _rig?.CameraSpec;
+            _canvasNames = _rig?.CanvasNames;
             Restore();
             try { _events?.Dispose(); } catch (IOException) { }
             _events = null;
-            File.WriteAllText(Path.Combine(_folder, "take.json"), AgentPlayJson.Write(Meta()));
+            LastMeta = Meta();
+            File.WriteAllText(Path.Combine(_folder, "take.json"), AgentPlayJson.Write(LastMeta));
             if (Active == this) Active = null;
             Destroy(gameObject, 0.1f);
         }
@@ -389,6 +417,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
             if (_cleanRt != null) { _cleanRt.Release(); Destroy(_cleanRt); }
             if (_uiRt != null) { _uiRt.Release(); Destroy(_uiRt); }
+            if (_uiRtWhite != null) { _uiRtWhite.Release(); Destroy(_uiRtWhite); }
         }
 
         private Dictionary<string, object> Meta()
@@ -400,7 +429,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 ["clean"] = "clean.mp4", ["ui"] = _wantUi ? "ui/ui_%05d.png" : null,
                 ["audio"] = _wav != null ? "audio.wav" : null, ["audioRate"] = AudioSettings.outputSampleRate,
                 ["audioChannels"] = _wav?.Channels ?? 0, ["audioSource"] = _audioOffline ? "AudioRenderer" : _tap != null ? "listener" : "none",
-                ["solo"] = _solo, ["camera"] = _rig?.CameraSpec, ["canvases"] = _rig?.CanvasNames ?? new List<object>(),
+                ["solo"] = _solo, ["camera"] = _rig?.CameraSpec ?? _cameraSpec, ["canvases"] = _rig?.CanvasNames ?? _canvasNames ?? new List<object>(),
                 ["stems"] = _stemCounts.ToDictionary(k => k.Key, k => (object)k.Value), ["events"] = "events.jsonl",
                 ["finished"] = _finished, ["created"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
             };
@@ -552,7 +581,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 rig.Advance(0f, 0f);
                 string name = AgentPlayOps.S(c, "name", "still");
                 r["clean"] = SavePng(rt => rig.RenderClean(rt), w, h, Path.Combine(folder, name + "_clean.png"));
-                if (AgentPlayOps.B(c, "ui", true)) r["ui"] = SavePng(rt => rig.RenderUi(rt), w, h, Path.Combine(folder, name + "_ui.png"));
+                if (AgentPlayOps.B(c, "ui", true)) r["ui"] = SaveUiPng(rig, w, h, Path.Combine(folder, name + "_ui.png"));
                 r["size"] = w + "x" + h;
                 r["camera"] = rig.CameraSpec;
             }
@@ -563,6 +592,46 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     rig.Dispose();
                     Staging?.Invoke(false);
                 }
+            }
+        }
+
+        /// <summary>The UI layer of a still: rendered over black and white, matted to straight alpha.</summary>
+        private static string SaveUiPng(StudioRig rig, int w, int h, string path)
+        {
+            byte[] black = ReadRgba(rt => rig.RenderUi(rt, Color.black), w, h), white = ReadRgba(rt => rig.RenderUi(rt, Color.white), w, h);
+            var outData = new byte[black.Length];
+            Matte.Combine(black, white, outData);
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            try
+            {
+                tex.SetPixelData(outData, 0);
+                tex.Apply(false);
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                return path;
+            }
+            finally { Destroy(tex); }
+        }
+
+        private static byte[] ReadRgba(Action<RenderTexture> render, int w, int h)
+        {
+            var rt = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32);
+            rt.Create();
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            RenderTexture previous = RenderTexture.active;
+            try
+            {
+                render(rt);
+                RenderTexture.active = rt;
+                tex.ReadPixels(new Rect(0, 0, w, h), 0, 0, false);
+                tex.Apply(false);
+                return tex.GetRawTextureData();
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                rt.Release();
+                Destroy(rt);
+                Destroy(tex);
             }
         }
 
@@ -669,6 +738,21 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 }
             }
 
+            /// <summary>Queues a frame rendered over black and over white; the worker thread mattes it.</summary>
+            public void WriteMatte(NativeArray<byte> black, NativeArray<byte> white, int copies)
+            {
+                var b = new byte[black.Length];
+                var w = new byte[white.Length];
+                black.CopyTo(b);
+                white.CopyTo(w);
+                lock (_gate)
+                {
+                    _queue.Enqueue((b, -copies)); // negative: a matte pair, its white half follows
+                    _queue.Enqueue((w, 0));
+                    Monitor.Pulse(_gate);
+                }
+            }
+
             public void Close()
             {
                 lock (_gate)
@@ -694,6 +778,19 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     }
 
                     if (item.data == null) break;
+                    if (item.copies < 0)
+                    {
+                        (byte[] data, int copies) white;
+                        lock (_gate)
+                        {
+                            while (_queue.Count == 0) Monitor.Wait(_gate);
+                            white = _queue.Dequeue();
+                        }
+
+                        Matte.Combine(item.data, white.data, item.data);
+                        item.copies = -item.copies;
+                    }
+
                     try
                     {
                         for (int i = 0; i < item.copies; i++) _stdin.Write(item.data, 0, item.data.Length);
@@ -715,6 +812,66 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 }
                 catch (Exception e) { lock (_gate) _err.AppendLine("ffmpeg: " + e.Message); }
                 _proc.Dispose();
+            }
+        }
+
+        // ------------------------------------------------------------------ UI matte
+
+        /// <summary>
+        /// Straight-alpha RGBA from a layer rendered over black (B) and over white (W): in linear light B = a*C and
+        /// W = a*C + (1 - a), so a = 1 - (W - B) and C = B / a. Bytes are sRGB in a linear-colour project (converted through
+        /// tables); a gamma-space project blends in sRGB, so its bytes are used as they are.
+        /// </summary>
+        internal static class Matte
+        {
+            private static float[] _toLinear;
+            private static byte[] _toSrgb;
+
+            private static void Init()
+            {
+                if (_toLinear != null) return;
+                bool linear = QualitySettings.activeColorSpace == ColorSpace.Linear;
+                var toLinear = new float[256];
+                for (int i = 0; i < 256; i++)
+                {
+                    float c = i / 255f;
+                    toLinear[i] = !linear ? c : c <= 0.04045f ? c / 12.92f : Mathf.Pow((c + 0.055f) / 1.055f, 2.4f);
+                }
+
+                var toSrgb = new byte[4096];
+                for (int i = 0; i < 4096; i++)
+                {
+                    float l = i / 4095f;
+                    float c = !linear ? l : l <= 0.0031308f ? l * 12.92f : 1.055f * Mathf.Pow(l, 1f / 2.4f) - 0.055f;
+                    toSrgb[i] = (byte)Mathf.Clamp(Mathf.RoundToInt(c * 255f), 0, 255);
+                }
+
+                _toSrgb = toSrgb;
+                _toLinear = toLinear;
+            }
+
+            public static void Combine(byte[] black, byte[] white, byte[] result)
+            {
+                Init();
+                float[] lin = _toLinear;
+                for (int i = 0; i + 3 < black.Length; i += 4)
+                {
+                    float br = lin[black[i]], bg = lin[black[i + 1]], bb = lin[black[i + 2]];
+                    float d = ((lin[white[i]] - br) + (lin[white[i + 1]] - bg) + (lin[white[i + 2]] - bb)) / 3f;
+                    float a = 1f - d;
+                    if (a <= 0.004f)
+                    {
+                        result[i] = result[i + 1] = result[i + 2] = result[i + 3] = 0;
+                        continue;
+                    }
+
+                    if (a > 1f) a = 1f;
+                    float inv = 1f / a;
+                    result[i] = _toSrgb[(int)(Mathf.Clamp01(br * inv) * 4095f)];
+                    result[i + 1] = _toSrgb[(int)(Mathf.Clamp01(bg * inv) * 4095f)];
+                    result[i + 2] = _toSrgb[(int)(Mathf.Clamp01(bb * inv) * 4095f)];
+                    result[i + 3] = (byte)(a * 255f + 0.5f);
+                }
             }
         }
 
@@ -990,9 +1147,19 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 if (t != null) return t;
             }
 
+            // By name: an exact name first ("Head", "mixamorig:Head"), then one ending with it, then one containing it;
+            // never an end or top marker (HeadTop_End).
             string b = bone.ToLowerInvariant();
-            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
-                if (t.name.ToLowerInvariant().Contains(b)) return t;
+            Transform[] all = root.GetComponentsInChildren<Transform>(true);
+            Func<string, bool> marker = n => n.Contains("end") || n.Contains("top") || n.Contains("nub");
+            foreach (Func<string, bool> rule in new Func<string, bool>[]
+                     { n => n == b || n.EndsWith(":" + b) || n.EndsWith("_" + b) || n.EndsWith("." + b), n => n.EndsWith(b), n => n.Contains(b) })
+                foreach (Transform t in all)
+                {
+                    string n = t.name.ToLowerInvariant();
+                    if (rule(n) && !marker(n)) return t;
+                }
+
             return root;
         }
 
@@ -1025,6 +1192,36 @@ namespace Gigaduck.AgenticTools.AgentPlay
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// <c>studio {action: probe, target, bone}</c>: where a target and its bone are, which way it faces and how big it is
+        /// (renderer bounds), so an agent can frame a shot before rendering it.
+        /// </summary>
+        public static void Probe(Dictionary<string, object> c, Dictionary<string, object> r, Action<string> fail)
+        {
+            GameObject go = AgentPlayOps.FindObject(AgentPlayOps.S(c, "target", ""), false);
+            if (go == null) { fail("target '" + AgentPlayOps.S(c, "target", "") + "' not found"); return; }
+            Transform bone = Bone(go.transform, AgentPlayOps.S(c, "bone", "Head"));
+            Func<Vector3, List<object>> v = p => new List<object> { Math.Round(p.x, 3), Math.Round(p.y, 3), Math.Round(p.z, 3) };
+            r["path"] = ContentStudio.PathOf(go.transform);
+            r["position"] = v(go.transform.position);
+            r["forward"] = v(go.transform.forward);
+            r["scale"] = v(go.transform.lossyScale);
+            r["bone"] = ContentStudio.PathOf(bone);
+            r["bonePosition"] = v(bone.position);
+            r["boneForward"] = v(bone.forward);
+            List<Renderer> rends = go.GetComponentsInChildren<Renderer>().Where(x => x.enabled).ToList();
+            if (rends.Count > 0)
+            {
+                Bounds bb = rends[0].bounds;
+                foreach (Renderer x in rends) bb.Encapsulate(x.bounds);
+                r["boundsCenter"] = v(bb.center);
+                r["boundsSize"] = v(bb.size);
+            }
+
+            Animator anim = go.GetComponentInChildren<Animator>();
+            r["humanoid"] = anim != null && anim.isHuman;
         }
 
         /// <summary>Moves the shot camera for this frame (time t of the take).</summary>
@@ -1155,8 +1352,9 @@ namespace Gigaduck.AgenticTools.AgentPlay
             }
         }
 
-        public void RenderUi(RenderTexture rt)
+        public void RenderUi(RenderTexture rt, Color background)
         {
+            _ui.backgroundColor = background;
             RenderTexture old = _ui.targetTexture;
             _ui.targetTexture = rt; // a screen-space-camera canvas lays itself out for its camera's target: this aspect ratio
             try

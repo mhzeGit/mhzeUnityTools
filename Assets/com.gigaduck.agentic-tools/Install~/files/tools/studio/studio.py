@@ -360,6 +360,9 @@ def run_steps(player, steps, in_take):
         if "at" in step and in_take:
             at = float(step.pop("at"))
             st = send(player, {"op": "studio", "action": "status"})
+            if not st.get("take"):
+                print("  take already ended before step at %.2fs: %s" % (at, json.dumps(step)[:120]), file=sys.stderr)
+                return
             gap = at - float(st.get("t", 0))
             if gap > 0:
                 send(player, {"op": "studio", "action": "wait", "s": gap}, timeout=120 + gap * 30)
@@ -417,7 +420,8 @@ def take_options(shot, folder, w, h, fps, args, solo=None):
         "hide": list(CFG.get("hide") or []) + list(shot.get("hide") or []),
         "hideUi": list(CFG.get("hideUi") or []) + list(shot.get("hideUi") or []),
         "stemRules": CFG.get("stemRules") or {},
-        "max": float(shot.get("length") or 60) + 30, "label": shot.get("idea") or shot["name"],
+        # a take with a length stops itself on its last frame (exact length); without one, a safety limit
+        "max": float(shot["length"]) if shot.get("length") else 600.0, "label": shot.get("idea") or shot["name"],
     }
     if solo:
         o["solo"] = solo
@@ -432,7 +436,7 @@ def play_take(player, shot, folder, w, h, fps, args, solo=None):
         length = shot.get("length")
         if length:
             st = send(player, {"op": "studio", "action": "status"})
-            gap = float(length) - float(st.get("t", 0))
+            gap = float(length) - float(st.get("t", 0)) if st.get("take") else 0
             if gap > 0:
                 send(player, {"op": "studio", "action": "wait", "s": gap}, timeout=120 + gap * 30)
     finally:
@@ -607,13 +611,18 @@ def layer_inputs(folder, t, ui=True, audio="master"):
     return inputs, parts, v, a, n + len(files)
 
 
+def map_arg(label):
+    """-map takes "2:a" for an input stream but "[name]" for a filter output."""
+    return label[1:-1] if re.fullmatch(r"\[\d+:[av]\]", label) else label
+
+
 def preview(folder, t):
     """preview.mp4: UI and sound included, small, for people to watch."""
     inputs, parts, v, a, _ = layer_inputs(folder, t)
     parts.append("%sscale=-2:'min(960,ih)'[vp]" % v)
     cmd = [ffmpeg(), "-hide_banner", "-loglevel", "error", "-y"] + inputs + ["-filter_complex", ";".join(parts), "-map", "[vp]"]
     if a:
-        cmd += ["-map", a, "-c:a", "aac", "-b:a", "160k"]
+        cmd += ["-map", map_arg(a), "-c:a", "aac", "-b:a", "160k"]
     cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-shortest", str(folder / "preview.mp4")]
     run(cmd)
 
@@ -640,6 +649,8 @@ def sheet(folder, t, cols=6):
 
 def cmd_sheet(args):
     folder, t = load_take(args.take)
+    if not (folder / "preview.mp4").exists():
+        preview(folder, t)
     print(sheet(folder, t))
 
 
@@ -692,8 +703,23 @@ def expand(value, variables):
 
 
 def piece_job(piece, w, h, fps):
-    """The piece, with brand variables filled in and file paths made absolute, as Blender reads it."""
-    d = expand({k: v for k, v in piece.items() if not k.startswith("_")}, piece_vars())
+    """The piece, with brand variables filled in, its overrides for this format applied ("formats": {"wide": {...}},
+    elements merged by position) and file paths made absolute, as Blender reads it."""
+    fmt_name = next((k for k, v in formats().items() if list(v) == [w, h]), None)
+    if fmt_name is None:  # another size: the format with the nearest aspect ratio
+        fmt_name = min(formats(), key=lambda k: abs(formats()[k][0] / formats()[k][1] - w / h))
+    d = {k: json.loads(json.dumps(v)) for k, v in piece.items() if not k.startswith("_") and k != "formats"}
+    for k, v in ((piece.get("formats") or {}).get(fmt_name) or {}).items():
+        if k == "elements" and isinstance(v, list):
+            els = d.setdefault("elements", [])
+            for i, ov in enumerate(v):
+                if i < len(els):
+                    els[i].update(ov or {})
+                else:
+                    els.append(ov)
+        else:
+            d[k] = v
+    d = expand(d, piece_vars())
     base = Path(piece["_dir"])
     for el in d.get("elements") or []:
         if el.get("src"):
@@ -705,7 +731,7 @@ def piece_job(piece, w, h, fps):
         d["files"] = {k: str((base / v).resolve()) for k, v in d["files"].items()}
     d["w"], d["h"], d["fps"] = w, h, fps
     d["vars"] = piece_vars()
-    d["formatName"] = next((k for k, v in formats().items() if list(v) == [w, h]), "%dx%d" % (w, h))
+    d["formatName"] = fmt_name
     d["font"] = d.get("font") or piece_vars().get("font", "")
     return d
 
@@ -807,7 +833,7 @@ def cmd_export(args):
     out.parent.mkdir(parents=True, exist_ok=True)
     cmd = [ffmpeg(), "-hide_banner", "-loglevel", "error", "-y"] + inputs + ["-filter_complex", ";".join(parts), "-map", v]
     if a:
-        cmd += ["-map", a, "-c:a", "aac", "-b:a", "192k"]
+        cmd += ["-map", map_arg(a), "-c:a", "aac", "-b:a", "192k"]
     cmd += ["-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)]
     run(cmd)
     info = media_info(out)

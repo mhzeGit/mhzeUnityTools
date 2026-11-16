@@ -66,7 +66,7 @@ writes files and a README; a person uploads them.
 | --- | --- | --- |
 | `player` (default) | `fov` | The player's eye, with its camera stack (a first-person arm). |
 | `pose` | `pos [x,y,z]`, `lookAt`, or `euler` | A fixed camera. |
-| `face` | `target`, `bone` (default Head), `distance`, `height`, `yaw`, `eyes` | In front of a character's face, looking into it. |
+| `face` | `target`, `bone` (default Head), `distance`, `height`, `yaw`, `eyes` | In front of a character's face, looking into it. Check the bone and facing with `probe` first. |
 | `follow` | `target`, `offset [x,y,z]`, `local` (default true), `lookAt`, `smooth` | Follows an object. |
 | `path` | `keys: [{t, pos, lookAt or euler, fov, ease}]` | Keyframed move; `ease`: `linear`, `smooth`, `in`, `out`. |
 
@@ -83,7 +83,7 @@ in real time instead (sound from the listener). Folder `outputDir/takes/SHOT/SHO
 | File | Layer |
 | --- | --- |
 | `clean.mp4` | The picture without overlay UI (H.264, CRF 14). |
-| `ui/ui_00000.png...` | The overlay UI alone with alpha, laid out for this aspect ratio (overlay canvases are moved to a private UI camera during the take and put back after). |
+| `ui/ui_00000.png...` | The overlay UI alone with straight alpha, laid out for this aspect ratio: overlay canvases move to a private UI camera during the take (put back after), which draws them over black and over white; the difference gives exact alpha whatever the render pipeline does with a camera's alpha. |
 | `audio.wav` | The game's sound, 32-bit float. |
 | `stems/voice.wav`... | With `--stems`: one extra pass per stem with every other audio source muted. |
 | `events.jsonl` | On-screen text (captions), stage labels, marks and cuts, with times. |
@@ -113,8 +113,12 @@ A piece is a reusable part with a role. `piece new NAME --role outro|intro|sting
  "audio": "sting.wav"}
 ```
 
-- `{words}` are the brand values in `studio.json`. Positions are fractions of the frame (`y` from the bottom), `size` a fraction
-  of the short side, so one piece fits every aspect ratio. `anim`: `fade`, `pop`, `slide`, `none`; `start` delays an element.
+- `{words}` are the brand values in `studio.json` (any string there, e.g. a `marketing` folder for shared art). Positions are
+  fractions of the frame (`y` from the bottom), text `size` a fraction of the short side, image `width` a fraction of the
+  frame width. `anim`: `fade`, `pop`, `slide`, `none`; `start` delays an element.
+- `"formats": {"wide": {"elements": [{"width": 0.6, "y": 0.67}, ...]}}` adjusts the layout per format (elements merged by
+  position; any other key replaced), so one piece lays out well in 9:16, 16:9, 1:1 and 4:5. Keep vertical text above the
+  bottom fifth, where platform captions and buttons sit. Render each format you use and look at a frame of it.
 - `kind`: `generated` (built from the elements), `blend` (your own `.blend`: the scene named like the format, e.g. `vertical`,
   else its first scene; `{words}` in its text strips are filled in) or `video` (`"files": {"vertical": "outro_9x16.mp4"}`).
 - Placement by role, done by the tools: `intro` first, clips in order, `sting` then `outro` last (the outro fades in over the
@@ -169,4 +173,5 @@ Platforms and formats are defaults in `studio.py`; `studio.json` `platforms` / `
 
 The player side is the `studio` op of the agent harness (`ContentStudio`, compiled only into editor, Development and agent
 builds), so nothing ships in the game and nothing runs unless an agent sends it. Ops: `start`, `stop`, `wait {s}` (game time),
-`mark`, `camera`, `hide`, `still`, `stems`, `status`.
+`mark`, `camera`, `hide`, `still`, `stems`, `probe {target, bone}` (where a character and its bone are, which way it faces,
+its size: frame a shot from numbers before rendering it), `status`.

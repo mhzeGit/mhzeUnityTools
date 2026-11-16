@@ -100,9 +100,10 @@ def animate(strip, anim, f0, fps, w, h):
     if t is None:
         return
     if anim == "pop":
+        bx, by = t.scale_x, t.scale_y  # relative to the element's own size
         for frame, s in ((f0, 0.6), (f0 + q, 1.08), (f0 + q + max(2, q // 2), 1.0)):
-            key(t, "scale_x", frame, s)
-            key(t, "scale_y", frame, s)
+            key(t, "scale_x", frame, bx * s)
+            key(t, "scale_y", frame, by * s)
     elif anim == "slide":
         base = t.offset_y
         key(t, "offset_y", f0, base - 0.05 * h)
