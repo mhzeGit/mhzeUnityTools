@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.3 - 2026-11-16
+
+- Deep tests: an action the game interrupts (a scene starts on the way and takes the controls) is "busy", not a failure,
+  and is tried once more from a clean start; the softlock check walks back to the section start and tries the learned route
+  again before it reports a possible softlock (a warning to check in the video, not a confirmed bug).
+
 ## 1.5.2 - 2026-11-16
 
 - Deep tests wait until the player has control before each action (a scripted look or placement after a reset made the

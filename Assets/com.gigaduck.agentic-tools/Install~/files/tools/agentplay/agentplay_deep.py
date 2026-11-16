@@ -33,7 +33,9 @@ NOT_MOVES = {"move", "look", "interact", "point", "click", "scrollwheel", "navig
 HOLD_MOVES = re.compile(r"sprint|run|crouch|walk|aim|block|slide", re.I)
 FAR_MOVES = 3.5          # metres of a walking probe
 SETTLE = 1.2             # seconds an action is given to show its effect
-SEVERITY = {"error": "BUG", "fell": "BUG", "softlock": "BUG", "paused": "BUG", "death": "SOFT", "failed": "WARN", "hitch": "WARN"}
+SEVERITY = {"error": "BUG", "fell": "BUG", "paused": "BUG", "softlock": "WARN", "death": "SOFT", "failed": "WARN", "hitch": "WARN"}
+# The game took the controls during the action (a scene started on the way): not a failure of what was tried.
+GAME_HAS_IT = re.compile(r"does not follow the mouse|controls (are )?off|the game has|frozen|look off", re.I)
 
 
 def log(text):
@@ -200,6 +202,9 @@ def classify(act, before, after, answers, failed, perf):
     elif sa.get("held") != sb.get("held"):
         outcome = "held"
         notes.append("held: %s -> %s" % (sb.get("held"), sa.get("held")))
+    elif failed and GAME_HAS_IT.search(str(failed)):
+        outcome = "busy"
+        notes.append("the game had the controls: " + str(failed)[:160])
     elif failed:
         outcome = "failed"
         notes.append(str(failed)[:200])
@@ -290,13 +295,17 @@ def states_of(seg, which):
     return out
 
 
-def softlock_check(name, seg):
-    """After the story moved on its own way: can the learned route still finish the section from here?"""
+def softlock_check(name, seg, base_pos):
+    """After the story moved on its own way: can the section still be finished? The learned route from here; failing that,
+    from back where the section starts (the route's walks assume it), once more. Returns the last episode."""
     route = learn.best_route(learn.KB.load(seg["id"], seg))
     if not route:
         return None
     ep = learn.run_episode(name, seg, route["steps"], setup=False, by="deep", budget=min(seg.get("budget", 150), 90))
-    return ep
+    if ep["outcome"] == "win" or not base_pos:
+        return ep
+    learn.send(name, {"op": "walk", "pos": base_pos, "timeout": 25}, 60)
+    return learn.run_episode(name, seg, route["steps"], setup=False, by="deep", budget=min(seg.get("budget", 150), 90))
 
 
 def deep_segment(name, seg, report, args, recording):
@@ -349,11 +358,10 @@ def deep_segment(name, seg, report, args, recording):
                         break
                 dirty = True
             if res["outcome"] == "story" and not args.no_softlock:
-                ep = softlock_check(name, seg)
+                ep = softlock_check(name, seg, base_pos)
                 if ep is not None and ep["outcome"] != "win":
                     entry["outcome"] = "softlock"
-                    entry["detail"] += "; the learned route could not finish the section after it (%s: %s)" % (
-                        ep["failKind"], ep["failDetail"][:160])
+                    entry["detail"] += "; possible softlock: the learned route could not finish the section after it, twice "                                        "(%s: %s); watch the video" % (ep["failKind"], ep["failDetail"][:140])
                 elif ep is not None:
                     entry["detail"] += "; the section can still be finished"
             if res["hitch"]:
@@ -385,7 +393,11 @@ def deep_segment(name, seg, report, args, recording):
                          for m in moves if m["key"].startswith("move:") and "+walk" not in m["key"]][:4]
                 queue[:0] = combos + drops
                 continue
-            if entry["outcome"] in ("story", "softlock", "held", "death", "fell") or after["status"].get("scene") != base["status"].get("scene"):
+            if entry["outcome"] == "busy" and not act.get("retried"):
+                queue.insert(0, dict(act, retried=True, label=act["label"] + " (again)"))  # once more from a clean start
+                dirty = True
+                continue
+            if entry["outcome"] in ("story", "softlock", "held", "death", "fell", "busy") or after["status"].get("scene") != base["status"].get("scene"):
                 dirty = True
     row["duration"] = round(time.time() - t0, 1)
     row["end"] = video.elapsed(name) if recording else None
