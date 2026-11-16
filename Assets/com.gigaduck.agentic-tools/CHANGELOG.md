@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.5 - 2026-11-16
+
+- An attempt in which the player died fails even when the story went on after the respawn (it used to count as a win, so
+  a route that got the player killed could be mastered and nothing was learned from the death).
+
 ## 1.4.4 - 2026-11-16
 
 - Walks measure progress as getting closer to the next corner, so jittering against a wall or a door frame reports

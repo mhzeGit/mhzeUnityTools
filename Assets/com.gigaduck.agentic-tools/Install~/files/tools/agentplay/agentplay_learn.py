@@ -735,6 +735,11 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
     ep["time"] = round(time.time() - t0, 2)
     ep["outcome"] = "win" if won else "fail"
     ep["deaths"] = max(0, (st.get("deaths", deaths0) or 0) - deaths0)
+    if won and ep["deaths"]:
+        # The story went on after the respawn, but a route that gets the player killed has not played it.
+        last = max([row["i"] for row in ep["steps"]] or [0])
+        ep.update(outcome="fail", failKind="death", failStep=min(last, len(steps)),
+                  failDetail="the player died (the story went on after the respawn)")
     ep["statusEnd"] = {k: st.get(k) for k in ("stage", "chapter", "checkpoint", "running", "held", "deaths", "player") if k in st}
     ep["perf"] = trim(send(name, {"op": "perf"}, 30))
     try:
