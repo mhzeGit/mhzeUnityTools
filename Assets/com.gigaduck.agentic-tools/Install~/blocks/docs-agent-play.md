@@ -6,6 +6,33 @@ Everything goes through `python tools/agentplay/agentplay.py` (Windows, Python 3
 comes from the Agentic Tools package: `AgentPlayBuild` (builds the player with the `AGENT_PLAY` define), `AgentPlayShaders`
 (drops shader variants a play-test does not need) and the `AgentPlayHarness` command server compiled into that player.
 
+## Quick recipes (read this first)
+
+One line of commands is the whole job: each command starts and stops its own player (the name you give), records one video
+and ends with a `VIEW` link (the report and video on the dashboard; the phone link when it is shared). Run `info` first;
+build only when it says STALE.
+
+| The request | Run (`python tools/agentplay/agentplay.py ...`) |
+| --- | --- |
+| Play through chapter X (with video) | `kb brief --scope X`, then `playtest me1 --scope X` (`--learn` first learns what brief says is not mastered) |
+| A perfect, clean play-through of X | `playtest me1 --scope X --until-perfect 6` (stops at the first perfect run) |
+| Test every door (or any one kind of thing) in X | `deeptest me1 --scope X --only door` (a regex on name, path or prompt: `--only "drawer\|wardrobe"`) |
+| Test everything in X, find bugs | `deeptest me1 --scope X` (`--states all`: also at later story states; `--exhaustive`: no smart skipping) |
+| Walkthrough of X and test every door, recorded | the two recipes above, one after the other: two videos, two `VIEW` links |
+| Record your own check | `record me1 start --label "..."`, your `send`s, `record me1 mark "..."`, `record me1 stop` |
+
+- **Scope words** (`--scope`): segment ids or prefixes, numbers and ranges (`3`, `0-5`), comma separated; a project adds its
+  own (chapters by id or title, `chapter/checkpoint`). `segments --scope X` lists what a scope covers; `kb brief --scope X`
+  says what is mastered.
+- **Report** what the command printed: the verdict line, the findings (severity, text, `@m:ss` in the video) and the `VIEW`
+  link. That printed summary is the result: do not open videos, `report.json` or knowledge files to check it. Look at a
+  moment only when a finding needs it: `video sheet <id> --from T-5 --to T+10` (a picture of keyframes).
+- **Time**: a playtest about 20 to 60 s per section; `--until-perfect` one playtest per run; a deep test about 10 s per test
+  point plus 5 to 20 s per action (a full section of 40 actions 10 to 15 min; `--only door` 1 to 3 min a section); learning
+  minutes per section; a full build 2 to 3 min, a script-only patch seconds.
+- If a build cannot resolve a package (another agent pinned an unpublished commit), `build --pin NAME=committed` builds that
+  one package at the last commit's revision, in the build copy only (the record and `info` say so).
+
 ## Use
 
 ```
@@ -47,9 +74,9 @@ Every harness (the package's and a project's own) also answers these, from `Agen
 | Op | What it does |
 | --- | --- |
 | `observe {radius, max}` | What the player can see and use: status, view, the object under the crosshair, text on screen, objects near (with `usable`, `hold`, `prompt` from the project), and project parts such as `beats` (what the running story steps reference). `agentplay.py observe NAME` prints it with suggested actions. |
-| `aim {target \| point, tolerance}` | Turns the view onto an object with real mouse movement, closed loop: it learns how far the view turns per mouse unit. |
-| `interact {target, key, hold, reach, approach}` | Walks close if needed, aims, checks the object is under the crosshair (the project's interactor decides), presses the interact key (held for the object's hold time). Fails with what is under the crosshair instead. |
-| `approach {target \| pos, dist}` | Walks to a point near an object (the project's walker, e.g. NavMesh; default: W and mouse steering). |
+| `aim {target \| point, tolerance}` | Turns the view onto an object with real mouse movement like a hand: the mouse is calibrated once per session (a small nudge per axis), then the view is steered a little every frame (at most 220 degrees a second, gentler after an overshoot); a scripted look by the game is waited out, never fought. |
+| `interact {target, key, hold, reach, approach}` | Walks close if needed, aims (stopping the moment the object is under the crosshair; the project's interactor decides), presses the interact key (held for the object's hold time). Fails with what is under the crosshair instead. A target can be a name or the end of a path (`Doors/Door01 (9) Hall1_Door01/Door`). |
+| `approach {target \| pos, dist}` | Walks to a point near an object (the project's walker, e.g. NavMesh corners; default: a straight line), with the movement keys. |
 | `until {cond, timeout, soft}` | Waits for a condition: `{"field":"stage","gt":4}` (eq ne gt gte lt lte contains in changed exists), `near`, `exists`/`active`/`gone`, `crosshair`, `text`, `log`, `all`/`any`/`not`, plus project keys. `soft` answers `met:false` instead of failing. |
 | `record {action: start\|stop\|mark\|snap\|status}` | The recorder (below). |
 | `screen`, `perf {reset}` | Visible UI text; frame times since the last reset (fps, worst, 95th percentile). |
@@ -76,8 +103,9 @@ python tools/agentplay/agentplay.py video sheet last --from 30 --to 60          
 python tools/agentplay/agentplay.py video list | info ID | frame ID --at 42.5 [--exact] | events ID | open ID | recaption ID | prune --keep 30
 ```
 
-The player renders its camera into a small render texture, reads it back from the GPU without stalling and streams frames into
-ffmpeg on a worker thread (H.264 at a constant frame rate: a hitch repeats the last frame, so the video keeps real time). It also
+The player captures the finished screen at the end of each frame (every camera, overlay UI, zooms; `record start --source
+camera` re-renders one camera instead), reads it back from the GPU without stalling and streams frames into ffmpeg on a worker
+thread (H.264 at a constant frame rate: a hitch repeats the last frame, so the video keeps real time). It also
 saves a JPEG keyframe every 2 s and logs events: every op the agent sends and its result, marks, the project's stage label and
 on-screen text when they change. `stop` makes a clean fast-start MP4 (the picture only: nothing is drawn over it), the events
 as `captions.vtt` beside it, chapters from the labels and an overview contact sheet, in `Builds/AgentPlay/videos/<id>/`
@@ -122,12 +150,66 @@ python tools/agentplay/agentplay.py kb status|show S|lesson S|global "text" --ki
 - **Playtest report** `Builds/AgentPlay/playtests/<id>/report.html` (+ `report.json`): verdict; completion, stability, performance,
   pacing and friction; per segment outcome, chained or jumped, time, deaths, new errors, worst frame, blocked walks, how much was
   waiting; findings with their time in the video, which plays embedded.
+- **Chained runs** (`playtest --until-perfect N`): a proven route (3 or more wins, 70% or more) that fails once is played
+  again before any repair (one failure can be chance); a segment that wins alone but fails chained is retried from where it
+  starts alone (hand-off repair), and when it dies chained, the segment before gets a variant that ends there earlier (a
+  hazard that already falls when its segment starts can only be escaped earlier). A click or key whose expected effect does
+  not happen is pressed once more (the game was not listening yet). A death fails the attempt even when the story goes on.
+- **Setup commands** may carry `"unless": <condition>` and are skipped when the game is already there (load the scene unless
+  it is loaded).
 - Learning takes real time (minutes per segment). Scope it like any test; a whole-game run only when the user asked for one.
+
+## Deep tests: try everything a section offers
+
+A playtest finishes the game; a deep test tries what a player could do in each section, to find what breaks:
+
+```
+python tools/agentplay/agentplay.py deeptest me1 --scope S                 # everything: interactables, item combinations, moves, walking probes
+python tools/agentplay/agentplay.py deeptest me1 --scope S --only door     # every door (name, path or prompt matches), nothing else
+python tools/agentplay/agentplay.py deeptest me1 --scope S --states all    # also at each story state the learned route goes through
+```
+
+In each section it goes to the start (the segment's setup), lets a scene that plays by itself finish (the first quiet moment),
+and first watches for about 10 s with no input: the **control** (does the story move on by itself, does standing still kill).
+Then it tries, from that point: every usable interactable within `--radius` (12 m; 30 m with `--only`): walk there, aim,
+press or hold the interact key; with an item in hand, that item on the other interactables, then Drop and Attack; every move
+of the project's input map (`Assets/**/*.inputactions`: a tap each; sprint and crouch held while walking; pause opened and
+closed); and walking probes in 8 directions. After anything that changes the story, the item in hand or the player's life,
+it resets to that point. A story change that the learned routes never go through gets a softlock check (the story must keep
+moving and the section must still be finishable).
+
+| Outcome | Meaning |
+| --- | --- |
+| `error` | New errors in the player log (BUG) |
+| `fell` | The player dropped 3 m or more (BUG) |
+| `paused` | The game was left paused afterwards (BUG) |
+| `softlock` | The story stopped moving and the section could not be finished after it (a warning: check the video) |
+| `death` | The player died, and doing nothing there does not kill |
+| `failed` | It could not be done (e.g. never under the crosshair: a usable object out of reach) (WARN) |
+| `story`, `held`, `changed`, `moved` | It did something: moved the story, picked up or dropped, changed a prompt, an object, the text on screen, the player |
+| `nothing`, `blocked` | No effect; a walking probe stopped by geometry |
+| `anyway` | What followed happens without the action too (the control showed it): not credited to it |
+| `busy` | The game had the controls (a scene started on the way); tried once more from a clean start |
+| `skipped` | Not worth trying (the reason is given): see below |
+
+It is smart about what it tries (`--exhaustive` turns that off; `--only` turns it off for the matches): moves for an item
+(Drop, Use, Next...) only with an item in hand; a move that did nothing twice in a context, or the same harmless thing in three
+sections, is not repeated; of look-alike objects (a dresser's drawers: same name without numbers, same prompt verb) two are
+tried and the rest only if those differ; kinds that behaved the same three times are not retried; objects the running story
+points at go first; areas already walked around are not probed again. With `--only`, each matching object is tried once per
+prompt in a run (a door locked in one section and open in a later one is tried twice). The memory behind it is
+`<knowledgeDir>/coverage/_effects.json`; every action's outcome per section and build is in `<knowledgeDir>/coverage/<segment>.json`
+(commit both): actions tested on the same build are reported as known, not repeated (`--retest` redoes them). A segment with
+`"deep": false` is skipped (nothing to try there, e.g. a menu without a player). Moves come from
+the input map; `agentplay.json` `"deepMoves"` adds others (`[{"action": "Lean", "binding": "<Keyboard>/q", "cmd": {"op": "key",
+"key": "Q"}}]`). The report (`kind: deep`) is in the playtests list: the verdict counts bugs, deaths and warnings; every action
+is listed with its outcome and video time (the phone filters Problems, Did something, Nothing, Skipped).
 
 ## Dashboard and HTTP API
 
 `python tools/agentplay/agentplay.py serve --detach --open` (`--stop` ends it) serves a dashboard on `http://127.0.0.1:8765/`:
-playtests (report, embedded video, segment timeline), videos (player with captions, clickable event timeline, keyframes),
+playtests and deep tests (report, embedded video, segment timeline, every deep-test action), videos (a clean player with a
+live panel beside it: section, action, text on screen, where the player looks; clickable event timeline, keyframes),
 knowledge (mastery, routes, lessons, values) and players (record, mark, stop, send). The same data is an API for agents and tools:
 `GET /api/videos`, `/api/videos/<id>` (with `videoUrl`, `captionsUrl`, `keyframes[].url`), `/api/videos/<id>/frame?t=S`,
 `/api/playtests[/<id>]`, `/api/knowledge[/<segment>]`, `/api/players`, `POST /api/players/<name>/send` (a command) and

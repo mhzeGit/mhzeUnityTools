@@ -89,7 +89,8 @@ def now_text():
 def set_segment_provider(segments, scope=None, validate=None):
     """A project's agentplay_project.py calls this in register(): `segments()` returns every segment in play order as
     dicts {id, label, order, setup:[commands], goal:condition, budget:seconds, at:condition (optional: "the game is
-    at this segment's start", lets a playtest chain segments without jumping)}; `scope(text)` resolves a scope;
+    at this segment's start", lets a playtest chain segments without jumping), deep: false (optional: nothing for a deep
+    test to try there)}; a setup command may carry "unless": condition (skipped when it holds); `scope(text)` resolves a scope;
     `validate(status)` returns an error text when a running player does not match the segments (a stale export)."""
     global _provider, _scope_fn, _validate
     _provider, _scope_fn, _validate = segments, scope, validate
@@ -357,6 +358,7 @@ def apply_episode(rec, rid, ep):
         if win:
             r["wins"] = r.get("wins", 0) + 1
             r["streak"] = r.get("streak", 0) + 1
+            r["fails"] = 0
             r["times"] = (r.get("times", []) + [ep["time"]])[-10:]
             r["bestTime"] = min(r["times"])
             r["lastWinBuild"] = current_build()
@@ -364,6 +366,7 @@ def apply_episode(rec, rid, ep):
                 r["wasMastered"] = True
         else:
             r["streak"] = 0
+            r["fails"] = r.get("fails", 0) + 1
             r["lastFail"] = {"kind": ep.get("failKind"), "step": ep.get("failStep"), "detail": ep.get("failDetail", "")[:200]}
             if r["runs"] >= 4 and r.get("wins", 0) == 0:
                 r["retired"] = True
@@ -509,6 +512,26 @@ def check(name, cond, wait=0.0):
 
 def observe(name, radius=14):
     return send(name, {"op": "observe", "radius": radius, "max": 30}, 40)
+
+
+def setup_commands(name, seg):
+    """The segment's setup commands that are needed now: one with "unless" (a condition) is skipped when the game is
+    already in that state (e.g. load the scene unless it is loaded)."""
+    out = []
+    for cmd in seg.get("setup", []):
+        if cmd.get("unless") and check(name, cmd["unless"])[0]:
+            continue
+        out.append({k: v for k, v in cmd.items() if k != "unless"})
+    return out
+
+
+def run_setup(name, seg):
+    """Sends the setup; returns the error of the first command that failed, or None."""
+    for cmd in setup_commands(name, seg):
+        a = send(name, cmd, op_timeout(cmd))
+        if not a.get("ok"):
+            return a.get("error", "setup failed")
+    return None
 
 
 def op_timeout(cmd):
@@ -676,11 +699,10 @@ def run_episode(name, seg, steps, setup=True, noise=False, rng=None, record=Fals
           "player": name, "noise": noise, "outcome": "fail", "failKind": None, "failStep": None, "failDetail": "",
           "steps": [], "time": None, "deaths": 0, "errors": [], "video": None, "build": current_build(), "states": []}
     if setup:
-        for cmd in seg.get("setup", []):
-            a = send(name, cmd, op_timeout(cmd))
-            if not a.get("ok"):
-                ep.update(failKind="setup", failDetail=a.get("error", "setup failed"), time=0.0)
-                return save_episode(ep)
+        error = run_setup(name, seg)
+        if error:
+            ep.update(failKind="setup", failDetail=error, time=0.0)
+            return save_episode(ep)
     before = issue_counts(name)
     send(name, {"op": "perf", "reset": True}, 30)
     st0 = status(name)
@@ -883,10 +905,9 @@ def explore(name, seg, budget=240, prefix=None, by="agent", rng=None, who="", re
     rec = KB.load(seg["id"], seg)
     q = json.loads(json.dumps(rec.get("q", {})))
     updates = []
-    for cmd in seg.get("setup", []) if setup else []:
-        a = send(name, cmd, op_timeout(cmd))
-        if not a.get("ok"):
-            return {"outcome": "fail", "steps": [], "reason": "setup failed: " + str(a.get("error")), "actions": 0, "q": []}
+    error = run_setup(name, seg) if setup else None
+    if error:
+        return {"outcome": "fail", "steps": [], "reason": "setup failed: " + str(error), "actions": 0, "q": []}
     useful = []
     if prefix:
         ep = run_episode(name, seg, prefix, setup=False, by=by, budget=seg.get("budget", 150), who=who, final_wait=10)
@@ -1058,6 +1079,11 @@ def pick_route(rec, rng, prefer_untried=False):
     requested = [r for r in live if r.get("prior", 0) >= 1 and r.get("runs", 0) == 0]
     if requested:  # a repair the next segment asked for: try it now, even over a route on a winning streak
         return max(requested, key=lambda r: r["prior"])
+    # A proven route (won often) that failed once is tried again before any repair: one failure can be chance (a click the
+    # game was not ready for); two in a row mean it no longer works.
+    proven = [r for r in live if r.get("wins", 0) >= 3 and win_rate(r) >= 0.7 and r.get("fails", 0) < 2]
+    if proven and not prefer_untried:
+        return max(proven, key=lambda r: (r.get("streak", 0) > 0, win_rate(r), -(r.get("bestTime") or 1e9)))
     hot = [r for r in live if r.get("streak", 0) > 0]
     if hot and not prefer_untried:
         return max(hot, key=lambda r: (r["streak"], win_rate(r), -(r.get("bestTime") or 1e9)))
@@ -1316,8 +1342,7 @@ def playtest(name, segs, record=True, learn_first=False, label=None, by="agent",
     title = "playtest " + report["scope"] + (" run %d" % series["run"] if series else "")
     t_start = time.time()
     try:
-        for cmd in segs[0].get("setup", []):
-            send(name, cmd, op_timeout(cmd))
+        run_setup(name, segs[0])
         recording = False
         if record:
             a = video.start(name, title, rec_id=pt_id, max_minutes=240)
@@ -1678,7 +1703,9 @@ def cmd_playtest(args):
     print("REPORT %s" % (folder / "report.html"))
     if report.get("videoId"):
         print("VIDEO  %s  (agents: agentplay.py video sheet %s --from S --to S)" % (video.folder_of(video.find(report["videoId"])) / "video.mp4", report["videoId"]))
-    print("dashboard: agentplay.py serve  (then open the Playtests tab)")
+    web = getattr(ap, "web", None)
+    link = web.view_link("playtests/" + report["id"]) if web else None
+    print("VIEW   %s" % link if link else "dashboard: agentplay.py serve --detach  (then open the Playtests tab)")
 
 
 def cmd_observe(args):

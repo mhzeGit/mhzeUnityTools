@@ -20,6 +20,7 @@ agent skips what was tested on the same build (`--retest` to redo) and retests a
 video, a caption per action) is in Builds/AgentPlay/playtests/<id>-deep/ and on the dashboard and phone.
 
   agentplay.py deeptest NAME --scope S [--states start|all] [--radius 12] [--max 80] [--retest] [--no-record]
+  agentplay.py deeptest NAME --scope S --only door          every door (name, path or prompt matching), nothing else
 """
 import json
 import math
@@ -465,10 +466,8 @@ def plan(queue, held, scene, base_pos, story, exhaustive):
 def reach_state(name, seg, prefix):
     """The section's start (its setup), then the learned route's steps up to a later story state, then the first quiet
     moment: a scene that plays by itself is let finish, as a player would, so actions are tried where the player acts."""
-    for cmd in seg.get("setup", []):
-        a = learn.send(name, cmd, learn.op_timeout(cmd))
-        if not a.get("ok"):
-            return False
+    if learn.run_setup(name, seg):
+        return False
     learn.send(name, {"op": "wait", "s": 1.0}, 30)
     for step in prefix:
         if step.get("when"):
@@ -546,12 +545,16 @@ def deep_segment(name, seg, report, args, recording):
         video.mark(name, "deep: " + seg.get("label", seg["id"]), "segment")
     cov = load_coverage(seg["id"])
     build = learn.current_build()
-    moves = [] if args.no_moves else move_actions(input_moves())
+    only = re.compile(args.only, re.I) if getattr(args, "only", None) else None
+    moves = [] if args.no_moves or (only and not args.moves) else move_actions(input_moves())
     row = {"id": seg["id"], "label": seg.get("label", seg["id"]), "outcome": "pass", "mastery": None, "start": t_start,
            "end": None, "duration": 0, "chained": True, "route": None, "deaths": 0, "errors": [], "worstFrameMs": None,
            "p95FrameMs": None, "fpsAvg": None, "blocked": 0, "passiveRatio": 0, "notes": [], "friction": 0, "episode": None,
            "coverage": {"tested": 0, "known": 0, "outcomes": {}}}
     t0 = time.time()
+    if seg.get("deep") is False:  # the project says nothing a deep test can try is here (a menu without a player)
+        row["notes"].append("not deep-tested: the segment says there is nothing to try (deep: false)")
+        return row
     known_path = normal_path(seg)
     for state_label, prefix in states_of(seg, args.states):
         if not reach_state(name, seg, prefix):
@@ -569,11 +572,28 @@ def deep_segment(name, seg, report, args, recording):
         base = snap(name, args.radius)
         base_pos = pos_of(base["status"]) or [0, 0, 0]
         state = learn.state_key(base["status"])
-        candidates = moves + (probe_actions(base_pos) if not args.no_moves else []) + object_actions(list(base["objects"].values()), 400)
+        objects = object_actions(list(base["objects"].values()), 400)
+        if only:  # every matching interactable; one already tried in this run with the same prompt is not tried again
+            seen = report.setdefault("onlySeen", {})
+            picked = []
+            for a in objects:
+                o = a.get("obj") or {}
+                if not only.search(" ".join(str(x) for x in (o.get("name"), o.get("path"), o.get("prompt")) if x)):
+                    continue
+                mark = (o.get("path") or o.get("name"), (o.get("prompt") or "").strip())
+                if mark in seen:
+                    report["actions"].append({"segment": seg["id"], "state": state_label, "key": a["key"], "label": a["label"],
+                                              "outcome": "skipped", "detail": "tried earlier in this run (%s), same prompt" % seen[mark]})
+                    row["coverage"]["skipped"] = row["coverage"].get("skipped", 0) + 1
+                    continue
+                seen[mark] = seg["id"]
+                picked.append(a)
+            objects = picked
+        candidates = moves + (probe_actions(base_pos) if not (args.no_moves or (only and not args.moves)) else []) + objects
         known_now = [a for a in candidates if not args.retest and (cov["actions"].get("%s|%s" % (state_label, a["key"])) or {}).get("build") == build]
         fresh = [a for a in candidates if a not in known_now]
         queue, siblings, skipped = plan(fresh, base["status"].get("held"), base["status"].get("scene"), base_pos,
-                                        story_objects(base), args.exhaustive)
+                                        story_objects(base), args.exhaustive or bool(only))  # --only: every match, no look-alike skips
         queue = known_now + queue  # reported as known from earlier on this build
         sibling_results = {}
         for act, why in skipped:
@@ -702,10 +722,13 @@ def deep_segment(name, seg, report, args, recording):
 
 
 def deeptest(name, segs, args):
+    if getattr(args, "radius", None) is None:
+        args.radius = 30.0 if getattr(args, "only", None) else 12.0
     seed_effects()
     started = learn.ensure_player(name)
     rid = time.strftime("%Y%m%d-%H%M%S-") + name + "-deep"
-    report = {"id": rid, "kind": "deep", "scope": "deep " + (args.scope or args.segment or "?"), "started": learn.now_text(),
+    report = {"id": rid, "kind": "deep", "scope": "deep " + (args.scope or args.segment or "?") + (" only " + args.only if getattr(args, "only", None) else ""),
+              "started": learn.now_text(),
               "player": name, "build": learn.current_build(), "by": args.by, "segments": [], "findings": [], "actions": [],
               "videoId": None, "video": None}
     t0 = time.time()
@@ -727,6 +750,7 @@ def deeptest(name, segs, args):
         if a.get("video") is None and not a.get("known"):
             a["video"] = report["videoId"]
     report["duration"] = round(time.time() - t0, 1)
+    report.pop("onlySeen", None)  # the run's memory of what --only tried (not part of the report)
     learn.score(report)
     tried = sum(r["coverage"]["tested"] for r in report["segments"])
     known = sum(r["coverage"]["known"] for r in report["segments"])
@@ -748,10 +772,15 @@ def cmd_deeptest(args):
     args.by = args.by or args.name
     segs = learn.scoped(args)
     report = deeptest(args.name, segs, args)
+    report.pop("onlySeen", None)
     print("\n" + report["verdict"])
     for f in report["findings"][:40]:
         print("  %-5s %s%s" % (f["sev"], f["text"][:160], "  @%s" % video.clock(f["t"]) if f.get("t") is not None else ""))
     print("REPORT %s" % (learn.PLAYTESTS / report["id"] / "report.html"))
+    if report.get("videoId"):
+        print("VIDEO  %s" % report["videoId"])
+    link = ap.web.view_link("playtests/" + report["id"]) if getattr(ap, "web", None) else None
+    print("VIEW   %s" % link if link else "dashboard: agentplay.py serve --detach  (then open the Playtests tab)")
     print("coverage kept in %s (commit it)" % COVERAGE)
 
 
@@ -769,7 +798,12 @@ def register(sub, ap_module):
     p.add_argument("--segment", help="one segment id")
     p.add_argument("--states", choices=("start", "all"), default="start",
                    help="test at the section start, or also at each story state the learned route goes through")
-    p.add_argument("--radius", type=float, default=12, help="metres around the player to look for interactables")
+    p.add_argument("--only", metavar="REGEX", help="only interactables whose name, path or prompt matches (case-insensitive), "
+                   "e.g. door or 'drawer|wardrobe': every match is tried (no look-alike skips), each once per prompt per run; "
+                   "moves and walking probes are off unless --moves")
+    p.add_argument("--moves", action="store_true", help="with --only: also try the moves and walking probes")
+    p.add_argument("--radius", type=float, default=None, help="metres around the section start to look for interactables "
+                   "(default 12; 30 with --only)")
     p.add_argument("--max", type=int, default=80, help="actions per state at most")
     p.add_argument("--combos", type=int, default=6, help="interactables to try an item in hand on")
     p.add_argument("--retest", action="store_true", help="redo actions already tested on this build")

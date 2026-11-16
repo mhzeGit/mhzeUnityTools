@@ -78,12 +78,12 @@ def slug(text, limit=40):
 
 
 def start(name, label="", fps=15, res="960x540", quality=72, crf=26, max_minutes=60, key_every=2.0, rec_id=None,
-          use_ffmpeg=True):
+          use_ffmpeg=True, source="screen"):
     """Starts recording player NAME. Returns the player's answer (with "id")."""
     width, height = (int(v) for v in res.lower().split("x"))
     rec_id = rec_id or "%s-%s%s" % (time.strftime("%Y%m%d-%H%M%S"), name, "-" + slug(label) if label else "")
     command = {"op": "record", "action": "start", "id": rec_id, "label": label or name, "fps": fps, "w": width, "h": height,
-               "quality": quality, "crf": crf, "max": max_minutes * 60, "key_every": key_every}
+               "quality": quality, "crf": crf, "max": max_minutes * 60, "key_every": key_every, "source": source}
     if use_ffmpeg and ffmpeg():
         command["ffmpeg"] = ffmpeg()
         command["codec"] = encoder()
@@ -487,7 +487,7 @@ def frame_at(meta, at, exact=False):
 def cmd_record(args):
     if args.action == "start":
         answer = start(args.name, args.label or "", args.fps, args.res, args.quality, args.crf, args.max_minutes,
-                       args.key_every, args.id, not args.no_ffmpeg)
+                       args.key_every, args.id, not args.no_ffmpeg, args.source)
         ap.finish(answer)
         print("RECORDING %s (%s); stop with: agentplay.py record %s stop" % (answer.get("id"), answer.get("sink"), args.name))
     elif args.action == "mark":
@@ -587,6 +587,8 @@ def register(sub, ap_module):
     p.add_argument("--max-minutes", type=float, default=60, help="the recording stops by itself after this")
     p.add_argument("--key-every", type=float, default=2.0, help="seconds between keyframes (the pictures agents look at)")
     p.add_argument("--no-ffmpeg", action="store_true", help="write JPEG frames instead of streaming into ffmpeg")
+    p.add_argument("--source", choices=("screen", "camera"), default="screen",
+                   help="start: the finished screen as the player sees it (default), or one camera re-rendered (no overlay UI)")
     p.add_argument("--keep-frames", action="store_true", help="stop: keep JPEG frames after encoding")
     p.set_defaults(func=cmd_record)
 

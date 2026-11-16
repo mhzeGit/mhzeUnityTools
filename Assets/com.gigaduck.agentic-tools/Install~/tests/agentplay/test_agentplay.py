@@ -472,6 +472,13 @@ class AgentPlayTests(unittest.TestCase):
         objs = [{"name": "Handle", "path": "D%d/Handle" % i, "usable": True, "prompt": "to Open", "dist": i} for i in range(5)]
         keep, sib, _ = deep.plan(deep.object_actions(objs, 10), None, "Fake", [50, 0, 50], set(), False)
         self.assertEqual((len(keep), len(sib.get("handle|open", []))), (2, 3), "two look-alikes first, the rest held back")
+        # --only: every match and nothing else, once per run (the second section's lamp is the same lamp, same prompt)
+        only = argparse.Namespace(**dict(vars(args), only="lamp", moves=False, radius=None, retest=True))
+        r3 = deep.deeptest("bot", [SEGMENTS[0], SEGMENTS[1]], only)
+        tried = [a["label"] for a in r3["actions"] if a["outcome"] != "skipped"]
+        self.assertEqual(tried, ["interact Lamp"], r3["actions"])
+        self.assertTrue(any("tried earlier in this run" in a.get("detail", "") for a in r3["actions"]))
+        self.assertIn("only lamp", r3["scope"])
 
     def test_20_video_finalize_and_avi(self):
         if Image is None:

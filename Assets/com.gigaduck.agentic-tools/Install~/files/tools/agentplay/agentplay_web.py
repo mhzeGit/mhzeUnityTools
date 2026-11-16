@@ -405,6 +405,17 @@ def print_share(public, token, control):
     return link
 
 
+def view_link(fragment):
+    """Where a person opens a report or video: the share link when the dashboard is shared (works on a phone), else the
+    local dashboard. `fragment` is a dashboard route such as "playtests/<id>" (the phone app understands it too)."""
+    state = read_state()
+    if not state or not ap.pid_alive(state.get("pid", 0)):
+        return None
+    if state.get("public") and ap.pid_alive(state.get("tunnelPid", 0)):
+        return "%s/?key=%s#%s" % (state["public"], state["token"], fragment)
+    return "%s#%s" % (state["url"].rstrip("/") + "/", fragment)
+
+
 def read_state():
     try:
         return json.loads(STATE.read_text(encoding="utf-8"))

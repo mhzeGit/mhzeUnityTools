@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.7.0 - 2026-11-16
+
+- **Documentation for agents, recipes first.** `AGENT_PLAY.md` and the `agent-playtest` skill open with a table that maps a
+  request to its commands (play through chapter X, a perfect run, test every door, test everything, a walkthrough plus every
+  door, a recorded check), the scope words, timings, and what to report (the printed verdict, findings and `VIEW` link; no
+  opening of videos or files to check). New *Deep tests* section: what a deep test does, the control, every outcome, the smart
+  skipping, coverage and the effects memory. Outdated passages fixed (aim, approach, the recorder, the dashboard). The skill's
+  description names deep tests and "test every door" so agents find it.
+- `deeptest --only REGEX`: every interactable whose name, path or prompt matches (`door`), and nothing else; each once per
+  prompt per run (a door locked in one section and open in a later one is tried in both); moves and probes only with
+  `--moves`; radius 30 m by default. A segment with `"deep": false` is skipped.
+- Every playtest and deep test ends with a `VIEW` link to its report (the phone link when the dashboard is shared).
+- `record start --source camera` (default `screen`).
+- A proven route (3 or more wins, 70% or more) that fails once is played again before any repair; setup commands can carry
+  `"unless": <condition>` (skipped when the game is already there).
+
 ## 1.6.3 - 2026-11-16
 
 - A click, key, point or interact whose expected effect does not happen is pressed once more before the step fails (the game

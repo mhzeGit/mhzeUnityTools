@@ -1,9 +1,28 @@
 ---
 name: agent-playtest
-description: Play-test big chunks of the game or all of it with bots that learn to play by trial and error, share what they learned in the project's knowledge base, record video and write a quality report; also record video of any agent test. Use when asked to playtest, play through, master, speedrun-check or regression-check a level, chapter or the whole game, to record or show gameplay video, or to judge pacing, polish and stability by playing. Not for checking one small function (use a scoped agentplay test).
+description: Play-test a chapter, a stretch or the whole game with bots that play with real inputs and learn by trial and error (a shared knowledge base), record video and write a report; deep-test sections by trying every interactable, door, item combination and move to find bugs; record video of any agent test. Use when asked to playtest, play through, do a walkthrough, get a perfect run, test every door/interactable/feature of a chapter, find bugs by trying everything, master, speedrun-check or regression-check, or to record or show gameplay video. Not for checking one small function (use a scoped agentplay test).
 ---
 
-# Agent playtest: learn, master, play, record
+# Agent playtest: learn, master, play, deep-test, record
+
+## 0. Recipes: most requests are one or two commands
+
+`python tools/agentplay/agentplay.py ...` (players start and stop by themselves; each run records one video and prints a
+`VIEW` link). Run `info` first; build only when it says STALE.
+
+| The request | Run |
+| --- | --- |
+| Play through / walk through chapter X (recorded) | `kb brief --scope X`, then `playtest bot --scope X` (`--learn` if brief says not mastered) |
+| A perfect, clean play-through of X | `playtest bot --scope X --until-perfect 6` |
+| Test every door (or one kind of thing) in X | `deeptest bot --scope X --only door` (regex on name, path or prompt) |
+| Test everything in X / find bugs | `deeptest bot --scope X` (`--states all` deeper, `--exhaustive` no skipping) |
+| Walkthrough of X and test every door, recorded | `playtest bot --scope X`, then `deeptest bot --scope X --only door` |
+
+Scope words: `segments --scope X` lists what X covers (ids, prefixes, `N`, `N-M`; the project adds chapter ids and titles,
+see `Docs/AGENT_PLAY.md`, *This project*). Report exactly what the commands printed: the verdict, each finding with its
+`@m:ss` video time, and the `VIEW` links. Do not open videos, report files or knowledge files to verify; the printed summary
+is the result. Times: playtest 20 to 60 s per section; deep test 10 to 15 min per full section, 1 to 3 min per section with
+`--only`; until-perfect one playtest per run. The rest of this skill explains the machinery for when something fails.
 
 Two kinds of testing exist. A **function test** checks one change in a few commands (`agentplay.py send`, `sweep`, a shot).
 A **playtest** plays a stretch of the game the way a player does, to see how it runs as a whole. This skill is the
@@ -70,18 +89,13 @@ performance, pacing and friction scores; per segment outcome, time, deaths, new 
 was waiting; findings with their time in the video.
 
 **Two kinds of play-testing.** A playtest *finishes* the game (or a stretch of it) the clean way: does it play through,
-how does it feel. A **deep test** does not try to finish: in each section it tries everything a player could
-(`agentplay.py deeptest bot --scope S [--states all]`): every interactable in reach (walk there, aim, press or hold the
-interact key), an item in hand on every other interactable, every move of the project's input map (a tap each; sprint and
-crouch held while walking; pause in and out), and walking probes in 8 directions. Each action's effect is classified
-(error in the log, death, fell through, story moved, item held, something changed, nothing, could not be used, blocked); a
-story change out of order gets a softlock check (can the learned route still finish the section?). Coverage is shared in
-`AgentPlayKnowledge/coverage/` (nothing is tested twice on the same build; a new build retests); the report (one video, a
-caption per action, findings at their time) is on the dashboard and phone. Use it when asked to test everything, find
-bugs, or check a section after a change; `--states all` also tests at each story state the learned route goes through.
-It is smart about what it tries: item moves only with an item in hand, no repeats of moves that did nothing or the same
-harmless thing before, two of each kind of look-alike object (the rest only if those differ), story objects first, areas
-already walked around not probed again; every skip has its reason in the report. `--exhaustive` tries everything.
+how does it feel. A **deep test** does not try to finish: in each section it tries what a player could, from the first
+quiet moment, against a control (what happens with no input), and classifies what each action did: `deeptest bot --scope S`
+for everything (interactables, item combinations, the input map's moves, walking probes), `--only door` for every door
+(every match is tried, once per prompt per run), `--states all` to also test at later story states. Outcomes, the smart
+skipping and the shared coverage are in `Docs/AGENT_PLAY.md` (*Deep tests*). BUG findings (`error`, `fell`, `paused`) and
+deaths are what to report first; `failed` on a usable object (never under the crosshair) is worth a look; `softlock` is a
+warning to check in the video.
 
 **A perfect play-through.** Segments mastered one at a time can still fail when played in one go (the run before leaves an
 NPC a step further, a door already open). When the user wants to see a whole stretch played cleanly:
@@ -117,9 +131,9 @@ reports and knowledge: `GET /api/videos/<id>`, `/api/playtests/<id>`, `/api/know
 
 ## 7. Report
 
-Give the user: the verdict and scores, segments that failed or need an agent (with the reason), new errors, hitches and
-pacing notes with their video times, the paths of `report.html` and the video, and `agentplay.py serve --detach --open` to
-browse it all. When the user is away from the computer (or reads you on a phone), `agentplay.py serve --detach --tunnel`
-prints a secret view-only link that opens the dashboard, the report and the video anywhere; give them that link (the report
-is `<link host>/media/playtests/<id>/report.html?key=<key>`). Show them a contact sheet of the important moments the way their client displays images. List the knowledge
-base files you changed in your commit, and the lessons you added.
+Give the user: the verdict, segments that failed or need an agent (with the reason), the findings with their video times,
+and the `VIEW` link each run printed (it opens the report and its video; on a phone too when the dashboard is shared). No
+`VIEW` link means the dashboard is not running: `agentplay.py serve --detach` (local) or `serve --detach --tunnel` (a secret
+view-only link for a phone; `serve --status` prints it again), then the report is `<link>#playtests/<id>`. Show a contact
+sheet only for a finding that needs a picture. List the knowledge base files you changed in your commit (segments and
+`coverage/`), and the lessons you added.
