@@ -365,6 +365,63 @@ def compile_errors(log):
     return seen[:12]
 
 
+PIN_OVERRIDES = {}  # package name -> revision, applied to the build copy only (build --pin)
+
+
+def resolve_pins(specs):
+    """--pin NAME=REV, REV a commit hash or "committed" (the revision in the last commit's Packages/manifest.json)."""
+    pins = {}
+    committed = None
+    for spec in specs or []:
+        if "=" not in spec:
+            fail("--pin wants NAME=REVISION (a commit hash or 'committed'), got '%s'" % spec, 2)
+        name, rev = spec.split("=", 1)
+        if rev == "committed":
+            if committed is None:
+                proc = subprocess.run(["git", "-C", str(ROOT), "show", "HEAD:Packages/manifest.json"], capture_output=True, text=True)
+                committed = json.loads(proc.stdout).get("dependencies", {}) if proc.returncode == 0 else {}
+            url = committed.get(name, "")
+            if "#" not in url:
+                fail("the last commit pins no revision of %s" % name, 2)
+            rev = url.rsplit("#", 1)[1]
+        pins[name] = rev
+    return pins
+
+
+def apply_pins(pins):
+    """Points the build copy's manifest and lock at the given revisions. Returns {name: (from, to)}."""
+    applied = {}
+    manifest_path, lock_path = CLONE / "Packages" / "manifest.json", CLONE / "Packages" / "packages-lock.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    lock = json.loads(lock_path.read_text(encoding="utf-8")) if lock_path.exists() else {"dependencies": {}}
+    for name, rev in pins.items():
+        url = manifest.get("dependencies", {}).get(name)
+        if not url or "#" not in url:
+            fail("--pin %s: the manifest has no git revision for it" % name, 2)
+        base, old = url.rsplit("#", 1)
+        manifest["dependencies"][name] = base + "#" + rev
+        entry = lock.get("dependencies", {}).get(name)
+        if entry:
+            entry["version"] = base + "#" + rev
+            entry["hash"] = rev
+        applied[name] = (old, rev)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    lock_path.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
+    return applied
+
+
+def same_resolution(before, after, ignore):
+    """Lock files equal apart from the overridden packages (Unity may fill in their dependencies differently)."""
+    try:
+        a, b = json.loads(before), json.loads(after)
+    except ValueError:
+        return before == after
+    for name in ignore:
+        a.get("dependencies", {}).pop(name, None)
+        b.get("dependencies", {}).pop(name, None)
+    return a == b
+
+
 def build_once(timeout):
     """One sync and batch-mode build. Returns (stamp, summary, compile errors, file map); a stamp of None means it failed."""
     for attempt in range(3):
@@ -376,6 +433,10 @@ def build_once(timeout):
         print("Source and build copy differ after sync; retrying.", flush=True)
     else:
         return None, "source changed during sync or the build copy resolves different local packages", [], None
+    applied = apply_pins(PIN_OVERRIDES) if PIN_OVERRIDES else {}
+    if applied:
+        print("build copy only: " + ", ".join("%s at %s (working tree: %s)" % (n, to[:10], fr[:10]) for n, (fr, to) in applied.items()),
+              flush=True)
     lock = CLONE / "Packages" / "packages-lock.json"
     package_resolution = lock.read_bytes()
     if STAGE.exists():
@@ -394,7 +455,7 @@ def build_once(timeout):
     summary = result.read_text(encoding="utf-8") if result.exists() else "no result written"
     if proc.returncode != 0 or not (STAGE / EXE).exists():
         return None, "exit %d: %s; see %s" % (proc.returncode, summary, log), compile_errors(log), None
-    if lock.read_bytes() != package_resolution:
+    if not same_resolution(package_resolution, lock.read_bytes(), applied):
         return None, "Unity resolved different package revisions in the build copy; check Packages/packages-lock.json", [], None
     return stamp, summary, [], files
 
@@ -650,6 +711,7 @@ def try_patch(base, files, stamp, by, began):
 
 
 def cmd_build(args):
+    PIN_OVERRIDES.update(resolve_pins(args.pin))
     acquire_build_lock()
     try:
         current = latest_build()
@@ -683,7 +745,10 @@ def cmd_build(args):
                   % (attempt, args.retries + 1, args.retry_wait, errors[0][:300]), flush=True)
             time.sleep(args.retry_wait)
         save_compile_command(STAGE)
-        name, info = promote(stamp, make_info(stamp, summary, files, current, began, attempt, args.by), files)
+        made = make_info(stamp, summary, files, current, began, attempt, args.by)
+        if PIN_OVERRIDES:
+            made["pinOverrides"] = dict(PIN_OVERRIDES)  # not what the working tree pins: say so wherever the build is read
+        name, info = promote(stamp, made, files)
         print("BUILT %s in %.0fs, %d attempt(s) (%s)" % (name, time.time() - began, attempt, summary))
         print(one_line(info))
     finally:
@@ -701,6 +766,10 @@ def cmd_info(args):
     extras, files = scan_sources()
     if build.name.endswith("-" + stamp_of(extras, files)):
         print("STATUS: CURRENT - the build matches the working tree; start your own player from it, do not rebuild")
+        overrides = (read_info(build) or {}).get("pinOverrides")
+        if overrides:
+            print("NOTE: built with " + ", ".join("%s at %s" % kv for kv in overrides.items()) + " instead of the working tree's "
+                  "pin (build --pin): changes in those packages are not in this build")
         return
     old = read_manifest(build)
     if old is None:
@@ -1020,6 +1089,10 @@ def main():
     p.add_argument("--timeout", type=int, default=3600)
     p.add_argument("--retries", type=int, default=5, help="retries after compile errors (another agent's edit in progress)")
     p.add_argument("--retry-wait", type=int, default=120)
+    p.add_argument("--pin", action="append", metavar="NAME=REV",
+                   help="build a git package at another revision, in the build copy only: REV is a commit or 'committed' (the "
+                        "last commit's pin). For a working-tree pin that cannot be fetched (an unpublished commit); recorded "
+                        "in the build and shown by info")
     p.set_defaults(func=cmd_build)
 
     p = sub.add_parser("shader-report", help="dry run: which keywords multiply the shader variants")

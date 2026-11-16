@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.2 - 2026-11-16
+
+- **Aiming like a hand.** `aim` (and `interact`) calibrates the mouse once per session (a small nudge per axis, measured),
+  then steers a little every frame toward the point (at most 220 degrees a second, easing in, gentler after an overshoot)
+  instead of large jumps from a gain re-learned every step, which whipped the camera around (a door interaction swung it
+  between the door, the floor and the walls for 13 s). It stops the moment the object is under the crosshair. Attention uses
+  the same calibration.
+- Deep tests: a test point is the first quiet moment (a scene that plays by itself is let finish, as a player would); what
+  happens anyway no longer forces a reset; item moves are matched as whole words (Pause is not "use"), CamelCase split
+  (UseItem).
+- `build --pin NAME=committed|REV`: builds one git package at another revision in the build copy only, when the working
+  tree pins a commit that cannot be fetched (another agent's unpublished work); the build record and `info` say so.
+
 ## 1.6.1 - 2026-11-16
 
 - Deep tests measure against a control: at each test point they first watch what happens when the player does nothing (the

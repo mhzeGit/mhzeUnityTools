@@ -461,7 +461,10 @@ class AgentPlayTests(unittest.TestCase):
         # new and says why (look-alikes, areas walked); --exhaustive would try them anyway.
         eff = deep.load_effects()
         self.assertTrue(eff["kinds"] and eff["probed"], eff)
-        self.assertTrue(deep.ITEM_MOVES.search("Drop") and not deep.ITEM_MOVES.search("Jump"))
+        self.assertTrue(deep.ITEM_MOVES.search("Drop") and not deep.ITEM_MOVES.search("Jump") and not deep.ITEM_MOVES.search("Pause"))
+        keep, _, skipped = deep.plan([{"key": "move:UseItem", "kind": "move", "label": "UseItem"},
+                                      {"key": "move:Pause", "kind": "move", "label": "Pause"}], None, "Fake", [0, 0, 0], set(), False)
+        self.assertEqual(([a["key"] for a in keep], len(skipped)), (["move:Pause"], 1), "UseItem needs an item; Pause does not")
         acts = [{"key": "move:Drop", "kind": "move", "label": "Drop"}, {"key": "move:Jump", "kind": "move", "label": "Jump"}]
         keep, _, skipped = deep.plan(acts, None, "Fake", [0, 0, 0], set(), False)
         self.assertEqual([a["key"] for a in keep], ["move:Jump"])

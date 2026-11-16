@@ -489,13 +489,53 @@ namespace Gigaduck.AgenticTools.AgentPlay
         }
 
         /// <summary>Turns the view onto a world point with mouse movement, learning how far the view turns per mouse unit.</summary>
-        public static IEnumerator AimAt(Vector3 point, float tolerance, float timeout, Dictionary<string, object> r, Action<string> fail)
+        private static bool _calibrated, _calibrating;
+        internal static bool Calibrated => _calibrated || _calibrating;
+
+        /// <summary>
+        /// Finds how far the view turns per unit of mouse movement on each axis (and which way), once per session: a small
+        /// nudge right and back, up and back, measured a few frames later. Aiming then steers with it instead of guessing.
+        /// </summary>
+        public static IEnumerator Calibrate()
+        {
+            Camera cam = Cam();
+            if (cam == null || _calibrated || _calibrating) yield break;
+            _calibrating = true;
+            for (int axis = 0; axis < 2; axis++)
+            {
+                Vector3 f0 = cam.transform.forward;
+                var nudge = axis == 0 ? new Vector2(40f, 0f) : new Vector2(0f, 40f);
+                AgentPlayInput.MouseDelta(nudge);
+                for (int i = 0; i < 4; i++) yield return null;
+                Vector3 f1 = cam.transform.forward;
+                float turned = axis == 0 ? Mathf.DeltaAngle(Yaw(f0), Yaw(f1)) : Pitch(f1) - Pitch(f0);
+                if (Mathf.Abs(turned) > 0.05f)
+                {
+                    float k = Mathf.Clamp(Mathf.Abs(turned / 40f), 0.005f, 2f) * Mathf.Sign(turned);
+                    if (axis == 0) _kx = k; else _ky = k;
+                }
+
+                AgentPlayInput.MouseDelta(-nudge);
+                for (int i = 0; i < 3; i++) yield return null;
+            }
+
+            _calibrated = true;
+            _calibrating = false;
+        }
+
+        /// <summary>
+        /// Turns the view onto a point like a hand on a mouse: a little every frame toward it (at most 220 degrees a second,
+        /// easing in near it), slower after an overshoot, and never against the game (a scripted look is waited out). Stops
+        /// at once when <paramref name="done"/> says so (the object is under the crosshair already).
+        /// </summary>
+        public static IEnumerator AimAt(Vector3 point, float tolerance, float timeout, Dictionary<string, object> r, Action<string> fail,
+            Func<bool> done = null)
         {
             Camera cam = Cam();
             if (cam == null) { fail("aim: no camera"); yield break; }
-            float until = Time.realtimeSinceStartup + timeout;
-            int still = 0, steps = 0;
-            float gameHadView = 0f;
+            float until = Time.realtimeSinceStartup + timeout, gameHadView = 0f, lastErr = float.MaxValue, damp = 1f, sent = 0f, turned = 0f;
+            int frames = 0;
+            Vector3 prev = cam.transform.forward;
             while (true)
             {
                 // A player does not fight a scripted look (a dialog turning the view to the speaker): wait it out.
@@ -506,24 +546,25 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 {
                     gameHadView += Time.unscaledDeltaTime;
                     until += Time.unscaledDeltaTime;
-                    if (gameHadView > 8f)
-                    {
-                        r["aimed"] = false;
-                        fail("aim: the game has the view (a scripted look) for more than 8 s");
-                        yield break;
-                    }
-
+                    if (gameHadView > 8f) { r["aimed"] = false; fail("aim: the game has the view (a scripted look) for more than 8 s"); yield break; }
                     yield return null;
+                    prev = cam.transform.forward;
                     continue;
                 }
 
+                if (!_calibrated) { yield return Calibrate(); prev = cam.transform.forward; }
                 Vector3 f = cam.transform.forward, d = (point - cam.transform.position).normalized;
+                turned += Vector3.Angle(prev, f);
+                prev = f;
                 float err = Vector3.Angle(f, d);
-                if (err <= tolerance)
+                bool hit = false;
+                try { hit = done != null && done(); }
+                catch (Exception) { }
+                if (err <= tolerance || hit)
                 {
                     r["aimed"] = true;
                     r["aimError"] = Round(err);
-                    r["aimSteps"] = steps;
+                    r["aimFrames"] = frames;
                     yield break;
                 }
 
@@ -535,24 +576,31 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     yield break;
                 }
 
+                // Overshoot: the error grew since the last frame: steer more gently; converging: back to normal.
+                damp = err > lastErr + 0.3f ? Mathf.Max(0.2f, damp * 0.6f) : Mathf.Min(1f, damp * 1.08f);
+                lastErr = err;
+                float dt = Mathf.Clamp(Time.unscaledDeltaTime, 0.005f, 0.05f);
+                float ease = 1f - Mathf.Exp(-dt * 12f), most = 220f * dt * damp;
                 float yawErr = Mathf.DeltaAngle(Yaw(f), Yaw(d)), pitchErr = Pitch(d) - Pitch(f);
-                // At most 25 degrees a step, like a hand: never a whip, whatever the gain thinks.
-                float dx = Mathf.Clamp(yawErr, -25f, 25f) * 0.75f / _kx, dy = Mathf.Clamp(pitchErr, -25f, 25f) * 0.75f / _ky;
-                if (Mathf.Abs(yawErr) < tolerance * 0.5f) dx = 0f;
-                if (Mathf.Abs(pitchErr) < tolerance * 0.5f) dy = 0f;
-                float yaw0 = Yaw(f), pitch0 = Pitch(f);
+                float turnYaw = Mathf.Clamp(yawErr * ease, -most, most), turnPitch = Mathf.Clamp(pitchErr * ease, -most, most);
+                if (Mathf.Abs(yawErr) > tolerance * 0.5f && Mathf.Abs(turnYaw) < 0.15f) turnYaw = Mathf.Sign(yawErr) * Mathf.Min(0.15f, Mathf.Abs(yawErr));
+                if (Mathf.Abs(pitchErr) > tolerance * 0.5f && Mathf.Abs(turnPitch) < 0.15f) turnPitch = Mathf.Sign(pitchErr) * Mathf.Min(0.15f, Mathf.Abs(pitchErr));
+                float dx = Mathf.Clamp(turnYaw / _kx, -200f, 200f), dy = Mathf.Clamp(turnPitch / _ky, -200f, 200f);
                 AgentPlayInput.MouseDelta(new Vector2(dx, dy));
-                steps++;
+                sent += Mathf.Abs(dx) + Mathf.Abs(dy);
+                frames++;
                 yield return null;
-                yield return null; // the delta is read next frame; the controller turns the view in its update
-                Vector3 f1 = cam.transform.forward;
-                bool moved = Learn(ref _kx, Mathf.DeltaAngle(yaw0, Yaw(f1)), dx) | Learn(ref _ky, Pitch(f1) - pitch0, dy);
-                still = moved || (dx == 0f && dy == 0f) ? 0 : still + 1;
-                if (still >= 8)
+                // Many frames of mouse movement and the view has not turned: look input is off right now.
+                if (frames % 20 == 0)
                 {
-                    r["aimed"] = false;
-                    fail("aim: the view does not follow the mouse (the game has turned the player's look off right now?)");
-                    yield break;
+                    if (sent > 60f && turned < 0.3f)
+                    {
+                        r["aimed"] = false;
+                        fail("aim: the view does not follow the mouse (the game has turned the player's look off right now?)");
+                        yield break;
+                    }
+
+                    sent = turned = 0f;
                 }
             }
         }
@@ -682,7 +730,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 if (targeted) break;
                 string aimError = null;
                 var aim = new Dictionary<string, object>();
-                yield return AimAt(point, F(c, "tolerance", 1.2f), 2.5f, aim, e => aimError = e);
+                yield return AimAt(point, F(c, "tolerance", 1.2f), 2.5f, aim, e => aimError = e, () => IsTargeted(go));
                 if (aimError != null && aimError.Contains("does not follow")) { fail("interact: " + aimError); yield break; }
                 yield return null; // the interactor casts its ray in its own update
                 targeted = IsTargeted(go);

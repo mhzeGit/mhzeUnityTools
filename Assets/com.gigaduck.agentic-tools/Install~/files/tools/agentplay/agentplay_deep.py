@@ -305,7 +305,7 @@ def save_result(seg_id, key, result):
 
 # ------------------------------------------------------------------ being smart: what is still worth trying
 
-ITEM_MOVES = re.compile(r"drop|throw|use|next|previous|prev|item|inventory|equip|switch", re.I)
+ITEM_MOVES = re.compile(r"\b(drop|throw|use|next|previous|prev|item|inventory|equip|switch)\b", re.I)  # whole words: not "pause"
 HARMLESS = {"nothing", "changed", "moved", "blocked"}
 SIBLINGS_FIRST = 2   # look-alike objects tested before the rest are judged by them
 
@@ -421,7 +421,7 @@ def plan(queue, held, scene, base_pos, story, exhaustive):
     for act in queue:
         if act["kind"] == "move":
             name = act["key"].split(":", 1)[1].split("+")[0]
-            if ITEM_MOVES.search(name) and not held:
+            if ITEM_MOVES.search(re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name)) and not held:  # UseItem -> Use Item
                 skipped.append((act, "needs something in hand"))
                 continue
             cell = eff.get("moves", {}).get("%s|%s" % (act["key"].split("+with:")[0], ctx))
@@ -463,7 +463,8 @@ def plan(queue, held, scene, base_pos, story, exhaustive):
 # ------------------------------------------------------------------ a section
 
 def reach_state(name, seg, prefix):
-    """The section's start (its setup), then the learned route's steps up to a later story state."""
+    """The section's start (its setup), then the learned route's steps up to a later story state, then the first quiet
+    moment: a scene that plays by itself is let finish, as a player would, so actions are tried where the player acts."""
     for cmd in seg.get("setup", []):
         a = learn.send(name, cmd, learn.op_timeout(cmd))
         if not a.get("ok"):
@@ -473,6 +474,7 @@ def reach_state(name, seg, prefix):
         if step.get("when"):
             learn.send(name, {"op": "until", "cond": step["when"], "timeout": 30, "soft": True}, 60)
         learn.send(name, {k: v for k, v in step.items() if k not in learn.META_KEYS}, learn.op_timeout(step))
+    settle(name, quiet=3.0, most=25.0)
     return True
 
 
@@ -686,7 +688,7 @@ def deep_segment(name, seg, report, args, recording):
                 queue.insert(0, dict(act, retried=True, label=act["label"] + " (again)"))  # once more from a clean start
                 dirty = True
                 continue
-            if entry["outcome"] in ("story", "softlock", "held", "death", "fell", "busy", "anyway") or after["status"].get("scene") != base["status"].get("scene"):
+            if entry["outcome"] in ("story", "softlock", "held", "death", "fell", "busy") or after["status"].get("scene") != base["status"].get("scene")                     or (entry["outcome"] == "anyway" and (after["status"].get("deaths") or 0) > (base["status"].get("deaths") or 0)):
                 dirty = True
     row["duration"] = round(time.time() - t0, 1)
     row["end"] = video.elapsed(name) if recording else None
