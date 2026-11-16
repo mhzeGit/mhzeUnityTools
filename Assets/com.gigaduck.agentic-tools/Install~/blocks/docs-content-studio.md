@@ -70,7 +70,8 @@ writes files and a README; a person uploads them.
 | `follow` | `target`, `offset [x,y,z]`, `local` (default true), `lookAt`, `smooth` | Follows an object. |
 | `path` | `keys: [{t, pos, lookAt or euler, fov, ease}]` | Keyframed move; `ease`: `linear`, `smooth`, `in`, `out`. |
 
-`lookAt` and key `pos` take `[x,y,z]`, an object name (its centre) or `{target, bone, offset, local}`. Any mode takes `fov`,
+`cameraByFormat` in the recipe overrides camera fields per format (`{"wide": {"distance": 1.6, "yaw": 0}}`): framing that
+suits 9:16 rarely suits 16:9. `lookAt` and key `pos` take `[x,y,z]`, an object name (its centre) or `{target, bone, offset, local}`. Any mode takes `fov`,
 `shake {amount: degrees, freq: Hz}` (hand-held) and `listener: "camera"` (hear from the shot camera, not the player). A studio
 camera copies the player camera's pipeline settings (post-processing, anti-aliasing, renderer) without its overlay stack.
 

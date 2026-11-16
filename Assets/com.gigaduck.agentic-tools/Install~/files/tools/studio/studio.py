@@ -410,13 +410,20 @@ def start_player(name, keep):
     return True
 
 
-def take_options(shot, folder, w, h, fps, args, solo=None):
+def shot_camera(shot, fmt):
+    """The recipe's camera with its overrides for this format ("cameraByFormat": {"wide": {"distance": 1.6}})."""
+    cam = dict(shot.get("camera") or {"mode": "player"})
+    cam.update((shot.get("cameraByFormat") or {}).get(fmt) or {})
+    return cam
+
+
+def take_options(shot, folder, w, h, fps, args, solo=None, fmt=None):
     o = {
         "op": "studio", "action": "start", "folder": str(folder), "ffmpeg": ffmpeg(), "id": folder.name,
         "w": w, "h": h, "fps": fps, "mode": "realtime" if args.realtime else "offline",
         "ui": (not args.no_ui) and shot.get("ui", True) and solo is None,
         "audio": (not args.no_audio) and shot.get("audio", True),
-        "camera": shot.get("camera") or {"mode": "player"},
+        "camera": shot_camera(shot, fmt),
         "hide": list(CFG.get("hide") or []) + list(shot.get("hide") or []),
         "hideUi": list(CFG.get("hideUi") or []) + list(shot.get("hideUi") or []),
         "stemRules": CFG.get("stemRules") or {},
@@ -428,9 +435,9 @@ def take_options(shot, folder, w, h, fps, args, solo=None):
     return o
 
 
-def play_take(player, shot, folder, w, h, fps, args, solo=None):
+def play_take(player, shot, folder, w, h, fps, args, solo=None, fmt=None):
     run_steps(player, shot.get("setup"), in_take=False)
-    send(player, take_options(shot, folder, w, h, fps, args, solo), timeout=120)
+    send(player, take_options(shot, folder, w, h, fps, args, solo, fmt), timeout=120)
     try:
         run_steps(player, shot.get("actions"), in_take=True)
         length = shot.get("length")
@@ -463,12 +470,12 @@ def cmd_render(args):
             folder.mkdir(parents=True, exist_ok=True)
             print("rendering %s %dx%d @%d -> %s" % (shot["name"], w, h, fps, folder), file=sys.stderr)
             t0 = time.time()
-            meta = play_take(player, shot, folder, w, h, fps, args)
+            meta = play_take(player, shot, folder, w, h, fps, args, fmt=fmt)
             for stem in stems:
                 print("  stem pass: %s" % stem, file=sys.stderr)
                 sf = folder / "_pass" / stem
                 sf.mkdir(parents=True, exist_ok=True)
-                play_take(player, shot, sf, 256, 144, fps, args, solo=stem)
+                play_take(player, shot, sf, 256, 144, fps, args, solo=stem, fmt=fmt)
                 (folder / "stems").mkdir(exist_ok=True)
                 if (sf / "audio.wav").exists():
                     shutil.move(str(sf / "audio.wav"), str(folder / "stems" / (stem + ".wav")))
@@ -510,7 +517,7 @@ def cmd_still(args):
         if args.at:
             send(player, {"op": "wait", "s": args.at}, timeout=60 + args.at * 2)
         r = send(player, {"op": "studio", "action": "still", "folder": str(folder), "name": name, "w": w, "h": h,
-                          "camera": shot.get("camera") or {"mode": "player"},
+                          "camera": shot_camera(shot, fmt),
                           "hide": list(CFG.get("hide") or []) + list(shot.get("hide") or []),
                           "hideUi": list(CFG.get("hideUi") or []) + list(shot.get("hideUi") or [])})
         comp = folder / (name + "_full.png")
