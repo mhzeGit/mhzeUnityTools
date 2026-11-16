@@ -391,7 +391,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
         /// True when GPU readback returns the bottom row first (like Texture2D data). Found once by blitting a texture that
         /// is black at the bottom and white at the top, so the recording is upright on every graphics API.
         /// </summary>
-        private static bool ReadbackIsBottomUp()
+        internal static bool ReadbackIsBottomUp()
         {
             if (!SystemInfo.supportsAsyncGPUReadback) return true;
             var tex = new Texture2D(1, 2, TextureFormat.RGBA32, false);

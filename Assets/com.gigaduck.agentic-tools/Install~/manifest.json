@@ -11,15 +11,66 @@
       "required": true,
       "default": true,
       "items": [
-        { "kind": "block", "id": "core", "src": "blocks/agents-core.md", "dst": "AGENTS.md", "header": "headers/AGENTS.md" },
-        { "kind": "block", "id": "pointer", "src": "blocks/pointer-claude.md", "dst": "CLAUDE.md", "header": "headers/CLAUDE.md" },
-        { "kind": "block", "id": "pointer", "src": "blocks/pointer-gemini.md", "dst": "GEMINI.md", "header": "headers/GEMINI.md" },
-        { "kind": "block", "id": "pointer", "src": "blocks/pointer-copilot.md", "dst": ".github/copilot-instructions.md", "header": "headers/copilot-instructions.md" },
-        { "kind": "block", "id": "pointer", "src": "blocks/pointer-cursor.md", "dst": ".cursor/rules/agents.mdc", "header": "headers/cursor.mdc" },
-        { "kind": "block", "id": "pointer", "src": "blocks/pointer-antigravity.md", "dst": ".agent/rules/project-rules.md", "header": "headers/antigravity.md" },
-        { "kind": "block", "id": "agentic-tools", "src": "blocks/rules-agentic-tools.md", "dst": "{{RULES_DIR}}/AGENTIC_TOOLS.md" },
-        { "kind": "block", "id": "packages", "src": "blocks/rules-packages.md", "dst": "{{RULES_DIR}}/PACKAGES.md" },
-        { "kind": "block", "id": "unity-pitfalls", "src": "blocks/rules-unity-pitfalls.md", "dst": "{{RULES_DIR}}/UNITY_PITFALLS.md" }
+        {
+          "kind": "block",
+          "id": "core",
+          "src": "blocks/agents-core.md",
+          "dst": "AGENTS.md",
+          "header": "headers/AGENTS.md"
+        },
+        {
+          "kind": "block",
+          "id": "pointer",
+          "src": "blocks/pointer-claude.md",
+          "dst": "CLAUDE.md",
+          "header": "headers/CLAUDE.md"
+        },
+        {
+          "kind": "block",
+          "id": "pointer",
+          "src": "blocks/pointer-gemini.md",
+          "dst": "GEMINI.md",
+          "header": "headers/GEMINI.md"
+        },
+        {
+          "kind": "block",
+          "id": "pointer",
+          "src": "blocks/pointer-copilot.md",
+          "dst": ".github/copilot-instructions.md",
+          "header": "headers/copilot-instructions.md"
+        },
+        {
+          "kind": "block",
+          "id": "pointer",
+          "src": "blocks/pointer-cursor.md",
+          "dst": ".cursor/rules/agents.mdc",
+          "header": "headers/cursor.mdc"
+        },
+        {
+          "kind": "block",
+          "id": "pointer",
+          "src": "blocks/pointer-antigravity.md",
+          "dst": ".agent/rules/project-rules.md",
+          "header": "headers/antigravity.md"
+        },
+        {
+          "kind": "block",
+          "id": "agentic-tools",
+          "src": "blocks/rules-agentic-tools.md",
+          "dst": "{{RULES_DIR}}/AGENTIC_TOOLS.md"
+        },
+        {
+          "kind": "block",
+          "id": "packages",
+          "src": "blocks/rules-packages.md",
+          "dst": "{{RULES_DIR}}/PACKAGES.md"
+        },
+        {
+          "kind": "block",
+          "id": "unity-pitfalls",
+          "src": "blocks/rules-unity-pitfalls.md",
+          "dst": "{{RULES_DIR}}/UNITY_PITFALLS.md"
+        }
       ]
     },
     {
@@ -28,11 +79,35 @@
       "description": "Agents never commit: they register a virtual commit (tools/git/agent-commit.ps1) and you commit and push the records you pick with virtual-commit.bat. Includes the worktree guard hook and the index repair script.",
       "default": true,
       "items": [
-        { "kind": "copy", "src": "files/tools/git", "dst": "tools/git" },
-        { "kind": "copy", "src": "files/virtual-commit.bat", "dst": "virtual-commit.bat" },
-        { "kind": "block", "id": "git-hooks", "src": "blocks/gitattributes.txt", "dst": ".gitattributes" },
-        { "kind": "block", "id": "git", "src": "blocks/agents-git.md", "dst": "AGENTS.md", "after": "core" },
-        { "kind": "block", "id": "git", "src": "blocks/rules-git.md", "dst": "{{RULES_DIR}}/GIT.md" }
+        {
+          "kind": "copy",
+          "src": "files/tools/git",
+          "dst": "tools/git"
+        },
+        {
+          "kind": "copy",
+          "src": "files/virtual-commit.bat",
+          "dst": "virtual-commit.bat"
+        },
+        {
+          "kind": "block",
+          "id": "git-hooks",
+          "src": "blocks/gitattributes.txt",
+          "dst": ".gitattributes"
+        },
+        {
+          "kind": "block",
+          "id": "git",
+          "src": "blocks/agents-git.md",
+          "dst": "AGENTS.md",
+          "after": "core"
+        },
+        {
+          "kind": "block",
+          "id": "git",
+          "src": "blocks/rules-git.md",
+          "dst": "{{RULES_DIR}}/GIT.md"
+        }
       ]
     },
     {
@@ -41,10 +116,69 @@
       "description": "tools/agentplay/agentplay.py: one shared standalone build (script-only changes patched in seconds), one player per agent, driven by commands; gameplay video with captions; learning playtests with a shared knowledge base, reports, a dashboard and HTTP API; the editor Play Mode claim; the testing policy and test deadlines. The player side is this package's AgentPlay harness, shared ops, recorder and AgentPlayBuild.",
       "default": true,
       "items": [
-        { "kind": "copy", "src": "files/tools/agentplay", "dst": "tools/agentplay" },
-        { "kind": "block", "id": "testing", "src": "blocks/agents-testing.md", "dst": "AGENTS.md", "after": "git" },
-        { "kind": "block", "id": "testing", "src": "blocks/rules-testing.md", "dst": "{{RULES_DIR}}/TESTING.md" },
-        { "kind": "block", "id": "agent-play", "src": "blocks/docs-agent-play.md", "dst": "{{DOCS_DIR}}/AGENT_PLAY.md" }
+        {
+          "kind": "copy",
+          "src": "files/tools/agentplay",
+          "dst": "tools/agentplay"
+        },
+        {
+          "kind": "block",
+          "id": "testing",
+          "src": "blocks/agents-testing.md",
+          "dst": "AGENTS.md",
+          "after": "git"
+        },
+        {
+          "kind": "block",
+          "id": "testing",
+          "src": "blocks/rules-testing.md",
+          "dst": "{{RULES_DIR}}/TESTING.md"
+        },
+        {
+          "kind": "block",
+          "id": "agent-play",
+          "src": "blocks/docs-agent-play.md",
+          "dst": "{{DOCS_DIR}}/AGENT_PLAY.md"
+        }
+      ]
+    },
+    {
+      "id": "content-studio",
+      "title": "Content Studio (marketing video)",
+      "description": "tools/studio/studio.py: agents film marketing video from the game as recipes rendered by an agent player on fixed time steps at any size and aspect ratio, as layers (clean picture, UI with alpha, sound, stems, events); quick ffmpeg exports; reusable pieces (outro, sting, intro, lower third) placed by role; edit plans built into Blender video-editing projects you can edit by hand; per-platform publish files. The CONTENT_STUDIO.md guide and the make-video-content skill. Needs the agent-play module; the player side is this package's ContentStudio (the studio op).",
+      "default": false,
+      "items": [
+        {
+          "kind": "copy",
+          "src": "files/tools/studio",
+          "dst": "tools/studio"
+        },
+        {
+          "kind": "block",
+          "id": "content-studio",
+          "src": "blocks/docs-content-studio.md",
+          "dst": "{{DOCS_DIR}}/CONTENT_STUDIO.md"
+        },
+        {
+          "kind": "copy",
+          "src": "skills-studio",
+          "dst": ".claude/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills-studio",
+          "dst": ".agents/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills-studio",
+          "dst": ".kilo/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills-studio",
+          "dst": ".agent/skills"
+        }
       ]
     },
     {
@@ -53,8 +187,17 @@
       "description": "Registers the MCP for Unity server (http://127.0.0.1:8080/mcp) for Claude Code (.mcp.json) and Codex (.codex/config.toml). The fast_play tool and MCP auto-start compile in when com.coplaydev.unity-mcp is installed.",
       "default": true,
       "items": [
-        { "kind": "json-merge", "src": "files/mcp.json", "dst": ".mcp.json" },
-        { "kind": "block", "id": "mcp", "src": "blocks/codex-mcp.toml", "dst": ".codex/config.toml" }
+        {
+          "kind": "json-merge",
+          "src": "files/mcp.json",
+          "dst": ".mcp.json"
+        },
+        {
+          "kind": "block",
+          "id": "mcp",
+          "src": "blocks/codex-mcp.toml",
+          "dst": ".codex/config.toml"
+        }
       ]
     },
     {
@@ -63,10 +206,26 @@
       "description": "Playtest, gameplay, environment and asset skills (agent-playtest, unity-gameplay-workflow, environment-design, concept-art-to-3d, model-to-textured-asset, game-prop-concept-art) for Claude Code, Codex, Kilo and Antigravity.",
       "default": true,
       "items": [
-        { "kind": "copy", "src": "skills", "dst": ".claude/skills" },
-        { "kind": "copy", "src": "skills", "dst": ".agents/skills" },
-        { "kind": "copy", "src": "skills", "dst": ".kilo/skills" },
-        { "kind": "copy", "src": "skills", "dst": ".agent/skills" }
+        {
+          "kind": "copy",
+          "src": "skills",
+          "dst": ".claude/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills",
+          "dst": ".agents/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills",
+          "dst": ".kilo/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills",
+          "dst": ".agent/skills"
+        }
       ]
     },
     {
@@ -75,10 +234,26 @@
       "description": "The do-task skill: an agent takes one card from the production plan (the project-manager board and its pm command), marks it started, does and verifies the work, and ticks it off once you confirm. For projects that use the planner.",
       "default": false,
       "items": [
-        { "kind": "copy", "src": "skills-planner", "dst": ".claude/skills" },
-        { "kind": "copy", "src": "skills-planner", "dst": ".agents/skills" },
-        { "kind": "copy", "src": "skills-planner", "dst": ".kilo/skills" },
-        { "kind": "copy", "src": "skills-planner", "dst": ".agent/skills" }
+        {
+          "kind": "copy",
+          "src": "skills-planner",
+          "dst": ".claude/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills-planner",
+          "dst": ".agents/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills-planner",
+          "dst": ".kilo/skills"
+        },
+        {
+          "kind": "copy",
+          "src": "skills-planner",
+          "dst": ".agent/skills"
+        }
       ]
     },
     {
@@ -87,7 +262,12 @@
       "description": "Motion computed in code always gets an editable curve profile (ScriptableObject) instead of hard-coded easing.",
       "default": true,
       "items": [
-        { "kind": "block", "id": "procedural-animation", "src": "blocks/rules-procedural-animation.md", "dst": "{{RULES_DIR}}/PROCEDURAL_ANIMATION.md" }
+        {
+          "kind": "block",
+          "id": "procedural-animation",
+          "src": "blocks/rules-procedural-animation.md",
+          "dst": "{{RULES_DIR}}/PROCEDURAL_ANIMATION.md"
+        }
       ]
     },
     {
@@ -96,9 +276,23 @@
       "description": "A local kanban shared with your agents (tools/taskboard, task-board.bat): agents claim tasks, post progress and send finished work to Review; committing the virtual commit moves it to Done.",
       "default": false,
       "items": [
-        { "kind": "copy", "src": "files/tools/taskboard", "dst": "tools/taskboard" },
-        { "kind": "copy", "src": "files/task-board.bat", "dst": "task-board.bat" },
-        { "kind": "block", "id": "taskboard", "src": "blocks/agents-taskboard.md", "dst": "AGENTS.md", "after": "testing" }
+        {
+          "kind": "copy",
+          "src": "files/tools/taskboard",
+          "dst": "tools/taskboard"
+        },
+        {
+          "kind": "copy",
+          "src": "files/task-board.bat",
+          "dst": "task-board.bat"
+        },
+        {
+          "kind": "block",
+          "id": "taskboard",
+          "src": "blocks/agents-taskboard.md",
+          "dst": "AGENTS.md",
+          "after": "testing"
+        }
       ]
     }
   ]

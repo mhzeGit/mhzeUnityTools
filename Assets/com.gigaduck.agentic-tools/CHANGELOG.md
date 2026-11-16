@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.8.0 - 2026-11-16
+
+- **Content Studio** (new module `content-studio`, off by default): agents make marketing video from the game.
+  `tools/studio/studio.py` keeps shot recipes (where the game starts, camera, actions, length) and renders them from an agent
+  player on fixed time steps at any size and aspect ratio, as layers: clean picture, UI with alpha (overlay canvases laid out
+  for that aspect), game sound rendered offline in step, optional stem passes, events. Studio cameras: player, pose, face
+  close-up, follow, keyframed path, hand-held shake. Quick ffmpeg exports (UI and sound as switches, platform sizes, outro),
+  stills, contact sheets; reusable pieces (outro, sting, intro, overlay, lower third) placed by role; edit plans built into
+  Blender video-editing projects (hand edits are never replaced silently) and rendered as they are; per-platform publish
+  files with thumbnail, captions and post text. Player side: `ContentStudio` (`studio` op). Guide `CONTENT_STUDIO.md`, skill
+  `make-video-content`, tests `Install~/tests/studio`.
+
 ## 1.7.0 - 2026-11-16
 
 - **Documentation for agents, recipes first.** `AGENT_PLAY.md` and the `agent-playtest` skill open with a table that maps a

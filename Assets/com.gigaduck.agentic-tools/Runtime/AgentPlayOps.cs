@@ -58,12 +58,12 @@ namespace Gigaduck.AgenticTools.AgentPlay
         public static string InteractKey = "E";
         public static float Reach = 2.2f;
 
-        public static readonly string[] Names = { "record", "until", "observe", "aim", "interact", "approach", "screen", "perf", "attention", "point" };
+        public static readonly string[] Names = { "record", "studio", "until", "observe", "aim", "interact", "approach", "screen", "perf", "attention", "point" };
 
         // Ops that only read or that the recorder would only clutter with captions.
         private static readonly HashSet<string> Quiet = new HashSet<string>
         {
-            "status", "observe", "record", "errors", "summary", "find", "screen", "shot", "shots", "sheet", "perf", "attention",
+            "status", "observe", "record", "studio", "errors", "summary", "find", "screen", "shot", "shots", "sheet", "perf", "attention",
         };
 
         private static string _out;
@@ -160,6 +160,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             switch (op)
             {
                 case "record": return Record(c, r, fail);
+                case "studio": return ContentStudio.Op(c, r, fail);
                 case "until": return Until(c, r, fail);
                 case "observe": return Once(() => Observe(c, r));
                 case "aim": return Aim(c, r, fail);

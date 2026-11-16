@@ -79,6 +79,7 @@ Every harness (the package's and a project's own) also answers these, from `Agen
 | `approach {target \| pos, dist}` | Walks to a point near an object (the project's walker, e.g. NavMesh corners; default: a straight line), with the movement keys. |
 | `until {cond, timeout, soft}` | Waits for a condition: `{"field":"stage","gt":4}` (eq ne gt gte lt lte contains in changed exists), `near`, `exists`/`active`/`gone`, `crosshair`, `text`, `log`, `all`/`any`/`not`, plus project keys. `soft` answers `met:false` instead of failing. |
 | `record {action: start\|stop\|mark\|snap\|status}` | The recorder (below). |
+| `studio {action: start\|stop\|wait\|mark\|camera\|hide\|still\|stems\|status}` | Content Studio takes and stills (marketing footage in layers, any size): see `CONTENT_STUDIO.md` and `tools/studio/studio.py`. |
 | `screen`, `perf {reset}` | Visible UI text; frame times since the last reset (fps, worst, 95th percentile). |
 | `point {target \| world:[x,y,z] \| x, y, click: n, interval: s}` | The mouse pointer, for menus and pointer UIs: glides it over an object as the camera sees it (a UI element where it is drawn; x, y are 0..1 of the screen from the bottom left) so hover fires, then clicks n times. Without a player it uses the camera that draws the menu. |
 | `attention {mode: auto\|movement\|off}`, `{focus: name, for: s}`, `{clear: true}` | Where the player looks (below): its mode, a pinned focus, and the hotspots it sees with their scores. |

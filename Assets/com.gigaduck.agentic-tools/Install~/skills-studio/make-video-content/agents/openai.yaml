@@ -1,0 +1,4 @@
+interface:
+  display_name: "Make Video Content"
+  short_description: "Film, render and edit marketing clips from the game with Content Studio"
+  default_prompt: "Use $make-video-content to make this clip: write the shot recipe, render it, check the sheet, and export or build the edit."
