@@ -7,10 +7,21 @@ namespace Gigaduck.PlayFromView
     public static class PlayFromViewSettings
     {
         private const string Prefix = "Gigaduck.PlayFromView.";
+        private const string FastKey = Prefix + "FastEnter";
         private const string LogKey = Prefix + "LogPlacement";
         private const string WaitKey = Prefix + "WaitSeconds";
         private const string TagKey = Prefix + "PlayerTag";
         private const string CameraKey = Prefix + "FallbackToMainCamera";
+
+        /// <summary>
+        /// Enter Play Mode with Domain Reload and Scene Reload switched off for this one Play (like a
+        /// "fast play" button), then put the project's Enter Play Mode settings back.
+        /// </summary>
+        public static bool FastEnter
+        {
+            get => EditorPrefs.GetBool(FastKey, true);
+            set => EditorPrefs.SetBool(FastKey, value);
+        }
 
         /// <summary>Print one console line saying where the player was placed.</summary>
         public static bool LogPlacement
@@ -53,6 +64,9 @@ namespace Gigaduck.PlayFromView
                         "Press Alt+P (Tools > Gigaduck > Play From Scene View) to play with the player at the Scene view camera.",
                         MessageType.None);
 
+                    FastEnter = EditorGUILayout.Toggle(
+                        new GUIContent("Fast enter", "Skip Domain Reload and Scene Reload for this Play, then restore the project's Enter Play Mode settings."),
+                        FastEnter);
                     LogPlacement = EditorGUILayout.Toggle(
                         new GUIContent("Log placement", "Print one console line with where the player was placed."),
                         LogPlacement);

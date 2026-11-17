@@ -13,11 +13,11 @@ Press **Alt+P** and Unity enters Play Mode with the player standing exactly wher
 2. Press **Alt+P** (or **Tools > Gigaduck > Play From Scene View**).
 3. Play starts with the player's eyes at the Scene view camera.
 
-Change the shortcut in **Edit > Shortcuts...** (category `Gigaduck`). Options are in **Edit > Preferences > Gigaduck > Play From Scene View**.
+Change the shortcut in **Edit > Shortcuts...** (category `Gigaduck`). Options (including Fast enter) are in **Edit > Preferences > Gigaduck > Play From Scene View**.
 
 ## How It Works
 1. When you press the shortcut the Scene view camera pose is saved in `SessionState` (it survives the domain reload).
-2. Unity enters Play Mode with your usual Enter Play Mode settings.
+2. Unity enters Play Mode. With **Fast enter** (on by default) Domain Reload and Scene Reload are switched off for this one Play, like a fast play button, and your project's Enter Play Mode settings are restored when Play ends (also after a script reload or editor quit). Turn it off in Preferences to use your project's settings as they are.
 3. As soon as the scene has loaded, before the first frame, a *placer* finds the player and moves it so that the **player's camera** matches the saved pose (position and rotation). The player keeps its own yaw and pitch, so mouse look carries on smoothly.
 4. If no player exists yet (it is spawned a little later), it keeps looking for a few seconds (default 5 s).
 
@@ -62,4 +62,5 @@ A warning is logged and Play Mode starts normally when the Scene view is in 2D m
 - The Scene view field of view is not copied: the player camera keeps its own, so the framing can differ slightly even though position and direction match.
 - The pitch is limited to the controller's own vertical range.
 - Scripts that move the player during their own start-up can still override the placement; they run in the same frame, so look at the console line to see what was placed.
+- Fast enter means static fields keep their values between Plays, exactly like Unity's Enter Play Mode with Domain Reload disabled; code that relies on a fresh domain needs the usual `RuntimeInitializeOnLoadMethod` resets.
 - Needs Unity 6000.0 or newer.

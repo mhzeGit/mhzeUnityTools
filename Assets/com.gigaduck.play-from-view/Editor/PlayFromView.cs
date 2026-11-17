@@ -21,6 +21,9 @@ namespace Gigaduck.PlayFromView
         private const string LogTag = "<b>[Play From View]</b>";
         private const string PendingKey = "Gigaduck.PlayFromView.Pending";
         private const double PendingLifetimeSeconds = 60.0;
+        private const string FastActiveKey = "Gigaduck.PlayFromView.FastActive";
+        private const string OriginalEnabledKey = "Gigaduck.PlayFromView.OriginalOptionsEnabled";
+        private const string OriginalOptionsKey = "Gigaduck.PlayFromView.OriginalOptions";
 
         private static readonly List<IPlayFromViewPlacer> s_Placers = new List<IPlayFromViewPlacer>();
 
@@ -33,6 +36,54 @@ namespace Gigaduck.PlayFromView
             RegisterPlacer(new GenericPlayerPlacer());
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            EditorApplication.quitting -= RestoreEnterPlayModeOptions;
+            EditorApplication.quitting += RestoreEnterPlayModeOptions;
+
+            // A reload while not playing means a previous fast Play never got to restore.
+            if (!EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                RestoreEnterPlayModeOptions();
+            }
+        }
+
+        // --- Fast enter -------------------------------------------------------------------
+
+        // Same idea as a "fast play" button: skip the domain and scene reload for this one Play
+        // and put the project's own Enter Play Mode settings back afterwards.
+        private static void EnterFastOptions()
+        {
+            if (SessionState.GetBool(FastActiveKey, false))
+            {
+                return;
+            }
+
+            SessionState.SetBool(OriginalEnabledKey, EditorSettings.enterPlayModeOptionsEnabled);
+            SessionState.SetInt(OriginalOptionsKey, (int)EditorSettings.enterPlayModeOptions);
+            SessionState.SetBool(FastActiveKey, true);
+
+            EditorSettings.enterPlayModeOptionsEnabled = true;
+            EditorSettings.enterPlayModeOptions |= EnterPlayModeOptions.DisableDomainReload | EnterPlayModeOptions.DisableSceneReload;
+        }
+
+        private static void RestoreEnterPlayModeOptions()
+        {
+            if (!SessionState.GetBool(FastActiveKey, false))
+            {
+                return;
+            }
+
+            SessionState.SetBool(FastActiveKey, false);
+            EditorSettings.enterPlayModeOptionsEnabled = SessionState.GetBool(OriginalEnabledKey, false);
+            EditorSettings.enterPlayModeOptions = (EnterPlayModeOptions)SessionState.GetInt(OriginalOptionsKey, 0);
+        }
+
+        [UnityEditor.Callbacks.DidReloadScripts]
+        private static void OnScriptsReloaded()
+        {
+            if (!EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                RestoreEnterPlayModeOptions();
+            }
         }
 
         // --- Public API -------------------------------------------------------------------
@@ -86,6 +137,11 @@ namespace Gigaduck.PlayFromView
             {
                 SessionState.EraseString(PendingKey);
                 Debug.LogWarning($"{LogTag} {problem} Entering Play Mode normally.");
+            }
+
+            if (PlayFromViewSettings.FastEnter)
+            {
+                EnterFastOptions();
             }
 
             EditorApplication.isPlaying = true;
@@ -199,6 +255,7 @@ namespace Gigaduck.PlayFromView
                 case PlayModeStateChange.ExitingPlayMode:
                 case PlayModeStateChange.EnteredEditMode:
                     End();
+                    RestoreEnterPlayModeOptions();
                     break;
             }
         }
