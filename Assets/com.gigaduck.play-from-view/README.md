@@ -29,6 +29,21 @@ Change the shortcut in **Edit > Shortcuts...** (category `Gigaduck`). Options (i
 
 If the player has no child camera, the player object itself is treated as the eye. With **Move main camera if no player** turned on, scenes with only a camera move that camera instead.
 
+### Keeping a game's own start-up out of the way
+```csharp
+[InitializeOnLoad]
+static class MyGlue
+{
+    static MyGlue()
+    {
+        PlayFromView.PlayStarting -= OnPlayStarting;   // survives Domain Reload being off
+        PlayFromView.PlayStarting += OnPlayStarting;
+    }
+
+    static void OnPlayStarting(ViewPose pose) => Object.FindFirstObjectByType<MyIntro>().enabled = false;
+}
+```
+
 ### Writing a placer for another rig
 Rigs that keep their own yaw and pitch values need to be told about the new angles. Implement `IPlayFromViewPlacer` in an editor assembly and register it once:
 
@@ -61,6 +76,7 @@ A warning is logged and Play Mode starts normally when the Scene view is in 2D m
 - The player is placed by its **camera**, not its feet. If you press the shortcut in mid-air the player falls from there, and a camera inside a wall puts the player inside the wall.
 - The Scene view field of view is not copied: the player camera keeps its own, so the framing can differ slightly even though position and direction match.
 - The pitch is limited to the controller's own vertical range.
-- Scripts that move the player during their own start-up can still override the placement; they run in the same frame, so look at the console line to see what was placed.
+- Game start-up code that moves the player (an intro, a story that teleports the player to a spawn) runs after the placement and wins. Subscribe to `PlayFromView.PlayStarting` (raised after the scene loads and before any `Start()`) and stop it, for example by disabling the component that starts it; changes made in play mode are discarded when play stops.
+- The Game view is brought forward when play starts (like the Play button); turn it off with **Focus Game view** in Preferences.
 - Fast enter means static fields keep their values between Plays, exactly like Unity's Enter Play Mode with Domain Reload disabled; code that relies on a fresh domain needs the usual `RuntimeInitializeOnLoadMethod` resets.
 - Needs Unity 6000.0 or newer.

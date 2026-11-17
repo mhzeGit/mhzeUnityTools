@@ -8,6 +8,7 @@ namespace Gigaduck.PlayFromView
     {
         private const string Prefix = "Gigaduck.PlayFromView.";
         private const string FastKey = Prefix + "FastEnter";
+        private const string FocusKey = Prefix + "FocusGameView";
         private const string LogKey = Prefix + "LogPlacement";
         private const string WaitKey = Prefix + "WaitSeconds";
         private const string TagKey = Prefix + "PlayerTag";
@@ -21,6 +22,13 @@ namespace Gigaduck.PlayFromView
         {
             get => EditorPrefs.GetBool(FastKey, true);
             set => EditorPrefs.SetBool(FastKey, value);
+        }
+
+        /// <summary>Bring the Game view forward when play starts, as the Play button does.</summary>
+        public static bool FocusGameView
+        {
+            get => EditorPrefs.GetBool(FocusKey, true);
+            set => EditorPrefs.SetBool(FocusKey, value);
         }
 
         /// <summary>Print one console line saying where the player was placed.</summary>
@@ -67,6 +75,9 @@ namespace Gigaduck.PlayFromView
                     FastEnter = EditorGUILayout.Toggle(
                         new GUIContent("Fast enter", "Skip Domain Reload and Scene Reload for this Play, then restore the project's Enter Play Mode settings."),
                         FastEnter);
+                    FocusGameView = EditorGUILayout.Toggle(
+                        new GUIContent("Focus Game view", "Bring the Game view forward when play starts, as the Play button does. Mouse look needs it focused."),
+                        FocusGameView);
                     LogPlacement = EditorGUILayout.Toggle(
                         new GUIContent("Log placement", "Print one console line with where the player was placed."),
                         LogPlacement);

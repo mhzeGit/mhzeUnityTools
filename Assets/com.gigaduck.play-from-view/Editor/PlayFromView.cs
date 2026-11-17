@@ -21,6 +21,7 @@ namespace Gigaduck.PlayFromView
         private const string LogTag = "<b>[Play From View]</b>";
         private const string PendingKey = "Gigaduck.PlayFromView.Pending";
         private const double PendingLifetimeSeconds = 60.0;
+        private const string FocusGameViewKey = "Gigaduck.PlayFromView.FocusGameView";
         private const string FastActiveKey = "Gigaduck.PlayFromView.FastActive";
         private const string OriginalEnabledKey = "Gigaduck.PlayFromView.OriginalOptionsEnabled";
         private const string OriginalOptionsKey = "Gigaduck.PlayFromView.OriginalOptions";
@@ -89,6 +90,15 @@ namespace Gigaduck.PlayFromView
         // --- Public API -------------------------------------------------------------------
 
         /// <summary>
+        /// Raised once per Play From Scene View play, right after the scene has loaded and before any
+        /// <c>Start()</c> runs, with the Scene view pose. Use it to stop a game's own start-up (an intro
+        /// or story that would teleport the player straight back) from running. Handlers run in play
+        /// mode: whatever they change is discarded when play stops. With Domain Reload disabled
+        /// subscriptions survive, so unsubscribe before subscribing again.
+        /// </summary>
+        public static event Action<ViewPose> PlayStarting;
+
+        /// <summary>
         /// Registers a placer for a kind of player rig. A placer with the same
         /// <see cref="IPlayFromViewPlacer.Name"/> is replaced. Call it from an
         /// <c>[InitializeOnLoad]</c> constructor.
@@ -144,6 +154,8 @@ namespace Gigaduck.PlayFromView
                 EnterFastOptions();
             }
 
+            // Pressing Play with the mouse brings the Game view forward; entering from a shortcut does not.
+            SessionState.SetBool(FocusGameViewKey, PlayFromViewSettings.FocusGameView);
             EditorApplication.isPlaying = true;
         }
 
@@ -251,12 +263,28 @@ namespace Gigaduck.PlayFromView
             {
                 case PlayModeStateChange.EnteredPlayMode:
                     Begin();
+                    FocusGameViewIfRequested();
                     break;
                 case PlayModeStateChange.ExitingPlayMode:
                 case PlayModeStateChange.EnteredEditMode:
                     End();
                     RestoreEnterPlayModeOptions();
                     break;
+            }
+        }
+
+        private static void FocusGameViewIfRequested()
+        {
+            if (!SessionState.GetBool(FocusGameViewKey, false))
+            {
+                return;
+            }
+
+            SessionState.SetBool(FocusGameViewKey, false);
+            Type gameView = typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView");
+            if (gameView != null)
+            {
+                EditorWindow.FocusWindowIfItsOpen(gameView);
             }
         }
 
@@ -284,6 +312,15 @@ namespace Gigaduck.PlayFromView
             s_Request = pose;
             s_Active = true;
             s_StartedAt = EditorApplication.timeSinceStartup;
+
+            try
+            {
+                PlayStarting?.Invoke(pose);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
 
             if (TryPlaceAndReport())
             {
