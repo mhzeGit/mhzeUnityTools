@@ -1,0 +1,27 @@
+{
+    "name": "Gigaduck.PlayFromView.MhzeFirstPerson.Editor",
+    "rootNamespace": "Gigaduck.PlayFromView.Integrations",
+    "references": [
+        "Gigaduck.PlayFromView.Editor",
+        "com.mhze.firstperson-controller.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "GIGADUCK_PLAY_FROM_VIEW_MHZE_FPC"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.mhze.firstperson-controller",
+            "expression": "",
+            "define": "GIGADUCK_PLAY_FROM_VIEW_MHZE_FPC"
+        }
+    ],
+    "noEngineReferences": false
+}

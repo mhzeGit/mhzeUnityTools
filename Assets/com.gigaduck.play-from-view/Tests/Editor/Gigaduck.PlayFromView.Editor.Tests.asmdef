@@ -1,0 +1,18 @@
+{
+    "name": "Gigaduck.PlayFromView.Editor.Tests",
+    "rootNamespace": "Gigaduck.PlayFromView.Tests",
+    "references": [
+        "Gigaduck.PlayFromView.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

@@ -19,6 +19,7 @@ Install any tool in a new project via **Window > Package Manager > + > Add packa
 - **Hierarchy Context Menu** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.hierarchy-context-menu`
 - **Missing Script Inspector** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.missing-script-inspector`
 - **Object Snap Tool** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.objectsnaptool`
+- **Play From Scene View** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.play-from-view`
 - **Quick Texture Tools** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.quick-texture-tools`
 - **URL Package Updater** — `https://github.com/mhzeGit/mhzeUnityTools.git?path=/Assets/com.gigaduck.url-package-updater`
 

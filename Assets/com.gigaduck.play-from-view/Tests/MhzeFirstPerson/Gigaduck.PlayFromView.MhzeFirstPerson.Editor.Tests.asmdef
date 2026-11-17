@@ -1,0 +1,28 @@
+{
+    "name": "Gigaduck.PlayFromView.MhzeFirstPerson.Editor.Tests",
+    "rootNamespace": "Gigaduck.PlayFromView.Tests",
+    "references": [
+        "Gigaduck.PlayFromView.Editor",
+        "Gigaduck.PlayFromView.MhzeFirstPerson.Editor",
+        "com.mhze.firstperson-controller.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS",
+        "GIGADUCK_PLAY_FROM_VIEW_MHZE_FPC"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.mhze.firstperson-controller",
+            "expression": "",
+            "define": "GIGADUCK_PLAY_FROM_VIEW_MHZE_FPC"
+        }
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "com.gigaduck.play-from-view",
+  "version": "1.0.0",
+  "displayName": "Play From Scene View",
+  "description": "Press Alt+P to enter Play Mode with the player placed exactly where the Scene view camera is, looking the same way (like Unreal's Play From Camera).",
+  "unity": "6000.0",
+  "keywords": [
+    "play mode",
+    "scene view",
+    "camera",
+    "player start",
+    "workflow"
+  ],
+  "author": {
+    "name": "Gigaduck",
+    "email": "gigaduck.games@gmail.com"
+  },
+  "dependencies": {}
+}
