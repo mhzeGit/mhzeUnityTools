@@ -130,6 +130,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private Spot _current;
         private float _since, _fadingFor, _nextSample, _leftAt, _backOffUntil, _lastCaption;
         private string _leftKey;
+        private Vector3 _leftPoint, _currentPoint;
+        private bool _haveCurrentPoint;
         private readonly Queue<float> _switches = new Queue<float>();
 
         // The player's movement.
@@ -428,11 +430,13 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private void UpdateScores(float now, float dt, bool moving)
         {
             float rise = 1f - Mathf.Exp(-dt / Tuning.ScoreRise), fall = 1f - Mathf.Exp(-dt / Tuning.ScoreFall);
+            _haveCurrentPoint = _current != null && _current != _walk && PointOf(_current.H, out _currentPoint);
             foreach (Spot s in _spots.Values)
             {
                 if (Current != Mode.Auto) s.Raw = 0f;
                 s.Score += (s.Raw - s.Score) * (s.Raw > s.Score ? rise : fall);
-                if (s == _current) s.Bored = Mathf.Min(1f, s.Bored + dt / (s.H.Weight >= 1f ? Tuning.CriticalBoredAfter : Tuning.BoredAfter));
+                // Another hotspot at the same place (the same head reached two ways) is the same thing: it gets bored too.
+                if (s == _current || (_haveCurrentPoint && SamePlace(s, _currentPoint))) s.Bored = Mathf.Min(1f, s.Bored + dt / (s.H.Weight >= 1f ? Tuning.CriticalBoredAfter : Tuning.BoredAfter));
                 else s.Bored = Mathf.Max(0f, s.Bored - dt / Tuning.BoredRecover);
             }
 
@@ -472,8 +476,11 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private void Consider(Spot s, float now, ref Spot best, ref float bestEff)
         {
             if (s == _current) return;
-            // The point just left waits ReturnBlock s; only a critical one that became fresh since (a new line, a live hazard) may not.
-            if (s != _walk && s.Key == _leftKey && now - _leftAt < Tuning.ReturnBlock && !(s.FreshAt > _leftAt && s.H.Weight >= 1f)) return;
+            if (s != _walk && _haveCurrentPoint && SamePlace(s, _currentPoint)) return; // already looking there
+            // The point just left (or anything at the same place) waits ReturnBlock s; only a critical one that became fresh
+            // since (a new line, a live hazard) may not.
+            bool left = s != _walk && now - _leftAt < Tuning.ReturnBlock && (s.Key == _leftKey || (_leftKey != WalkKey && SamePlace(s, _leftPoint)));
+            if (left && !(s.FreshAt > _leftAt && s.H.Weight >= 1f)) return;
             float e = Effective(s);
             if (e > bestEff) { best = s; bestEff = e; }
         }
@@ -491,10 +498,22 @@ namespace Gigaduck.AgenticTools.AgentPlay
         {
             if (_current == null) return;
             _leftKey = _current.Key;
+            if (_current == _walk || !PointOf(_current.H, out _leftPoint)) _leftPoint = new Vector3(float.MaxValue, 0f, 0f);
             _leftAt = now;
             _current = null;
             _fadingFor = 0f;
         }
+
+        /// <summary>Where a hotspot is now; false when its target was destroyed.</summary>
+        private static bool PointOf(Hotspot h, out Vector3 p)
+        {
+            p = default;
+            if (!ReferenceEquals(h.Target, null) && h.Target == null) return false;
+            p = h.Target != null ? h.Target.position + h.Point : h.Point;
+            return true;
+        }
+
+        private static bool SamePlace(Spot s, Vector3 p) => PointOf(s.H, out Vector3 q) && (q - p).sqrMagnitude < 0.25f;
 
         private static float Score(Hotspot h, Vector3 eye, Vector3 flat, bool moving)
         {

@@ -28,6 +28,8 @@
   frames and measured there and back after the view stops, accepted only when both agree (3 tries).
 - Gain learning only takes plausible readings (seen/sent 0.6..1.6, at most 25% a step): a turn the game swallowed (a scripted
   look easing back ignores the mouse) taught a third of the gain and made the next turn overshoot.
+- Hotspots at the same place (within 0.5 m: one head reached as a look target and as a head bone) count as one: they share
+  boredom, are never switched to while looked at, and share the return block.
 
 ## 1.8.8 - 2026-11-16
 
