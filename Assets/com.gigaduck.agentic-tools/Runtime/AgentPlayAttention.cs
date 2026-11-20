@@ -75,8 +75,14 @@ namespace Gigaduck.AgenticTools.AgentPlay
             public static float TargetSmooth = 0.15f, DeadZone = 1.2f;
             /// <summary>Pitch limit of the virtual head, degrees.</summary>
             public static float MaxPitch = 60f;
-            /// <summary>Seconds the head must be still before its error is measured; degrees of error that are then corrected.</summary>
-            public static float Settle = 0.45f, ResyncAngle = 2f;
+            /// <summary>
+            /// The head's remaining error is measured once the head is still and the view has stopped turning (QuietRate degrees a
+            /// second for QuietTime s; then errors over ResyncQuiet degrees are corrected at once), or, when the view never stops
+            /// (head bob while walking), after Settle s (errors over ResyncAngle degrees).
+            /// </summary>
+            public static float Settle = 0.45f, ResyncAngle = 2f, QuietRate = 1.5f, QuietTime = 0.1f, ResyncQuiet = 0.6f;
+            /// <summary>Degrees a move must turn to teach the mouse gain, and how much of the measured correction is taken (0..1).</summary>
+            public static float LearnFrom = 3f, LearnRate = 0.85f;
         }
 
         /// <summary>auto: the way and the hotspots; movement: only the way; off: the agent's ops alone move the view.</summary>
@@ -133,7 +139,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
         // The view as measured, and the virtual head that steers it.
         private bool _haveView, _driving;
         private float _lastYaw, _lastPitch, _measYaw, _measPitch;
-        private float _viewYaw, _viewPitch, _yawVel, _pitchVel, _stillFor;
+        private float _viewYaw, _viewPitch, _yawVel, _pitchVel, _stillFor, _camRate, _camQuiet;
         private string _goalKey;
         private float _goalYaw, _goalPitch;
         private Vector3 _goalPoint;
@@ -213,6 +219,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
             Prune(a._switches, now - 30f);
             Prune(a._reversals, now - 10f);
             r["switches"] = a._switches.Count;
+            // Degrees of view per mouse unit attention steers with (calibration times what it learned since), x and y.
+            r["gain"] = new List<object> { Math.Round(AgentPlayOps._kx * a._gainX, 4), Math.Round(AgentPlayOps._ky * a._gainY, 4) };
             r["jitter"] = a._reversals.Count;
         }
 
@@ -272,6 +280,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
             float m = 1f - Mathf.Exp(-dt / 0.1f); // the measured view, low-passed: head bob is not an error
             _measYaw += Mathf.DeltaAngle(_measYaw, yaw) * m;
             _measPitch += (pitch - _measPitch) * m;
+            _camRate = (Mathf.Abs(dYaw) + Mathf.Abs(dPitch)) / dt;
+            _camQuiet = _camRate < Tuning.QuietRate ? _camQuiet + dt : 0f;
             if (_driving) TrackJitter(dYaw, dPitch, dt, now);
 
             // Did the view answer? Many frames of turning sent without any turn seen: look input is off; wait a moment.
@@ -556,20 +566,24 @@ namespace Gigaduck.AgenticTools.AgentPlay
             // Still: measure what the view really did, learn from it, and correct a real error (not head bob).
             bool still = Mathf.Abs(_yawVel) < 3f && Mathf.Abs(_pitchVel) < 3f;
             _stillFor = still ? _stillFor + dt : 0f;
-            if (_stillFor >= Tuning.Settle)
+            // The view stopped short (or past) of where the head went: correct the rest at once and learn the gain from it, so the
+            // next turn lands in one move. Waiting a fixed time here made every short turn a visible stop-and-go (step by step).
+            bool quiet = _camQuiet >= Tuning.QuietTime;
+            if ((still && quiet && _stillFor >= 0.05f) || _stillFor >= Tuning.Settle)
             {
+                float limit = quiet ? Tuning.ResyncQuiet : Tuning.ResyncAngle;
                 Learn(ref _gainX, Mathf.DeltaAngle(_segStartYaw, _measYaw), _segYaw, false);
                 Learn(ref _gainY, _measPitch - _segStartPitch, _segPitch, Mathf.Abs(wantPitch) > 40f);
                 float ey = Mathf.DeltaAngle(_viewYaw, _measYaw), ep = _measPitch - _viewPitch;
                 // Stuck short of a steep pitch it was driven to: the game's limit. Never push past it again (no fight, no back-off loop).
-                if (Mathf.Abs(ep) > Tuning.ResyncAngle && Mathf.Abs(_measPitch) > 30f && Mathf.Sign(_viewPitch - _measPitch) == Mathf.Sign(_measPitch))
+                if (Mathf.Abs(ep) > limit && Mathf.Abs(_measPitch) > 30f && Mathf.Sign(_viewPitch - _measPitch) == Mathf.Sign(_measPitch))
                 {
                     if (_measPitch > 0f) _pitchUp = Mathf.Min(_pitchUp, _measPitch);
                     else _pitchDown = Mathf.Min(_pitchDown, -_measPitch);
                 }
 
-                if (Mathf.Abs(ey) > Tuning.ResyncAngle) _viewYaw += ey;
-                if (Mathf.Abs(ep) > Tuning.ResyncAngle) _viewPitch += ep;
+                if (Mathf.Abs(ey) > limit) _viewYaw += ey;
+                if (Mathf.Abs(ep) > limit) _viewPitch += ep;
                 _stillFor = 0f;
                 StartSegment();
             }
@@ -620,10 +634,10 @@ namespace Gigaduck.AgenticTools.AgentPlay
         /// <summary>The view turned <paramref name="seen"/> for <paramref name="sent"/> degrees sent: move the gain part way toward the truth.</summary>
         private static void Learn(ref float gain, float seen, float sent, bool clamped)
         {
-            if (clamped || Mathf.Abs(sent) < 8f) return;
+            if (clamped || Mathf.Abs(sent) < Tuning.LearnFrom) return;
             float ratio = seen / sent;
             if (ratio < 0.3f || ratio > 3f) return; // the game turned it too, or nothing answered: learn nothing
-            gain = Mathf.Clamp(gain * Mathf.Lerp(1f, ratio, 0.6f), 0.2f, 5f);
+            gain = Mathf.Clamp(gain * Mathf.Lerp(1f, ratio, Tuning.LearnRate), 0.2f, 5f);
         }
 
         /// <summary>Stops steering; the next steer starts from the view as it is.</summary>

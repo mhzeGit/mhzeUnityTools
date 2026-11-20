@@ -19,6 +19,9 @@
   defined even looking straight up or down.
 - The point just left is taken again within 4 s only when it is critical (someone speaks, a live hazard) and became fresh since;
   fresh needs a weight jump of 0.3 (a new line from the one already looked at is not one).
+- No more step-by-step turns: when the mouse gain is off (a calibration read while the look settings changed), a turn fell
+  short and was finished only after a fixed 0.45 s, in steps. Now the rest is corrected as soon as the view stops turning, the
+  gain is learned from every turn of 3 degrees or more, and `attention` reports the `gain` it steers with.
 
 ## 1.8.8 - 2026-11-16
 
