@@ -251,7 +251,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
             // The view as it is.
             Vector3 f = cam.transform.forward;
-            float yaw = AgentPlayOps.Yaw(f), pitch = AgentPlayOps.Pitch(f);
+            float yaw = AgentPlayOps.ViewYaw(cam.transform), pitch = AgentPlayOps.Pitch(f); // yaw from the right vector: defined at any pitch
             float dYaw = 0f, dPitch = 0f;
             if (_haveView)
             {
@@ -573,6 +573,29 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 StartSegment();
             }
 
+            // Overshoot guard: the game's view lags what was sent, so with the right gain it never turns further than that.
+            // Turning clearly further means the gain is too low (every turn would overshoot): correct it now and restart from here.
+            float seenYaw = Mathf.DeltaAngle(_segStartYaw, _measYaw), seenPitch = _measPitch - _segStartPitch;
+            if (Overshot(seenYaw, _segYaw))
+            {
+                _gainX = Mathf.Clamp(_gainX * Mathf.Abs(seenYaw / _segYaw), 0.2f, 5f);
+                _viewYaw = _measYaw;
+                _yawVel = 0f;
+                _segYaw = 0f;
+                _segStartYaw = _measYaw;
+                turnYaw = 0f;
+            }
+
+            if (Overshot(seenPitch, _segPitch))
+            {
+                _gainY = Mathf.Clamp(_gainY * Mathf.Abs(seenPitch / _segPitch), 0.2f, 5f);
+                _viewPitch = _measPitch;
+                _pitchVel = 0f;
+                _segPitch = 0f;
+                _segStartPitch = _measPitch;
+                turnPitch = 0f;
+            }
+
             if (turnYaw == 0f && turnPitch == 0f) return;
             _segYaw += turnYaw;
             _segPitch += turnPitch;
@@ -582,6 +605,9 @@ namespace Gigaduck.AgenticTools.AgentPlay
             float dx = Mathf.Abs(kx) > 1e-4f ? turnYaw / kx : 0f, dy = Mathf.Abs(ky) > 1e-4f ? turnPitch / ky : 0f;
             AgentPlayInput.MouseDelta(new Vector2(Mathf.Clamp(dx, -400f, 400f), Mathf.Clamp(dy, -400f, 400f)));
         }
+
+        private static bool Overshot(float seen, float sent) =>
+            Mathf.Abs(sent) > 3f && Mathf.Sign(seen) == Mathf.Sign(sent) && Mathf.Abs(seen) > Mathf.Abs(sent) * 1.25f + 2f;
 
         private void StartSegment()
         {
@@ -596,7 +622,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if (clamped || Mathf.Abs(sent) < 8f) return;
             float ratio = seen / sent;
             if (ratio < 0.3f || ratio > 3f) return; // the game turned it too, or nothing answered: learn nothing
-            gain = Mathf.Clamp(gain * Mathf.Lerp(1f, ratio, 0.6f), 0.33f, 3f);
+            gain = Mathf.Clamp(gain * Mathf.Lerp(1f, ratio, 0.6f), 0.2f, 5f);
         }
 
         /// <summary>Stops steering; the next steer starts from the view as it is.</summary>

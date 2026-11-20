@@ -13,6 +13,10 @@
   3 s rest that made it ping-pong on walks) makes it move on and stay away until something new happens there. The way it walks
   competes as a candidate. `observe`/`attention` report `held`, `switches` and a `jitter` count; tuning is in
   `AgentPlayAttention.Tuning`.
+- Mouse calibration (`AgentPlayOps.Calibrate`) measures the nudge once the view has stopped turning, not 4 frames later: a game
+  that smooths its look read short there (at 26 fps by 2-3x), so turns overshot. Attention also guards live: a view that turns
+  clearly further than what was sent corrects the gain at once. Yaw is read from the view's right vector (`AgentPlayOps.ViewYaw`),
+  defined even looking straight up or down.
 
 ## 1.8.8 - 2026-11-16
 

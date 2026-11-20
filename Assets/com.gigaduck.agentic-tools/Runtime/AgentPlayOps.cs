@@ -495,7 +495,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
         /// <summary>
         /// Finds how far the view turns per unit of mouse movement on each axis (and which way), once per session: a small
-        /// nudge right and back, up and back, measured a few frames later. Aiming then steers with it instead of guessing.
+        /// nudge right and back, up and back, measured once the view has stopped turning (a game smooths its look, so a reading a
+        /// few frames after the nudge is short of the real turn and every later turn would overshoot). Aiming then steers with it.
         /// </summary>
         public static IEnumerator Calibrate()
         {
@@ -504,12 +505,17 @@ namespace Gigaduck.AgenticTools.AgentPlay
             _calibrating = true;
             for (int axis = 0; axis < 2; axis++)
             {
-                Vector3 f0 = cam.transform.forward;
-                var nudge = axis == 0 ? new Vector2(40f, 0f) : new Vector2(0f, 40f);
+                if (cam == null) break;
+                Transform view = cam.transform;
+                float pitch0 = Pitch(view.forward);
+                // Pitch near a limit cannot turn the whole nudge: nudge away from it.
+                float sign = axis == 1 && pitch0 > 0f ? -1f : 1f;
+                float yaw0 = ViewYaw(view);
+                var nudge = axis == 0 ? new Vector2(40f, 0f) : new Vector2(0f, 40f * sign);
                 AgentPlayInput.MouseDelta(nudge);
-                for (int i = 0; i < 4; i++) yield return null;
-                Vector3 f1 = cam.transform.forward;
-                float turned = axis == 0 ? Mathf.DeltaAngle(Yaw(f0), Yaw(f1)) : Pitch(f1) - Pitch(f0);
+                yield return Settle(cam);
+                if (cam == null) break;
+                float turned = axis == 0 ? Mathf.DeltaAngle(yaw0, ViewYaw(cam.transform)) : (Pitch(cam.transform.forward) - pitch0) * sign;
                 if (Mathf.Abs(turned) > 0.05f)
                 {
                     float k = Mathf.Clamp(Mathf.Abs(turned / 40f), 0.005f, 2f) * Mathf.Sign(turned);
@@ -517,7 +523,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 }
 
                 AgentPlayInput.MouseDelta(-nudge);
-                for (int i = 0; i < 3; i++) yield return null;
+                yield return Settle(cam);
             }
 
             _calibrated = true;
@@ -603,6 +609,25 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
                     sent = turned = 0f;
                 }
+            }
+        }
+
+        /// <summary>Waits until the view stops turning (at least 4 frames, at most about a second).</summary>
+        private static IEnumerator Settle(Camera cam)
+        {
+            if (cam == null) yield break;
+            float lastYaw = ViewYaw(cam.transform), lastPitch = Pitch(cam.transform.forward);
+            int quiet = 0;
+            for (int i = 0; i < 60; i++)
+            {
+                yield return null;
+                if (cam == null) yield break;
+                float yaw = ViewYaw(cam.transform), pitch = Pitch(cam.transform.forward);
+                float change = Mathf.Abs(Mathf.DeltaAngle(lastYaw, yaw)) + Mathf.Abs(pitch - lastPitch);
+                lastYaw = yaw;
+                lastPitch = pitch;
+                quiet = change < 0.02f ? quiet + 1 : 0;
+                if (i >= 3 && quiet >= 3) yield break;
             }
         }
 
@@ -1166,6 +1191,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
         // ------------------------------------------------------------------ helpers
 
         public static float Yaw(Vector3 f) => Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
+        /// <summary>The yaw of a view from its right vector: well defined even looking straight up or down (no roll assumed).</summary>
+        public static float ViewYaw(Transform view) => Mathf.Atan2(-view.right.z, view.right.x) * Mathf.Rad2Deg;
         public static float Pitch(Vector3 f) => Mathf.Asin(Mathf.Clamp(f.normalized.y, -1f, 1f)) * Mathf.Rad2Deg;
         public static List<object> V(Vector3 v) => new List<object> { Round(v.x), Round(v.y), Round(v.z) };
         private static float Round(float v) => Mathf.Round(v * 100f) / 100f;
