@@ -104,11 +104,17 @@ Every harness (the package's and a project's own) also answers these, from `Agen
 
 **Where agents look.** Every agent player looks like a person plays (`AgentPlayAttention`, on by default): along the way it
 walks, and when something happens at the most important hotspot the project names (who speaks, a hazard that is live, what
-a story step that just began points at), then back at the way. It turns the view with real mouse movement, holds a hotspot
-long enough to see it, glances back at the way on long walks, ignores what is behind a wall or behind the walk unless it is
+a story step that just began points at), then back at the way. It ignores what is behind a wall or behind the walk unless it is
 critical, and never fights the game: while the game drives the view (a scripted look, a look lock, look input off), while an
-op aims or takes a picture itself, or when the view stops answering, it waits. `status` has `looking`, `observe` has
-`attention`, and recordings caption each change ("looks at ..."). Keep it on when you test; point it with
+op aims or takes a picture itself, or when the view stops answering, it waits. It is steady: it eases a virtual head toward
+the goal and sends only that movement as mouse input (the game's look smoothing and head bob are never fed back, so it cannot
+oscillate), ignores small sway of a moving target, and learns the game's mouse gain and pitch limits once the view has settled.
+It chooses with memory: hotspots are tracked by what they point at (several labels on one character are one hotspot) with
+smoothed scores, a focus is held at least 1.6 s and given up only for a clearly better one, looking at a hotspot bores it
+(boredom recovers slowly, so it never ping-pongs between two points), and something that becomes more important again is fresh
+at once. `status` has `looking`; `observe` and `attention` have the focus, `held` seconds, the ranked `hotspots`, `switches`
+(last 30 s) and `jitter` (reversals of the view's turn in the last 10 s; more than a few means it shakes: report it).
+Recordings caption each change ("looks at ..."). Its numbers are in `AgentPlayAttention.Tuning`. Keep it on when you test; point it with
 `attention {focus: "Kettle", for: 5}` at what your check is about; `off` only for fixed-camera pictures. A project gives the
 hotspots with `AgentPlayAttention.Hotspots` and says when the game has the view with `AgentPlayAttention.GameHasView`.
 

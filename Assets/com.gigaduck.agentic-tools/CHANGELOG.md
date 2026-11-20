@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.8.9 - 2026-11-20
+
+- Agent play attention no longer shakes or flips between two focus points. Turning is open loop: a virtual head eases toward
+  the goal (critically damped) and only its movement is sent as mouse input, so the game's look smoothing and head bob cannot
+  feed back into an oscillation (the old controller steered by the lagging, bobbing camera and overshot); the remaining error is
+  corrected only once the view has settled, which also learns the real mouse gain and the game's pitch limits. Moving targets
+  are low-passed with a small dead zone.
+- Smarter choice: hotspots are tracked by what they point at (labels for one character merge), scores are smoothed with a
+  grace period (a spot that blinks out of one sample is not dropped), a focus is held at least 1.6 s and given up only for a
+  clearly better one, the point just left is not taken again for 4 s unless it became fresh, and boredom (instead of the fixed
+  3 s rest that made it ping-pong on walks) makes it move on and stay away until something new happens there. The way it walks
+  competes as a candidate. `observe`/`attention` report `held`, `switches` and a `jitter` count; tuning is in
+  `AgentPlayAttention.Tuning`.
+
 ## 1.8.8 - 2026-11-16
 
 - Skill `make-video-content`: a *Custom end screen (outro)* section (find what exists, copy the closest piece, size logos by the
