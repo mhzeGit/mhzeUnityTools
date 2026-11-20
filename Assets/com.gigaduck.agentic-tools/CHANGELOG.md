@@ -17,6 +17,8 @@
   that smooths its look read short there (at 26 fps by 2-3x), so turns overshot. Attention also guards live: a view that turns
   clearly further than what was sent corrects the gain at once. Yaw is read from the view's right vector (`AgentPlayOps.ViewYaw`),
   defined even looking straight up or down.
+- The point just left is taken again within 4 s only when it is critical (someone speaks, a live hazard) and became fresh since;
+  fresh needs a weight jump of 0.3 (a new line from the one already looked at is not one).
 
 ## 1.8.8 - 2026-11-16
 

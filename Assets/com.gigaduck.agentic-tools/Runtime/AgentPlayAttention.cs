@@ -385,7 +385,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
                     s = new Spot { Key = pair.Key, Score = pair.Value.raw, FreshAt = now, PrevWeight = pair.Value.h.Weight };
                     _spots[pair.Key] = s;
                 }
-                else if (pair.Value.h.Weight >= s.PrevWeight + 0.2f && pair.Value.h.Weight >= 0.5f)
+                else if (pair.Value.h.Weight >= s.PrevWeight + 0.3f && pair.Value.h.Weight >= 0.5f)
                 {
                     s.Bored = 0f; // clearly more important than before: something new happened there
                     s.FreshAt = now;
@@ -456,7 +456,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private void Consider(Spot s, float now, ref Spot best, ref float bestEff)
         {
             if (s == _current) return;
-            if (s != _walk && s.Key == _leftKey && now - _leftAt < Tuning.ReturnBlock && s.FreshAt <= _leftAt) return;
+            // The point just left waits ReturnBlock s; only a critical one that became fresh since (a new line, a live hazard) may not.
+            if (s != _walk && s.Key == _leftKey && now - _leftAt < Tuning.ReturnBlock && !(s.FreshAt > _leftAt && s.H.Weight >= 1f)) return;
             float e = Effective(s);
             if (e > bestEff) { best = s; bestEff = e; }
         }
