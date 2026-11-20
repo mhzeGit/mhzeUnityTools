@@ -599,7 +599,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
             float seenYaw = Mathf.DeltaAngle(_segStartYaw, _measYaw), seenPitch = _measPitch - _segStartPitch;
             if (Overshot(seenYaw, _segYaw))
             {
-                _gainX = Mathf.Clamp(_gainX * Mathf.Abs(seenYaw / _segYaw), 0.2f, 5f);
+                _gainX = Mathf.Clamp(_gainX * Mathf.Min(Mathf.Abs(seenYaw / _segYaw), 1.6f), 0.33f, 3f);
                 _viewYaw = _measYaw;
                 _yawVel = 0f;
                 _segYaw = 0f;
@@ -609,7 +609,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
             if (Overshot(seenPitch, _segPitch))
             {
-                _gainY = Mathf.Clamp(_gainY * Mathf.Abs(seenPitch / _segPitch), 0.2f, 5f);
+                _gainY = Mathf.Clamp(_gainY * Mathf.Min(Mathf.Abs(seenPitch / _segPitch), 1.6f), 0.33f, 3f);
                 _viewPitch = _measPitch;
                 _pitchVel = 0f;
                 _segPitch = 0f;
@@ -642,8 +642,10 @@ namespace Gigaduck.AgenticTools.AgentPlay
         {
             if (clamped || Mathf.Abs(sent) < Tuning.LearnFrom) return;
             float ratio = seen / sent;
-            if (ratio < 0.3f || ratio > 3f) return; // the game turned it too, or nothing answered: learn nothing
-            gain = Mathf.Clamp(gain * Mathf.Lerp(1f, ratio, Tuning.LearnRate), 0.2f, 5f);
+            // Calibration is measured there and back, so a turn that is far off means the game took or added input meanwhile (a
+            // scripted look easing back, a stage reset): learn nothing from it, or one bad reading makes every later turn overshoot.
+            if (ratio < 0.6f || ratio > 1.6f) return;
+            gain = Mathf.Clamp(gain * Mathf.Clamp(Mathf.Lerp(1f, ratio, Tuning.LearnRate), 0.8f, 1.25f), 0.33f, 3f);
         }
 
         /// <summary>Stops steering; the next steer starts from the view as it is.</summary>

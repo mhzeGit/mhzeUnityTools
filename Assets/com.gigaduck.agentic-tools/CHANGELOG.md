@@ -26,6 +26,8 @@
   measurement (a game read 2.7x the real pitch gain, so every turn upward covered a third and went up in steps). Attention now
   keeps off the mouse until calibration is done, a second caller (`aim`) waits for a running one, and each nudge is spread over 5
   frames and measured there and back after the view stops, accepted only when both agree (3 tries).
+- Gain learning only takes plausible readings (seen/sent 0.6..1.6, at most 25% a step): a turn the game swallowed (a scripted
+  look easing back ignores the mouse) taught a third of the gain and made the next turn overshoot.
 
 ## 1.8.8 - 2026-11-16
 
