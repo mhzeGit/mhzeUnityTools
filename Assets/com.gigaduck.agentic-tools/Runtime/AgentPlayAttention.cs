@@ -81,8 +81,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
             /// (head bob while walking), after Settle s (errors over ResyncAngle degrees).
             /// </summary>
             public static float Settle = 0.45f, ResyncAngle = 2f, QuietRate = 1.5f, QuietTime = 0.1f, ResyncQuiet = 0.6f;
-            /// <summary>Degrees a move must turn to teach the mouse gain, and how much of the measured correction is taken (0..1).</summary>
-            public static float LearnFrom = 3f, LearnRate = 0.85f;
+            /// <summary>Degrees a move must turn to count as evidence about the mouse gain.</summary>
+            public static float LearnFrom = 3f;
         }
 
         /// <summary>auto: the way and the hotspots; movement: only the way; off: the agent's ops alone move the view.</summary>
@@ -148,6 +148,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
         private float _sentYaw, _sentPitch, _sentDeg, _seenDeg;
         private int _checkFrames;
         private float _pitchUp = 90f, _pitchDown = 90f; // the game's own pitch limits, learned when the view stops short
+        private readonly List<float> _evidenceX = new List<float>(), _evidenceY = new List<float>();
         private float _gainX = 1f, _gainY = 1f, _segYaw, _segPitch, _segStartYaw, _segStartPitch;
 
         // Jitter: reversals of the view's turn while attention drives it.
@@ -597,8 +598,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
             if ((still && quiet && _stillFor >= 0.05f) || _stillFor >= Tuning.Settle)
             {
                 float limit = quiet ? Tuning.ResyncQuiet : Tuning.ResyncAngle;
-                Learn(ref _gainX, Mathf.DeltaAngle(_segStartYaw, _measYaw), _segYaw, false);
-                Learn(ref _gainY, _measPitch - _segStartPitch, _segPitch, Mathf.Abs(wantPitch) > 40f);
+                Learn(ref _gainX, _evidenceX, Mathf.DeltaAngle(_segStartYaw, _measYaw), _segYaw, false);
+                Learn(ref _gainY, _evidenceY, _measPitch - _segStartPitch, _segPitch, Mathf.Abs(wantPitch) > 40f);
                 float ey = Mathf.DeltaAngle(_viewYaw, _measYaw), ep = _measPitch - _viewPitch;
                 // Stuck short of a steep pitch it was driven to: the game's limit. Never push past it again (no fight, no back-off loop).
                 if (Mathf.Abs(ep) > limit && Mathf.Abs(_measPitch) > 30f && Mathf.Sign(_viewPitch - _measPitch) == Mathf.Sign(_measPitch))
@@ -614,11 +615,12 @@ namespace Gigaduck.AgenticTools.AgentPlay
             }
 
             // Overshoot guard: the game's view lags what was sent, so with the right gain it never turns further than that.
-            // Turning clearly further means the gain is too low (every turn would overshoot): correct it now and restart from here.
+            // Turning clearly further means the gain is off or the game turned the view too: restart from where the view is (so it
+            // never runs away) and count it as evidence about the gain.
             float seenYaw = Mathf.DeltaAngle(_segStartYaw, _measYaw), seenPitch = _measPitch - _segStartPitch;
             if (Overshot(seenYaw, _segYaw))
             {
-                _gainX = Mathf.Clamp(_gainX * Mathf.Min(Mathf.Abs(seenYaw / _segYaw), 1.6f), 0.33f, 3f);
+                Learn(ref _gainX, _evidenceX, seenYaw, _segYaw, false); // evidence only: the game may have turned it too
                 _viewYaw = _measYaw;
                 _yawVel = 0f;
                 _segYaw = 0f;
@@ -628,7 +630,7 @@ namespace Gigaduck.AgenticTools.AgentPlay
 
             if (Overshot(seenPitch, _segPitch))
             {
-                _gainY = Mathf.Clamp(_gainY * Mathf.Min(Mathf.Abs(seenPitch / _segPitch), 1.6f), 0.33f, 3f);
+                Learn(ref _gainY, _evidenceY, seenPitch, _segPitch, false);
                 _viewPitch = _measPitch;
                 _pitchVel = 0f;
                 _segPitch = 0f;
@@ -656,15 +658,26 @@ namespace Gigaduck.AgenticTools.AgentPlay
             _segStartPitch = _measPitch;
         }
 
-        /// <summary>The view turned <paramref name="seen"/> for <paramref name="sent"/> degrees sent: move the gain part way toward the truth.</summary>
-        private static void Learn(ref float gain, float seen, float sent, bool clamped)
+        /// <summary>
+        /// The view turned <paramref name="seen"/> for <paramref name="sent"/> degrees sent. One reading proves nothing (the game
+        /// may have turned the view too: a teleport, a scripted look, a stage reset; taking those made the gain drift 2.4x over
+        /// two story sweeps), so the gain changes only when <see cref="Tuning.LearnFrom"/>-degree turns agree three times in a row:
+        /// all more than 15% off the same way and within 20% of each other. Then it takes their middle value.
+        /// </summary>
+        private static void Learn(ref float gain, List<float> evidence, float seen, float sent, bool clamped)
         {
             if (clamped || Mathf.Abs(sent) < Tuning.LearnFrom) return;
             float ratio = seen / sent;
-            // Calibration is measured there and back, so a turn that is far off means the game took or added input meanwhile (a
-            // scripted look easing back, a stage reset): learn nothing from it, or one bad reading makes every later turn overshoot.
-            if (ratio < 0.6f || ratio > 1.6f) return;
-            gain = Mathf.Clamp(gain * Mathf.Clamp(Mathf.Lerp(1f, ratio, Tuning.LearnRate), 0.8f, 1.25f), 0.33f, 3f);
+            if (ratio < 0.5f || ratio > 2f) { evidence.Clear(); return; } // something else moved the view: not evidence
+            evidence.Add(ratio);
+            if (evidence.Count > 3) evidence.RemoveAt(0);
+            if (evidence.Count < 3) return;
+            float lo = Mathf.Min(evidence[0], Mathf.Min(evidence[1], evidence[2]));
+            float hi = Mathf.Max(evidence[0], Mathf.Max(evidence[1], evidence[2]));
+            if (hi / lo > 1.2f || (lo < 1.15f && hi > 0.87f)) return; // they disagree, or the gain is right
+            float mid = evidence[0] + evidence[1] + evidence[2] - lo - hi;
+            gain = Mathf.Clamp(gain * mid, 0.33f, 3f);
+            evidence.Clear();
         }
 
         /// <summary>Stops steering; the next steer starts from the view as it is.</summary>
