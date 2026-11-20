@@ -492,43 +492,60 @@ namespace Gigaduck.AgenticTools.AgentPlay
         /// <summary>Turns the view onto a world point with mouse movement, learning how far the view turns per mouse unit.</summary>
         private static bool _calibrated, _calibrating;
         internal static bool Calibrated => _calibrated || _calibrating;
+        /// <summary>True once calibration has finished (while it runs, nothing else may move the mouse or it measures that too).</summary>
+        internal static bool CalibrationDone => _calibrated;
 
         /// <summary>
-        /// Finds how far the view turns per unit of mouse movement on each axis (and which way), once per session: a small
-        /// nudge right and back, up and back, measured once the view has stopped turning (a game smooths its look, so a reading a
-        /// few frames after the nudge is short of the real turn and every later turn would overshoot). Aiming then steers with it.
+        /// Finds how far the view turns per unit of mouse movement on each axis (and which way), once per session: a nudge right
+        /// and back, up and back, each spread over a few frames (a lone one-frame mouse event can be lost), measured once the view
+        /// has stopped turning (a game smooths its look), there and back; a reading is taken only when both agree, else it tries
+        /// again (3 times), else the axis keeps its old value. A second caller waits for a calibration that is running.
         /// </summary>
         public static IEnumerator Calibrate()
         {
+            while (_calibrating) yield return null;
             Camera cam = Cam();
-            if (cam == null || _calibrated || _calibrating) yield break;
+            if (cam == null || _calibrated) yield break;
             _calibrating = true;
-            for (int axis = 0; axis < 2; axis++)
+            try
             {
-                if (cam == null) break;
-                Transform view = cam.transform;
-                float pitch0 = Pitch(view.forward);
-                // Pitch near a limit cannot turn the whole nudge: nudge away from it.
-                float sign = axis == 1 && pitch0 > 0f ? -1f : 1f;
-                float yaw0 = ViewYaw(view);
-                var nudge = axis == 0 ? new Vector2(40f, 0f) : new Vector2(0f, 40f * sign);
-                AgentPlayInput.MouseDelta(nudge);
-                yield return Settle(cam);
-                if (cam == null) break;
-                float turned = axis == 0 ? Mathf.DeltaAngle(yaw0, ViewYaw(cam.transform)) : (Pitch(cam.transform.forward) - pitch0) * sign;
-                if (Mathf.Abs(turned) > 0.05f)
+                for (int axis = 0; axis < 2; axis++)
                 {
-                    float k = Mathf.Clamp(Mathf.Abs(turned / 40f), 0.005f, 2f) * Mathf.Sign(turned);
-                    if (axis == 0) _kx = k; else _ky = k;
+                    for (int attempt = 0; attempt < 3 && cam != null; attempt++)
+                    {
+                        yield return Settle(cam);
+                        if (cam == null) yield break;
+                        // Pitch near a limit cannot turn the whole nudge: nudge away from it.
+                        float sign = axis == 1 && Pitch(cam.transform.forward) > 0f ? -1f : 1f;
+                        var nudge = (axis == 0 ? new Vector2(40f, 0f) : new Vector2(0f, 40f)) * sign;
+                        float a0 = Angle(cam, axis);
+                        yield return AgentPlayInput.Look(nudge, 5);
+                        yield return Settle(cam);
+                        if (cam == null) yield break;
+                        float a1 = Angle(cam, axis);
+                        yield return AgentPlayInput.Look(-nudge, 5);
+                        yield return Settle(cam);
+                        if (cam == null) yield break;
+                        float a2 = Angle(cam, axis);
+                        float there = Turn(axis, a0, a1) * sign, back = Turn(axis, a2, a1) * sign;
+                        if (Mathf.Abs(there) < 0.05f || Mathf.Abs(back) < 0.05f || Mathf.Sign(there) != Mathf.Sign(back)) continue;
+                        float ratio = Mathf.Abs(there / back);
+                        if (ratio < 0.8f || ratio > 1.25f) continue; // something else turned the view meanwhile
+                        float k = Mathf.Clamp(Mathf.Abs((there + back) * 0.5f / 40f), 0.005f, 2f) * Mathf.Sign(there);
+                        if (axis == 0) _kx = k; else _ky = k;
+                        break;
+                    }
                 }
-
-                AgentPlayInput.MouseDelta(-nudge);
-                yield return Settle(cam);
             }
-
-            _calibrated = true;
-            _calibrating = false;
+            finally
+            {
+                _calibrated = true;
+                _calibrating = false;
+            }
         }
+
+        private static float Angle(Camera cam, int axis) => axis == 0 ? ViewYaw(cam.transform) : Pitch(cam.transform.forward);
+        private static float Turn(int axis, float from, float to) => axis == 0 ? Mathf.DeltaAngle(from, to) : to - from;
 
         /// <summary>
         /// Turns the view onto a point like a hand on a mouse: a little every frame toward it (at most 220 degrees a second,
@@ -626,8 +643,8 @@ namespace Gigaduck.AgenticTools.AgentPlay
                 float change = Mathf.Abs(Mathf.DeltaAngle(lastYaw, yaw)) + Mathf.Abs(pitch - lastPitch);
                 lastYaw = yaw;
                 lastPitch = pitch;
-                quiet = change < 0.02f ? quiet + 1 : 0;
-                if (i >= 3 && quiet >= 3) yield break;
+                quiet = change < 0.005f ? quiet + 1 : 0;
+                if (i >= 3 && quiet >= 4) yield break;
             }
         }
 

@@ -308,7 +308,13 @@ namespace Gigaduck.AgenticTools.AgentPlay
             catch (Exception) { }
             if (gameView || someoneElse) _backOffUntil = Mathf.Max(_backOffUntil, now + 0.6f);
             if (now < _backOffUntil) { Release(); SetFocus("the game has the view"); return; }
-            if (!AgentPlayOps.Calibrated) { Release(); StartCoroutine(AgentPlayOps.Calibrate()); return; } // the mouse's real gain, once
+            if (!AgentPlayOps.CalibrationDone) // the mouse's real gain, once; hands off the mouse until it is measured
+            {
+                Release();
+                SetFocus("calibrating the mouse");
+                if (!AgentPlayOps.Calibrated) StartCoroutine(AgentPlayOps.Calibrate());
+                return;
+            }
 
             // What to look at.
             Vector3 eye = cam.transform.position;

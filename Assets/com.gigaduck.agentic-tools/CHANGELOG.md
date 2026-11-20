@@ -22,6 +22,10 @@
 - No more step-by-step turns: when the mouse gain is off (a calibration read while the look settings changed), a turn fell
   short and was finished only after a fixed 0.45 s, in steps. Now the rest is corrected as soon as the view stops turning, the
   gain is learned from every turn of 3 degrees or more, and `attention` reports the `gain` it steers with.
+- Calibration was spoiled by attention itself: `Calibrated` is true while calibrating, so attention steered during the
+  measurement (a game read 2.7x the real pitch gain, so every turn upward covered a third and went up in steps). Attention now
+  keeps off the mouse until calibration is done, a second caller (`aim`) waits for a running one, and each nudge is spread over 5
+  frames and measured there and back after the view stops, accepted only when both agree (3 tries).
 
 ## 1.8.8 - 2026-11-16
 
